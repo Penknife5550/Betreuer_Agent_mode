@@ -1,0 +1,14 @@
+<select name="activity_type" id="id_activity_type"
+        class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-schule-gsh focus:ring-1 focus:ring-schule-gsh"
+        hx-get="{% url 'contracts:rate_lookup' %}"
+        hx-include="[name=betreuer_type],[name=hour_duration]"
+        hx-target="#rate-display"
+        hx-trigger="change">
+    <option value="">--- Bitte waehlen ---</option>
+    {% for at in activity_types %}
+    <option value="{{ at.pk }}">{{ at.name }}</option>
+    {% endfor %}
+</select>
+{% if not activity_types %}
+<p class="mt-1 text-xs text-gray-500">Bitte waehlen Sie zuerst ein Foerderprogramm.</p>
+{% endif %}

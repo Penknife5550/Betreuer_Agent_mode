@@ -1,0 +1,105 @@
+from django.urls import path
+
+from apps.contracts.views import (
+    ActivityTypeLookupView,
+    ApprovalView,
+    BetreuerActivateView,
+    BetreuerDetailView,
+    BetreuerListView,
+    BetreuerReviewView,
+    BetreuerUpdateAccountingView,
+    CreateRegistrationLinkView,
+    FoerderprogrammLookupView,
+    HashCheckView,
+    PublicRegistrationView,
+    RateLookupView,
+    RegistrationLinkListView,
+    RegistrationSuccessView,
+    RegistrationView,
+)
+
+app_name = "contracts"
+
+urlpatterns = [
+    # --- Public registration (no login required) ---
+    path(
+        "registrierung/",
+        PublicRegistrationView.as_view(),
+        name="public_registration",
+    ),
+    path(
+        "registrierung/erfolg/",
+        RegistrationSuccessView.as_view(),
+        name="registration_success",
+    ),
+    path(
+        "registrierung/<uuid:token>/",
+        RegistrationView.as_view(),
+        name="token_registration",
+    ),
+    # --- Koordinator: Registration links ---
+    path(
+        "koordinator/registrierungslink-erstellen/",
+        CreateRegistrationLinkView.as_view(),
+        name="create_registration_link",
+    ),
+    path(
+        "koordinator/registrierungslinks/",
+        RegistrationLinkListView.as_view(),
+        name="registration_link_list",
+    ),
+    # --- Betreuer management ---
+    path(
+        "betreuer-liste/",
+        BetreuerListView.as_view(),
+        name="betreuer_list",
+    ),
+    path(
+        "betreuer/<int:pk>/",
+        BetreuerDetailView.as_view(),
+        name="betreuer_detail",
+    ),
+    path(
+        "betreuer/<int:pk>/pruefen/",
+        BetreuerReviewView.as_view(),
+        name="betreuer_review",
+    ),
+    path(
+        "betreuer/<int:pk>/aktivieren/",
+        BetreuerActivateView.as_view(),
+        name="betreuer_activate",
+    ),
+    path(
+        "betreuer/<int:pk>/buchhaltung/",
+        BetreuerUpdateAccountingView.as_view(),
+        name="betreuer_update_accounting",
+    ),
+    # --- Koordinator approval (V2) ---
+    path(
+        "betreuer/<int:pk>/genehmigen/",
+        ApprovalView.as_view(),
+        name="betreuer_approve",
+    ),
+    # --- HTMX API ---
+    path(
+        "api/rate-lookup/",
+        RateLookupView.as_view(),
+        name="rate_lookup",
+    ),
+    path(
+        "api/foerderprogramm-lookup/",
+        FoerderprogrammLookupView.as_view(),
+        name="foerderprogramm_lookup",
+    ),
+    path(
+        "api/activity-type-lookup/",
+        ActivityTypeLookupView.as_view(),
+        name="activity_type_lookup",
+    ),
+    # --- HTMX hash check (V2) ---
+    path(
+        "api/hash-check/",
+        HashCheckView.as_view(),
+        name="hash_check",
+    ),
+]

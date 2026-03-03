@@ -1,0 +1,13 @@
+<select name="foerderprogramm" id="id_foerderprogramm"
+        class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-schule-gsh focus:ring-1 focus:ring-schule-gsh"
+        hx-get="{% url 'contracts:activity_type_lookup' %}"
+        hx-target="#activity-type-container"
+        hx-trigger="change">
+    <option value="">--- Bitte waehlen ---</option>
+    {% for prog in programmes %}
+    <option value="{{ prog.pk }}">{{ prog.name }}</option>
+    {% endfor %}
+</select>
+{% if not programmes %}
+<p class="mt-1 text-xs text-gray-500">Bitte waehlen Sie zuerst eine Schule.</p>
+{% endif %}

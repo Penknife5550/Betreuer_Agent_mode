@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+
+{% block title %}Stundennachweise{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+    <div class="flex items-center justify-between mb-6">
+        <h1 class="text-2xl font-bold text-credo-dark">Stundennachweise</h1>
+    </div>
+
+    {# ---- Status Filter ---- #}
+    <div class="mb-6 flex items-center gap-3">
+        <span class="text-sm text-gray-500">Filter:</span>
+        <a href="{% url 'timetracking:timesheet_list' %}"
+           class="text-sm px-3 py-1 rounded-full {% if not status_filter %}bg-credo-dark text-white{% else %}bg-gray-100 text-gray-600 hover:bg-gray-200{% endif %} transition-colors">
+            Alle
+        </a>
+        {% for value, label in status_choices %}
+        <a href="?status={{ value }}"
+           class="text-sm px-3 py-1 rounded-full {% if status_filter == value %}bg-credo-dark text-white{% else %}bg-gray-100 text-gray-600 hover:bg-gray-200{% endif %} transition-colors">
+            {{ label }}
+        </a>
+        {% endfor %}
+    </div>
+
+    {# ---- Timesheet Table ---- #}
+    {% if timesheets %}
+    <div class="bg-white rounded-lg shadow overflow-hidden">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="text-left text-gray-500 bg-gray-50 border-b">
+                    <th class="py-3 px-4">Betreuer</th>
+                    <th class="py-3 px-4">Vertrag</th>
+                    <th class="py-3 px-4">Zeitraum</th>
+                    <th class="py-3 px-4 text-right">Stunden</th>
+                    <th class="py-3 px-4 text-right">Betrag</th>
+                    <th class="py-3 px-4 text-center">Status</th>
+                    <th class="py-3 px-4 text-right">Aktionen</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ts in timesheets %}
+                <tr class="border-b border-gray-100 hover:bg-gray-50">
+                    <td class="py-3 px-4 font-medium">
+                        {{ ts.contract.betreuer.user.get_full_name }}
+                    </td>
+                    <td class="py-3 px-4 text-gray-500">
+                        {{ ts.contract.school.code }} &ndash; {{ ts.contract.activity_type.name }}
+                    </td>
+                    <td class="py-3 px-4">
+                        {{ ts.month|stringformat:"02d" }}/{{ ts.year }}
+                    </td>
+                    <td class="py-3 px-4 text-right font-medium">
+                        {{ ts.total_hours }} Std.
+                    </td>
+                    <td class="py-3 px-4 text-right font-medium">
+                        {{ ts.total_amount }} &euro;
+                    </td>
+                    <td class="py-3 px-4 text-center">
+                        {% if ts.status == 'submitted' %}
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">Eingereicht</span>
+                        {% elif ts.status == 'approved' %}
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Genehmigt</span>
+                        {% elif ts.status == 'rejected' %}
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Abgelehnt</span>
+                        {% else %}
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">Entwurf</span>
+                        {% endif %}
+                    </td>
+                    <td class="py-3 px-4 text-right space-x-2">
+                        {% if ts.status == 'approved' and ts.generated_pdf %}
+                        <a href="{% url 'timetracking:timesheet_pdf_download' ts.pk %}"
+                           class="inline-flex items-center text-credo-dark hover:text-gray-900"
+                           title="PDF herunterladen">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                            </svg>
+                        </a>
+                        {% endif %}
+                        <a href="{% url 'timetracking:timesheet_detail' ts.pk %}"
+                           class="text-schule-gsh hover:underline text-sm">
+                            Details
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {# Pagination #}
+    {% if is_paginated %}
+    <div class="mt-6 flex justify-center gap-2">
+        {% if page_obj.has_previous %}
+        <a href="?page={{ page_obj.previous_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}"
+           class="px-3 py-1 bg-gray-100 rounded text-sm hover:bg-gray-200">&larr; Vorherige</a>
+        {% endif %}
+        <span class="px-3 py-1 text-sm text-gray-500">
+            Seite {{ page_obj.number }} von {{ page_obj.paginator.num_pages }}
+        </span>
+        {% if page_obj.has_next %}
+        <a href="?page={{ page_obj.next_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}"
+           class="px-3 py-1 bg-gray-100 rounded text-sm hover:bg-gray-200">N&auml;chste &rarr;</a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% else %}
+    <div class="bg-white rounded-lg shadow p-8 text-center text-gray-500">
+        Keine Stundennachweise vorhanden.
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}

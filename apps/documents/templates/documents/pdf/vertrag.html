@@ -1,0 +1,128 @@
+{% extends "documents/pdf/_pdf_base.html" %}
+
+{% block content %}
+<h1>Betreuungsvertrag</h1>
+<p style="font-size: 9pt; color: #666;">gem&auml;&szlig; &sect; 3 Nr. 26 EStG (Ehrenamtspauschale/&Uuml;bungsleiterpauschale)</p>
+
+<h2>Vertragsparteien</h2>
+<table class="meta-table">
+    <tr>
+        <td class="label">Auftraggeber:</td>
+        <td>
+            Christlicher Schulf&ouml;rderverein Minden e.V. (CSFV)<br>
+            Kingsleyallee 6, 32425 Minden
+        </td>
+    </tr>
+    <tr>
+        <td class="label">Auftragnehmer/in:</td>
+        <td>
+            {{ betreuer.get_anrede_display }} {{ user.get_full_name }}<br>
+            {{ betreuer.full_address }}<br>
+            geb. {{ betreuer.geburtsdatum|date:"d.m.Y" }}
+        </td>
+    </tr>
+</table>
+
+<h2>Vertragsdaten</h2>
+<table class="meta-table">
+    <tr>
+        <td class="label">Vertragsnummer:</td>
+        <td>{{ contract.contract_number }}</td>
+    </tr>
+    <tr>
+        <td class="label">Schule:</td>
+        <td>{{ school.name }} ({{ school.code }})</td>
+    </tr>
+    <tr>
+        <td class="label">T&auml;tigkeit:</td>
+        <td>{{ contract.activity_type.name }}{% if contract.ag_name %} &ndash; {{ contract.ag_name }}{% endif %}</td>
+    </tr>
+    <tr>
+        <td class="label">Stundensatz:</td>
+        <td>{{ contract.effective_rate }} EUR / {{ contract.hour_duration }} Minuten</td>
+    </tr>
+    <tr>
+        <td class="label">Schuljahr:</td>
+        <td>{{ school_year.name }}</td>
+    </tr>
+    <tr>
+        <td class="label">Vertragslaufzeit:</td>
+        <td>{{ contract.start_date|date:"d.m.Y" }} bis {{ contract.end_date|date:"d.m.Y" }}</td>
+    </tr>
+</table>
+
+<h2>Bankverbindung</h2>
+<table class="meta-table">
+    <tr>
+        <td class="label">Kontoinhaber:</td>
+        <td>{{ betreuer.kontoinhaber }}</td>
+    </tr>
+    <tr>
+        <td class="label">IBAN:</td>
+        <td>{{ iban_masked }}</td>
+    </tr>
+    {% if betreuer.bic %}
+    <tr>
+        <td class="label">BIC:</td>
+        <td>{{ betreuer.bic }}</td>
+    </tr>
+    {% endif %}
+</table>
+
+<h2>Vertragsbestimmungen</h2>
+
+<div class="paragraph">
+    <span class="paragraph-title">&sect; 1 Gegenstand</span><br>
+    Der/die Auftragnehmer/in verpflichtet sich, im Rahmen der Nachmittagsbetreuung an
+    der oben genannten Schule die beschriebene T&auml;tigkeit auszu&uuml;ben. Die T&auml;tigkeit
+    erfolgt im Rahmen einer nebenberuflichen, ehrenamtlichen Besch&auml;ftigung im Sinne
+    des &sect; 3 Nr. 26 EStG.
+</div>
+
+<div class="paragraph">
+    <span class="paragraph-title">&sect; 2 Verg&uuml;tung</span><br>
+    Die Verg&uuml;tung betr&auml;gt {{ contract.effective_rate }} EUR pro {{ contract.hour_duration }}-Minuten-Einheit.
+    Die Abrechnung erfolgt monatlich auf Grundlage der eingereichten und genehmigten
+    Stundennachweise. Die Auszahlung erfolgt nach Genehmigung auf das hinterlegte Bankkonto.
+</div>
+
+<div class="paragraph">
+    <span class="paragraph-title">&sect; 3 Laufzeit</span><br>
+    Der Vertrag beginnt am {{ contract.start_date|date:"d.m.Y" }} und endet am {{ contract.end_date|date:"d.m.Y" }}.
+    Eine Verl&auml;ngerung bedarf einer gesonderten schriftlichen Vereinbarung.
+</div>
+
+<div class="paragraph">
+    <span class="paragraph-title">&sect; 4 K&uuml;ndigung</span><br>
+    Der Vertrag kann von beiden Seiten mit einer Frist von zwei Wochen zum Monatsende
+    schriftlich gek&uuml;ndigt werden. Das Recht zur au&szlig;erordentlichen K&uuml;ndigung aus wichtigem
+    Grund bleibt unber&uuml;hrt.
+</div>
+
+<div class="paragraph">
+    <span class="paragraph-title">&sect; 5 Datenschutz</span><br>
+    Der/die Auftragnehmer/in verpflichtet sich zur Einhaltung der Datenschutz-Grundverordnung
+    (DSGVO) sowie des Bundesdatenschutzgesetzes (BDSG). Eine gesonderte
+    Vertraulichkeitserkl&auml;rung ist Bestandteil dieses Vertrages.
+</div>
+
+<div class="paragraph">
+    <span class="paragraph-title">&sect; 6 Sonstiges</span><br>
+    Nebenabreden und &Auml;nderungen dieses Vertrages bed&uuml;rfen der Schriftform.
+    Sollte eine Bestimmung dieses Vertrages unwirksam sein, so wird hierdurch die
+    G&uuml;ltigkeit der &uuml;brigen Bestimmungen nicht ber&uuml;hrt.
+</div>
+
+<div class="signature-block">
+    <div class="signature-box">
+        <div class="signature-line">
+            Ort, Datum &ndash; CSFV e.V.
+        </div>
+    </div>
+    <div class="signature-box">
+        <div class="signature-line">
+            Ort, Datum &ndash; {{ user.get_full_name }}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,76 @@
+{% extends "documents/pdf/_pdf_base.html" %}
+
+{% block content %}
+<h1>Verpflichtungserkl&auml;rung zum Datenschutz</h1>
+<p style="font-size: 9pt; color: #666;">gem&auml;&szlig; Art. 28 Abs. 3 lit. b DSGVO i.V.m. &sect; 53 BDSG</p>
+
+<h2>Angaben zur Person</h2>
+<table class="meta-table">
+    <tr>
+        <td class="label">Name:</td>
+        <td>{{ betreuer.get_anrede_display }} {{ user.get_full_name }}</td>
+    </tr>
+    <tr>
+        <td class="label">Geburtsdatum:</td>
+        <td>{{ betreuer.geburtsdatum|date:"d.m.Y" }}</td>
+    </tr>
+    <tr>
+        <td class="label">Schule:</td>
+        <td>{{ school.name }} ({{ school.code }})</td>
+    </tr>
+    <tr>
+        <td class="label">Vertragsnummer:</td>
+        <td>{{ contract.contract_number }}</td>
+    </tr>
+</table>
+
+<h2>Erkl&auml;rung</h2>
+
+<p>
+    Mir ist bekannt, dass ich bei der Aus&uuml;bung meiner T&auml;tigkeit im Rahmen der
+    Nachmittagsbetreuung Zugang zu personenbezogenen Daten von Sch&uuml;lerinnen und
+    Sch&uuml;lern, Erziehungsberechtigten sowie Kolleginnen und Kollegen erhalten kann.
+</p>
+
+<p>
+    Ich verpflichte mich hiermit, &uuml;ber alle mir bei meiner T&auml;tigkeit bekannt
+    werdenden personenbezogenen Daten Stillschweigen zu bewahren. Diese Pflicht
+    besteht auch nach Beendigung meiner T&auml;tigkeit fort.
+</p>
+
+<p>
+    Insbesondere verpflichte ich mich:
+</p>
+
+<ul style="padding-left: 16pt; margin: 6pt 0;">
+    <li>personenbezogene Daten nur im Rahmen meiner Aufgaben zu verarbeiten,</li>
+    <li>keine personenbezogenen Daten unbefugt an Dritte weiterzugeben,</li>
+    <li>personenbezogene Daten nicht auf private Datentr&auml;ger zu &uuml;bertragen,</li>
+    <li>Unterlagen mit personenbezogenen Daten sicher aufzubewahren und nach
+        Beendigung der T&auml;tigkeit zur&uuml;ckzugeben oder zu vernichten.</li>
+</ul>
+
+<p>
+    Mir ist bekannt, dass Verst&ouml;&szlig;e gegen die Datenschutzvorschriften strafrechtliche
+    Konsequenzen haben k&ouml;nnen (&sect; 42 BDSG) und zum Schadensersatz verpflichten
+    k&ouml;nnen (Art. 82 DSGVO).
+</p>
+
+<p>
+    Ich best&auml;tige, &uuml;ber die Bestimmungen des Datenschutzes belehrt worden zu sein
+    und diese Verpflichtungserkl&auml;rung verstanden zu haben.
+</p>
+
+<div class="signature-block">
+    <div class="signature-box">
+        <div class="signature-line">
+            Ort, Datum
+        </div>
+    </div>
+    <div class="signature-box">
+        <div class="signature-line">
+            Unterschrift {{ user.get_full_name }}
+        </div>
+    </div>
+</div>
+{% endblock %}

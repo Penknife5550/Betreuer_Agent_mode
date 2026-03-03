@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+
+{% block title %}Zentrale Auswertung{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+    <div class="flex items-center justify-between mb-6">
+        <h1 class="text-2xl font-bold text-credo-dark">Zentrale Auswertung</h1>
+        <a href="?year={{ year }}&month_from={{ month_from }}&month_to={{ month_to }}{% if school_filter_id %}&school={{ school_filter_id }}{% endif %}{% if fp_filter_id %}&foerderprogramm={{ fp_filter_id }}{% endif %}&format=csv"
+           class="bg-credo-dark hover:bg-gray-700 text-white text-sm font-medium py-2 px-4 rounded-md transition-colors">
+            CSV Export
+        </a>
+    </div>
+
+    {# ---- Filters ---- #}
+    <form method="get" class="mb-6 bg-white rounded-lg shadow p-4 flex items-end gap-4 flex-wrap">
+        <div>
+            <label for="id_year" class="block text-xs text-gray-500 mb-1">Jahr</label>
+            <input id="id_year" type="number" name="year" value="{{ year }}" min="2024" max="2030"
+                   class="rounded-md border border-gray-300 px-3 py-2 text-sm w-24">
+        </div>
+        <div>
+            <label for="id_month_from" class="block text-xs text-gray-500 mb-1">Monat von</label>
+            <select id="id_month_from" name="month_from" class="rounded-md border border-gray-300 px-3 py-2 text-sm">
+                {% for m, name in month_choices %}
+                <option value="{{ m }}" {% if m == month_from %}selected{% endif %}>{{ name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label for="id_month_to" class="block text-xs text-gray-500 mb-1">Monat bis</label>
+            <select id="id_month_to" name="month_to" class="rounded-md border border-gray-300 px-3 py-2 text-sm">
+                {% for m, name in month_choices %}
+                <option value="{{ m }}" {% if m == month_to %}selected{% endif %}>{{ name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label for="id_school" class="block text-xs text-gray-500 mb-1">Schule</label>
+            <select id="id_school" name="school" class="rounded-md border border-gray-300 px-3 py-2 text-sm">
+                <option value="">Alle Schulen</option>
+                {% for s in available_schools %}
+                <option value="{{ s.pk }}" {% if school_filter_id == s.pk|stringformat:"s" %}selected{% endif %}>
+                    {{ s.code }} &ndash; {{ s.name }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label for="id_foerderprogramm" class="block text-xs text-gray-500 mb-1">F&ouml;rderprogramm</label>
+            <select id="id_foerderprogramm" name="foerderprogramm" class="rounded-md border border-gray-300 px-3 py-2 text-sm">
+                <option value="">Alle Programme</option>
+                {% for fp in available_fps %}
+                <option value="{{ fp.pk }}" {% if fp_filter_id == fp.pk|stringformat:"s" %}selected{% endif %}>
+                    {{ fp.name }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <button type="submit"
+                class="bg-schule-gsh hover:bg-blue-600 text-white text-sm font-medium py-2 px-4 rounded-md transition-colors">
+            Filtern
+        </button>
+    </form>
+
+    {# ---- Period indicator ---- #}
+    <p class="text-sm text-gray-500 mb-4">
+        Zeitraum: <strong>{{ month_from_name }} &ndash; {{ month_to_name }} {{ year }}</strong>
+        &nbsp;&middot;&nbsp; Nur genehmigte Stundennachweise.
+    </p>
+
+    {# ---- Report Table ---- #}
+    {% if data %}
+    <div class="bg-white rounded-lg shadow overflow-hidden mb-6">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="text-left text-gray-500 border-b bg-gray-50">
+                    <th scope="col" class="py-3 px-4">Betreuer</th>
+                    <th scope="col" class="py-3 px-4">Schule</th>
+                    <th scope="col" class="py-3 px-4">F&ouml;rderprogramm</th>
+                    <th scope="col" class="py-3 px-4">Kostenstelle</th>
+                    <th scope="col" class="py-3 px-4 text-right">Stunden</th>
+                    <th scope="col" class="py-3 px-4 text-right">Betrag</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in data %}
+                <tr class="border-b border-gray-100 hover:bg-gray-50">
+                    <td class="py-2 px-4 font-medium text-credo-dark">{{ row.betreuer_name }}</td>
+                    <td class="py-2 px-4 text-gray-600">{{ row.school_code }}</td>
+                    <td class="py-2 px-4">
+                        {% if row.foerderprogramm_name != "—" %}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs bg-blue-50 text-blue-700">
+                            {{ row.foerderprogramm_name }}
+                        </span>
+                        {% else %}
+                        <span class="text-gray-400">&mdash;</span>
+                        {% endif %}
+                    </td>
+                    <td class="py-2 px-4 text-gray-500">
+                        {% if row.kostenstelle_code != "—" %}
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs bg-gray-100 text-gray-600">
+                            {{ row.kostenstelle_code }}
+                        </span>
+                        {% else %}
+                        <span class="text-gray-400">&mdash;</span>
+                        {% endif %}
+                    </td>
+                    <td class="py-2 px-4 text-right font-medium">{{ row.total_hours }}</td>
+                    <td class="py-2 px-4 text-right font-medium">{{ row.total_amount }} &euro;</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr class="bg-credo-dark text-white font-semibold">
+                    <th scope="row" colspan="4" class="py-3 px-4">Gesamt</th>
+                    <td class="py-3 px-4 text-right">{{ total_hours }} Std.</td>
+                    <td class="py-3 px-4 text-right">{{ total_amount }} &euro;</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+    {% else %}
+    <div class="bg-white rounded-lg shadow p-8 text-center text-gray-500">
+        Keine genehmigten Stundennachweise f&uuml;r den gew&auml;hlten Zeitraum.
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}

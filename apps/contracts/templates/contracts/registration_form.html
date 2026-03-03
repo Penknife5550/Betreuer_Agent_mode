@@ -1,0 +1,288 @@
+{% load static %}<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Betreuer Registrierung | CSFV</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { 'sans': ['Montserrat', 'Calibri', 'system-ui', 'sans-serif'] },
+                    colors: {
+                        'credo': { 'dark': '#575756', 'light': '#DADADA' },
+                        'schule': { 'gym': '#FBC900', 'ges': '#6BAA24', 'gsm': '#E2001A', 'gsh': '#009AC6', 'gss': '#AD1C28' }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-50 font-sans text-credo-dark min-h-screen flex flex-col">
+
+    {# Header with logo #}
+    <header class="bg-white shadow-sm">
+        <div class="max-w-3xl mx-auto px-4 py-4 flex items-center">
+            <img src="{% static 'img/logo_foerderverein_credo.svg' %}" alt="CSFV Logo" class="h-12 w-auto">
+            <h1 class="ml-4 text-lg font-semibold text-credo-dark">Betreuer Registrierung</h1>
+        </div>
+    </header>
+
+    {# Messages #}
+    {% if messages %}
+    <div class="max-w-3xl mx-auto px-4 mt-4">
+        {% for message in messages %}
+        <div class="mb-2 p-4 rounded-md
+            {% if message.tags == 'success' %}bg-green-50 text-green-800 border border-green-200
+            {% elif message.tags == 'error' %}bg-red-50 text-red-800 border border-red-200
+            {% else %}bg-blue-50 text-blue-800 border border-blue-200{% endif %}"
+            role="{% if message.tags == 'error' %}alert{% else %}status{% endif %}">
+            {{ message }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {# Main Form #}
+    <main class="flex-1 max-w-3xl mx-auto px-4 py-8 w-full">
+
+        {% if school %}
+        <div class="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-md text-sm">
+            <strong>Registrierung fuer:</strong> {{ school.name }} ({{ school.code }})
+        </div>
+        {% endif %}
+
+        <form method="post" class="space-y-6" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+            {% csrf_token %}
+
+            {# Non-field errors #}
+            {% if form.non_field_errors %}
+            <div class="p-4 bg-red-50 border border-red-200 rounded-md text-red-800 text-sm" role="alert">
+                {% for error in form.non_field_errors %}
+                <p>{{ error }}</p>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {# ---- Section 1: Personal data ---- #}
+            <div class="bg-white shadow rounded-lg p-6">
+                <h2 class="text-lg font-semibold text-credo-dark mb-4 border-b border-gray-200 pb-2">
+                    Persoenliche Daten
+                </h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {% for field in form %}
+                        {% if field.name == 'first_name' or field.name == 'last_name' or field.name == 'email' or field.name == 'anrede' or field.name == 'geburtsdatum' or field.name == 'geschlecht' or field.name == 'staatsangehoerigkeit' %}
+                        <div class="{% if field.name == 'email' %}md:col-span-2{% endif %}">
+                            <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+                                {{ field.label }}{% if field.field.required %} <span class="text-red-500">*</span>{% endif %}
+                            </label>
+                            {{ field }}
+                            {% if field.errors %}
+                            <p class="mt-1 text-xs text-red-600">{{ field.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+
+            {# ---- Section 2: Address ---- #}
+            <div class="bg-white shadow rounded-lg p-6">
+                <h2 class="text-lg font-semibold text-credo-dark mb-4 border-b border-gray-200 pb-2">
+                    Adresse
+                </h2>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div class="md:col-span-3">
+                        <label for="{{ form.street.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+                            {{ form.street.label }} <span class="text-red-500">*</span>
+                        </label>
+                        {{ form.street }}
+                        {% if form.street.errors %}<p class="mt-1 text-xs text-red-600">{{ form.street.errors.0 }}</p>{% endif %}
+                    </div>
+                    <div>
+                        <label for="{{ form.house_number.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+                            {{ form.house_number.label }} <span class="text-red-500">*</span>
+                        </label>
+                        {{ form.house_number }}
+                        {% if form.house_number.errors %}<p class="mt-1 text-xs text-red-600">{{ form.house_number.errors.0 }}</p>{% endif %}
+                    </div>
+                    <div>
+                        <label for="{{ form.plz.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+                            {{ form.plz.label }} <span class="text-red-500">*</span>
+                        </label>
+                        {{ form.plz }}
+                        {% if form.plz.errors %}<p class="mt-1 text-xs text-red-600">{{ form.plz.errors.0 }}</p>{% endif %}
+                    </div>
+                    <div class="md:col-span-3">
+                        <label for="{{ form.city.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+                            {{ form.city.label }} <span class="text-red-500">*</span>
+                        </label>
+                        {{ form.city }}
+                        {% if form.city.errors %}<p class="mt-1 text-xs text-red-600">{{ form.city.errors.0 }}</p>{% endif %}
+                    </div>
+                </div>
+            </div>
+
+            {# ---- Section 3: Bank details ---- #}
+            <div class="bg-white shadow rounded-lg p-6">
+                <h2 class="text-lg font-semibold text-credo-dark mb-4 border-b border-gray-200 pb-2">
+                    Bankdaten
+                </h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="md:col-span-2">
+                        <label for="{{ form.kontoinhaber.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+                            {{ form.kontoinhaber.label }} <span class="text-red-500">*</span>
+                        </label>
+                        {{ form.kontoinhaber }}
+                        {% if form.kontoinhaber.errors %}<p class="mt-1 text-xs text-red-600">{{ form.kontoinhaber.errors.0 }}</p>{% endif %}
+                    </div>
+                    <div>
+                        <label for="{{ form.iban.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+                            {{ form.iban.label }} <span class="text-red-500">*</span>
+                        </label>
+                        {{ form.iban }}
+                        {% if form.iban.errors %}<p class="mt-1 text-xs text-red-600">{{ form.iban.errors.0 }}</p>{% endif %}
+                    </div>
+                    <div>
+                        <label for="{{ form.bic.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+                            {{ form.bic.label }}
+                        </label>
+                        {{ form.bic }}
+                        {% if form.bic.errors %}<p class="mt-1 text-xs text-red-600">{{ form.bic.errors.0 }}</p>{% endif %}
+                    </div>
+                </div>
+            </div>
+
+            {# ---- Section 4: Contract / Activity ---- #}
+            <div class="bg-white shadow rounded-lg p-6" x-data="{ isAG: false }">
+                <h2 class="text-lg font-semibold text-credo-dark mb-4 border-b border-gray-200 pb-2">
+                    Vertrag & Taetigkeit
+                </h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="{{ form.school.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+                            {{ form.school.label }} <span class="text-red-500">*</span>
+                        </label>
+                        {{ form.school }}
+                        {% if form.school.errors %}<p class="mt-1 text-xs text-red-600">{{ form.school.errors.0 }}</p>{% endif %}
+                    </div>
+                    <div>
+                        <label for="{{ form.foerderprogramm.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+                            {{ form.foerderprogramm.label }} <span class="text-red-500">*</span>
+                        </label>
+                        <div id="foerderprogramm-container" aria-live="polite">
+                            {{ form.foerderprogramm }}
+                        </div>
+                        {% if form.foerderprogramm.errors %}<p class="mt-1 text-xs text-red-600">{{ form.foerderprogramm.errors.0 }}</p>{% endif %}
+                    </div>
+                    <div>
+                        <label for="{{ form.activity_type.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+                            {{ form.activity_type.label }} <span class="text-red-500">*</span>
+                        </label>
+                        <div id="activity-type-container" aria-live="polite" @change="isAG = $event.target.selectedOptions[0] && $event.target.selectedOptions[0].text.includes('AG')">
+                            {{ form.activity_type }}
+                        </div>
+                        {% if form.activity_type.errors %}<p class="mt-1 text-xs text-red-600">{{ form.activity_type.errors.0 }}</p>{% endif %}
+                    </div>
+                    <div>
+                        <label for="{{ form.betreuer_type.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+                            {{ form.betreuer_type.label }} <span class="text-red-500">*</span>
+                        </label>
+                        {{ form.betreuer_type }}
+                        {% if form.betreuer_type.errors %}<p class="mt-1 text-xs text-red-600">{{ form.betreuer_type.errors.0 }}</p>{% endif %}
+                    </div>
+                    <div>
+                        <label for="{{ form.hour_duration.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+                            {{ form.hour_duration.label }} <span class="text-red-500">*</span>
+                        </label>
+                        {{ form.hour_duration }}
+                        {% if form.hour_duration.errors %}<p class="mt-1 text-xs text-red-600">{{ form.hour_duration.errors.0 }}</p>{% endif %}
+                    </div>
+                    <div class="md:col-span-2" x-show="isAG" x-transition>
+                        <label for="{{ form.ag_name.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+                            {{ form.ag_name.label }}
+                        </label>
+                        {{ form.ag_name }}
+                        {% if form.ag_name.errors %}<p class="mt-1 text-xs text-red-600">{{ form.ag_name.errors.0 }}</p>{% endif %}
+                    </div>
+                    <div id="rate-display" class="md:col-span-2" aria-live="polite">
+                        {% include "contracts/partials/_rate_display.html" with rate=None %}
+                    </div>
+                </div>
+            </div>
+
+            {# ---- Section 5: Freibetrag ---- #}
+            <div class="bg-white shadow rounded-lg p-6" x-data="{ usedElsewhere: false }">
+                <h2 class="text-lg font-semibold text-credo-dark mb-4 border-b border-gray-200 pb-2">
+                    Freibetrag-Erklaerung
+                </h2>
+                <p class="text-sm text-gray-600 mb-4">
+                    Der Uebungsleiterfreibetrag betraegt aktuell 3.300 EUR pro Kalenderjahr.
+                    Bitte geben Sie an, ob Sie diesen bereits bei einem anderen Verein nutzen.
+                </p>
+                <div class="space-y-4">
+                    <div class="flex items-center gap-3">
+                        {{ form.freibetrag_used_elsewhere }}
+                        <label for="{{ form.freibetrag_used_elsewhere.id_for_label }}" class="text-sm text-gray-700 cursor-pointer select-none">
+                            {{ form.freibetrag_used_elsewhere.label }}
+                        </label>
+                    </div>
+                    <div x-show="usedElsewhere" x-transition class="grid grid-cols-1 md:grid-cols-2 gap-4 pl-7 pt-2 border-l-2 border-gray-200">
+                        <div>
+                            <label for="{{ form.freibetrag_amount_elsewhere.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+                                {{ form.freibetrag_amount_elsewhere.label }}
+                            </label>
+                            {{ form.freibetrag_amount_elsewhere }}
+                            {% if form.freibetrag_amount_elsewhere.errors %}
+                            <p class="mt-1 text-xs text-red-600">{{ form.freibetrag_amount_elsewhere.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+                        <div>
+                            <label for="{{ form.freibetrag_verein_name.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+                                {{ form.freibetrag_verein_name.label }} <span class="text-red-500">*</span>
+                            </label>
+                            {{ form.freibetrag_verein_name }}
+                            {% if form.freibetrag_verein_name.errors %}
+                            <p class="mt-1 text-xs text-red-600">{{ form.freibetrag_verein_name.errors.0 }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {# Submit #}
+            <div class="flex justify-end">
+                <button type="submit"
+                        class="bg-credo-dark hover:bg-gray-700 text-white font-semibold py-3 px-8 rounded-md transition-colors">
+                    Registrierung absenden
+                </button>
+            </div>
+        </form>
+    </main>
+
+    {# CREDO Footer #}
+    <footer class="mt-auto">
+        <div class="max-w-3xl mx-auto px-4 py-4">
+            <div class="text-center text-xs text-gray-400 mb-2">
+                &copy; 2026 Christlicher Schulf&ouml;rderverein Minden e.V.
+            </div>
+        </div>
+        <div class="flex items-stretch h-2" aria-hidden="true" role="presentation">
+            <div style="width: 50%; background-color: #575756;"></div>
+            <div style="width: 12.5%; background-color: #FBC900;"></div>
+            <div style="width: 12.5%; background-color: #6BAA24;"></div>
+            <div style="width: 12.5%; background-color: #E2001A;"></div>
+            <div style="width: 12.5%; background-color: #009AC6;"></div>
+        </div>
+    </footer>
+
+    <script src="{% static 'js/htmx.min.js' %}"></script>
+    <script defer src="{% static 'js/alpine.min.js' %}"></script>
+</body>
+</html>

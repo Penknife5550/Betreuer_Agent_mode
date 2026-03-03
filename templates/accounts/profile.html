@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+
+{% block title %}Mein Profil{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+    <div class="flex items-center justify-between mb-6">
+        <div class="flex items-center gap-3">
+            {% if user.is_superuser and not user.profile %}
+            <a href="{% url 'dashboards:admin_dashboard' %}"
+               class="flex items-center text-gray-500 hover:text-credo-dark text-sm font-medium transition-colors">
+                <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                </svg>
+                Zurück zum Dashboard
+            </a>
+            {% elif user.profile.is_admin %}
+            <a href="{% url 'dashboards:admin_dashboard' %}"
+               class="flex items-center text-gray-500 hover:text-credo-dark text-sm font-medium transition-colors">
+                <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                </svg>
+                Zurück zum Dashboard
+            </a>
+            {% elif user.profile.is_koordinator %}
+            <a href="{% url 'dashboards:koordinator_dashboard' %}"
+               class="flex items-center text-gray-500 hover:text-credo-dark text-sm font-medium transition-colors">
+                <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                </svg>
+                Zurück zum Dashboard
+            </a>
+            {% elif user.profile.is_betreuer %}
+            <a href="{% url 'dashboards:betreuer_dashboard' %}"
+               class="flex items-center text-gray-500 hover:text-credo-dark text-sm font-medium transition-colors">
+                <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                </svg>
+                Zurück zum Dashboard
+            </a>
+            {% endif %}
+            <h1 class="text-2xl font-bold text-credo-dark">Mein Profil</h1>
+        </div>
+        <div class="flex items-center gap-3">
+            {% if user.profile.is_betreuer and betreuer_profile %}
+            <a href="{% url 'accounts:profile_edit' %}"
+               class="bg-credo-dark hover:bg-gray-700 text-white text-sm font-medium py-2 px-4 rounded-md transition-colors">
+                Profil bearbeiten
+            </a>
+            {% endif %}
+            <a href="{% url 'accounts:password_change' %}"
+               class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium py-2 px-4 rounded-md transition-colors">
+                Passwort &auml;ndern
+            </a>
+        </div>
+    </div>
+
+    {# ---- Basic Account Info ---- #}
+    <div class="bg-white rounded-lg shadow p-6 mb-6">
+        <h2 class="text-lg font-semibold text-credo-dark mb-4">Kontoinformationen</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <span class="text-sm font-medium text-gray-500">Name</span>
+                <p class="text-credo-dark">{{ user.get_full_name|default:user.username }}</p>
+            </div>
+            <div>
+                <span class="text-sm font-medium text-gray-500">Benutzername</span>
+                <p class="text-credo-dark">{{ user.username }}</p>
+            </div>
+            <div>
+                <span class="text-sm font-medium text-gray-500">E-Mail</span>
+                <p class="text-credo-dark">{{ user.email|default:"--" }}</p>
+            </div>
+            {% if user.profile %}
+            <div>
+                <span class="text-sm font-medium text-gray-500">Rolle</span>
+                <p class="text-credo-dark">{{ user.profile.get_role_display }}</p>
+            </div>
+            <div>
+                <span class="text-sm font-medium text-gray-500">Telefon</span>
+                <p class="text-credo-dark">{{ user.profile.phone|default:"--" }}</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    {# ---- Betreuer-specific sections ---- #}
+    {% if betreuer_profile %}
+
+    {# Address #}
+    <div class="bg-white rounded-lg shadow p-6 mb-6">
+        <h2 class="text-lg font-semibold text-credo-dark mb-4">Adresse</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <span class="text-sm font-medium text-gray-500">Strasse / Nr.</span>
+                <p class="text-credo-dark">{{ betreuer_profile.street }} {{ betreuer_profile.house_number }}</p>
+            </div>
+            <div>
+                <span class="text-sm font-medium text-gray-500">PLZ / Ort</span>
+                <p class="text-credo-dark">{{ betreuer_profile.plz }} {{ betreuer_profile.city }}</p>
+            </div>
+        </div>
+    </div>
+
+    {# Bank Details #}
+    <div class="bg-white rounded-lg shadow p-6 mb-6">
+        <h2 class="text-lg font-semibold text-credo-dark mb-4">Bankverbindung</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <span class="text-sm font-medium text-gray-500">Kontoinhaber</span>
+                <p class="text-credo-dark">{{ betreuer_profile.kontoinhaber }}</p>
+            </div>
+            <div>
+                <span class="text-sm font-medium text-gray-500">IBAN</span>
+                <p class="text-credo-dark font-mono text-sm">{{ iban_masked }}</p>
+            </div>
+            {% if betreuer_profile.bic %}
+            <div>
+                <span class="text-sm font-medium text-gray-500">BIC</span>
+                <p class="text-credo-dark">{{ betreuer_profile.bic }}</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    {# Freibetrag Declaration #}
+    <div class="bg-white rounded-lg shadow p-6 mb-6">
+        <h2 class="text-lg font-semibold text-credo-dark mb-4">Freibetrag-Erkl&auml;rung</h2>
+        {% if betreuer_profile.freibetrag_used_elsewhere %}
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <span class="text-sm font-medium text-gray-500">Anderweitig genutzt</span>
+                <p class="text-credo-dark">Ja</p>
+            </div>
+            <div>
+                <span class="text-sm font-medium text-gray-500">Betrag</span>
+                <p class="text-credo-dark">{{ betreuer_profile.freibetrag_amount_elsewhere }} &euro;</p>
+            </div>
+            {% if betreuer_profile.freibetrag_verein_name %}
+            <div>
+                <span class="text-sm font-medium text-gray-500">Verein/Arbeitgeber</span>
+                <p class="text-credo-dark">{{ betreuer_profile.freibetrag_verein_name }}</p>
+            </div>
+            {% endif %}
+        </div>
+        {% else %}
+        <p class="text-sm text-gray-500">Freibetrag wird nicht anderweitig genutzt.</p>
+        {% endif %}
+    </div>
+
+    {% endif %}
+
+</div>
+{% endblock %}

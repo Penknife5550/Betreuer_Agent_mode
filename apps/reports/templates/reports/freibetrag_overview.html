@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block title %}Freibetrag-&Uuml;bersicht{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+    <div class="flex items-center justify-between mb-6">
+        <div>
+            <h1 class="text-2xl font-bold text-credo-dark">Freibetrag-&Uuml;bersicht {{ year }}</h1>
+            <p class="text-sm text-gray-500 mt-1">
+                {{ total_count }} Betreuer gesamt, {{ warning_count }} mit Warnung
+            </p>
+        </div>
+        <a href="?year={{ year }}&format=csv"
+           class="bg-credo-dark hover:bg-gray-700 text-white text-sm font-medium py-2 px-4 rounded-md transition-colors">
+            CSV Export
+        </a>
+    </div>
+
+    {# ---- Year Filter ---- #}
+    <form method="get" class="mb-6 flex items-end gap-4">
+        <div>
+            <label class="block text-xs text-gray-500 mb-1">Kalenderjahr</label>
+            <input type="number" name="year" value="{{ year }}" min="2024" max="2030"
+                   class="rounded-md border border-gray-300 px-3 py-2 text-sm w-24">
+        </div>
+        <button type="submit"
+                class="bg-schule-gsh hover:bg-blue-600 text-white text-sm font-medium py-2 px-4 rounded-md transition-colors">
+            Filtern
+        </button>
+    </form>
+
+    {# ---- Data Table ---- #}
+    {% if data %}
+    <div class="bg-white rounded-lg shadow overflow-hidden">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="text-left text-gray-500 bg-gray-50 border-b">
+                    <th class="py-3 px-4">Betreuer</th>
+                    <th class="py-3 px-4 text-right">Limit</th>
+                    <th class="py-3 px-4 text-right">Verdient</th>
+                    <th class="py-3 px-4 text-right">Extern</th>
+                    <th class="py-3 px-4 text-right">Gesamt</th>
+                    <th class="py-3 px-4 text-right">Verbleibend</th>
+                    <th class="py-3 px-4 text-right">%</th>
+                    <th class="py-3 px-4 text-center">Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in data %}
+                <tr class="border-b border-gray-100 hover:bg-gray-50">
+                    <td class="py-3 px-4 font-medium">{{ row.betreuer_name }}</td>
+                    <td class="py-3 px-4 text-right text-gray-500">{{ row.limit }} &euro;</td>
+                    <td class="py-3 px-4 text-right">{{ row.earned_here }} &euro;</td>
+                    <td class="py-3 px-4 text-right text-gray-500">{{ row.used_elsewhere }} &euro;</td>
+                    <td class="py-3 px-4 text-right font-medium">{{ row.total_used }} &euro;</td>
+                    <td class="py-3 px-4 text-right">{{ row.remaining }} &euro;</td>
+                    <td class="py-3 px-4 text-right font-medium">{{ row.percentage }}%</td>
+                    <td class="py-3 px-4 text-center">
+                        {% if row.warning_level == "red" %}
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                            Ausgesch&ouml;pft
+                        </span>
+                        {% elif row.warning_level == "orange" %}
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                            &ge; 90%
+                        </span>
+                        {% elif row.warning_level == "yellow" %}
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                            &ge; 80%
+                        </span>
+                        {% else %}
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            OK
+                        </span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% else %}
+    <div class="bg-white rounded-lg shadow p-8 text-center text-gray-500">
+        Keine aktiven Betreuer gefunden.
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}

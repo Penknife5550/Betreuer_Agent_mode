@@ -1,0 +1,373 @@
+{% extends "base.html" %}
+
+{% block title %}{{ betreuer.user.get_full_name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+    {# Header #}
+    <div class="flex items-center justify-between mb-6">
+        <div>
+            <h1 class="text-2xl font-bold text-credo-dark">{{ betreuer.user.get_full_name }}</h1>
+            <p class="text-sm text-gray-500">{{ betreuer.get_betreuer_type_display }} | {{ betreuer.user.email }}</p>
+        </div>
+        <div class="flex items-center gap-3">
+            {# Status Badge #}
+            {% if betreuer.onboarding_status == 'registered' %}
+            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-700">Registriert</span>
+            {% elif betreuer.onboarding_status == 'documents_pending' %}
+            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800">Dokumente ausstehend</span>
+            {% elif betreuer.onboarding_status == 'documents_complete' %}
+            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">Dokumente vollstaendig</span>
+            {% elif betreuer.onboarding_status == 'active' %}
+            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">Aktiv</span>
+            {% elif betreuer.onboarding_status == 'inactive' %}
+            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800">Inaktiv</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        {# Left column: Personal data #}
+        <div class="lg:col-span-2 space-y-6">
+
+            {# Personal data card #}
+            <div class="bg-white shadow rounded-lg p-6">
+                <h2 class="text-lg font-semibold text-credo-dark mb-4 border-b border-gray-200 pb-2">Persoenliche Daten</h2>
+                <dl class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                    <dt class="text-gray-500">Anrede</dt>
+                    <dd>{{ betreuer.get_anrede_display }}</dd>
+                    <dt class="text-gray-500">Geburtsdatum</dt>
+                    <dd>{{ betreuer.geburtsdatum|date:"d.m.Y" }}</dd>
+                    <dt class="text-gray-500">Adresse</dt>
+                    <dd>{{ betreuer.full_address }}</dd>
+                    <dt class="text-gray-500">Staatsangehoerigkeit</dt>
+                    <dd>{{ betreuer.staatsangehoerigkeit }}</dd>
+                </dl>
+            </div>
+
+            {# Bank details card #}
+            <div class="bg-white shadow rounded-lg p-6">
+                <h2 class="text-lg font-semibold text-credo-dark mb-4 border-b border-gray-200 pb-2">Bankdaten</h2>
+                <dl class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                    <dt class="text-gray-500">Kontoinhaber</dt>
+                    <dd>{{ betreuer.kontoinhaber }}</dd>
+                    <dt class="text-gray-500">IBAN</dt>
+                    <dd><code class="bg-gray-100 px-2 py-0.5 rounded text-xs">{{ betreuer.iban }}</code></dd>
+                    {% if betreuer.bic %}
+                    <dt class="text-gray-500">BIC</dt>
+                    <dd>{{ betreuer.bic }}</dd>
+                    {% endif %}
+                </dl>
+            </div>
+
+            {# Contracts card #}
+            <div class="bg-white shadow rounded-lg p-6">
+                <h2 class="text-lg font-semibold text-credo-dark mb-4 border-b border-gray-200 pb-2">Vertraege</h2>
+                {% if contracts %}
+                <div class="space-y-3">
+                    {% for contract in contracts %}
+                    <div class="border border-gray-200 rounded-md p-4">
+                        <div class="flex items-center justify-between">
+                            <span class="font-mono text-sm font-semibold">{{ contract.contract_number }}</span>
+                            <span class="text-xs px-2 py-0.5 rounded-full
+                                {% if contract.status == 'draft' %}bg-gray-100 text-gray-600
+                                {% elif contract.status == 'active' %}bg-green-100 text-green-800
+                                {% else %}bg-yellow-100 text-yellow-800{% endif %}">
+                                {{ contract.get_status_display }}
+                            </span>
+                        </div>
+                        <div class="mt-2 text-sm text-gray-500">
+                            {{ contract.school.code }}
+                            {% for fp in contract.foerderprogramme.all %}<span class="ml-1 text-xs bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded">{{ fp.name }}{% if fp.kostenstelle %} ({{ fp.kostenstelle.code }}){% endif %}</span>{% endfor %}
+                            | {{ contract.activity_type }}
+                            | {{ contract.effective_rate }} EUR/{{ contract.hour_duration }} min
+                            {% if contract.ag_name %} | AG: {{ contract.ag_name }}{% endif %}
+                        </div>
+                        <div class="mt-1 text-xs text-gray-400">
+                            {{ contract.start_date|date:"d.m.Y" }} - {{ contract.end_date|date:"d.m.Y" }}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="text-sm text-gray-500">Keine Vertraege vorhanden.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        {# Right column: Onboarding checklist + Actions #}
+        <div class="space-y-6">
+
+            {# Actions card #}
+            <div class="bg-white shadow rounded-lg p-6">
+                <h2 class="text-lg font-semibold text-credo-dark mb-4 border-b border-gray-200 pb-2">Aktionen</h2>
+                <div class="space-y-2">
+                    {% if betreuer.onboarding_status == 'registered' %}
+                    <a href="{% url 'contracts:betreuer_review' betreuer.pk %}"
+                       class="block w-full text-center bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-2 px-4 rounded-md text-sm transition-colors">
+                        Daten pruefen & bestaetigen
+                    </a>
+                    {% elif betreuer.onboarding_status == 'documents_complete' %}
+                    <form method="post" action="{% url 'contracts:betreuer_activate' betreuer.pk %}">
+                        {% csrf_token %}
+                        <button type="submit"
+                                class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-md text-sm transition-colors">
+                            Betreuer aktivieren
+                        </button>
+                    </form>
+                    {% endif %}
+
+                    {# PDF generation & sending (Koordinator/Admin only) #}
+                    {% if request.user.is_superuser or request.user.profile.is_koordinator or request.user.profile.is_admin %}
+                    {% if has_pending_documents %}
+                    <form method="post" action="{% url 'documents:generate_documents' betreuer.pk %}">
+                        {% csrf_token %}
+                        <button type="submit"
+                                class="w-full bg-schule-gsh hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-md text-sm transition-colors">
+                            Dokumente generieren
+                        </button>
+                    </form>
+                    {% endif %}
+                    {% if has_generated_documents %}
+                    <form method="post" action="{% url 'documents:send_documents' betreuer.pk %}">
+                        {% csrf_token %}
+                        <button type="submit"
+                                class="w-full bg-schule-ges hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-md text-sm transition-colors">
+                            Dokumente versenden
+                        </button>
+                    </form>
+                    {% endif %}
+                    {% endif %}
+
+                    <a href="{% url 'contracts:betreuer_list' %}"
+                       class="block w-full text-center bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium py-2 px-4 rounded-md text-sm transition-colors">
+                        Zurueck zur Liste
+                    </a>
+                </div>
+            </div>
+
+            {# Document checklist card #}
+            <div class="bg-white shadow rounded-lg p-6">
+                <h2 class="text-lg font-semibold text-credo-dark mb-4 border-b border-gray-200 pb-2">Dokumente</h2>
+                {% if documents %}
+                <ul class="space-y-3">
+                    {% for doc in documents %}
+                    <li class="flex items-start gap-3">
+                        {# Status icon #}
+                        {% if doc.status == 'verified' %}
+                        <div class="flex-shrink-0 mt-0.5">
+                            <div class="h-5 w-5 rounded-full bg-green-100 flex items-center justify-center">
+                                <svg class="h-3 w-3 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
+                                </svg>
+                            </div>
+                        </div>
+                        {% elif doc.status == 'rejected' %}
+                        <div class="flex-shrink-0 mt-0.5">
+                            <div class="h-5 w-5 rounded-full bg-red-100 flex items-center justify-center">
+                                <svg class="h-3 w-3 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12"/>
+                                </svg>
+                            </div>
+                        </div>
+                        {% elif doc.status == 'uploaded' %}
+                        <div class="flex-shrink-0 mt-0.5">
+                            <div class="h-5 w-5 rounded-full bg-yellow-100 flex items-center justify-center">
+                                <div class="h-2 w-2 rounded-full bg-yellow-500"></div>
+                            </div>
+                        </div>
+                        {% elif doc.status == 'generated' or doc.status == 'sent' %}
+                        <div class="flex-shrink-0 mt-0.5">
+                            <div class="h-5 w-5 rounded-full bg-blue-100 flex items-center justify-center">
+                                <div class="h-2 w-2 rounded-full bg-blue-500"></div>
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="flex-shrink-0 mt-0.5">
+                            <div class="h-5 w-5 rounded-full bg-gray-100 flex items-center justify-center">
+                                <div class="h-2 w-2 rounded-full bg-gray-400"></div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm font-medium">{{ doc.requirement.name }}</p>
+                            <p class="text-xs text-gray-500">{{ doc.get_status_display }}</p>
+                            {% if doc.status == 'rejected' and doc.rejection_reason %}
+                            <p class="text-xs text-red-600 mt-1">Grund: {{ doc.rejection_reason }}</p>
+                            {% endif %}
+
+                            {# Download link for generated/sent/uploaded/verified documents #}
+                            {% if doc.generated_file %}
+                            <a href="{% url 'documents:document_download' doc.pk %}"
+                               class="inline-flex items-center gap-1 text-xs text-schule-gsh hover:underline mt-1">
+                                <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                </svg>
+                                PDF herunterladen
+                            </a>
+                            {% endif %}
+
+                            {# Upload form for Betreuer with sent/rejected documents #}
+                            {% if doc.status == 'sent' or doc.status == 'rejected' %}
+                            {% if request.user.profile.is_betreuer %}
+                            <form method="post" action="{% url 'documents:document_upload' doc.pk %}"
+                                  enctype="multipart/form-data"
+                                  class="mt-2" x-data="{ showUpload: false }">
+                                {% csrf_token %}
+                                <button type="button" @click="showUpload = !showUpload"
+                                        class="text-xs bg-blue-100 text-blue-700 hover:bg-blue-200 px-2 py-1 rounded">
+                                    Dokument hochladen
+                                </button>
+                                <div x-show="showUpload" x-transition class="mt-2">
+                                    <input type="file" name="file" accept=".pdf,.jpg,.jpeg,.png"
+                                           class="text-xs w-full">
+                                    <button type="submit" class="mt-1 text-xs bg-schule-gsh text-white px-2 py-1 rounded">
+                                        Hochladen
+                                    </button>
+                                </div>
+                            </form>
+                            {% endif %}
+                            {% endif %}
+
+                            {# Koordinator actions for uploaded documents #}
+                            {% if doc.status == 'uploaded' and request.user.is_superuser or doc.status == 'uploaded' and request.user.profile.is_koordinator or doc.status == 'uploaded' and request.user.profile.is_admin %}
+                            <div class="mt-2 flex gap-2">
+                                <form method="post" action="{% url 'documents:document_verify' doc.pk %}" class="inline">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="verify">
+                                    <button type="submit" class="text-xs bg-green-100 text-green-700 hover:bg-green-200 px-2 py-1 rounded">
+                                        Verifizieren
+                                    </button>
+                                </form>
+                                <form method="post" action="{% url 'documents:document_verify' doc.pk %}" class="inline"
+                                      x-data="{ showReject: false }">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="action" value="reject">
+                                    <button type="button" @click="showReject = !showReject"
+                                            class="text-xs bg-red-100 text-red-700 hover:bg-red-200 px-2 py-1 rounded">
+                                        Ablehnen
+                                    </button>
+                                    <div x-show="showReject" x-transition class="mt-2">
+                                        <input type="text" name="rejection_reason" placeholder="Grund..."
+                                               class="w-full text-xs border border-gray-300 rounded px-2 py-1">
+                                        <button type="submit" class="mt-1 text-xs bg-red-500 text-white px-2 py-1 rounded">
+                                            Ablehnen bestaetigen
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="text-sm text-gray-500">Keine Dokumente vorhanden.</p>
+                {% endif %}
+            </div>
+
+            {# Freibetrag card #}
+            {% if betreuer.freibetrag_used_elsewhere %}
+            <div class="bg-white shadow rounded-lg p-6">
+                <h2 class="text-lg font-semibold text-credo-dark mb-4 border-b border-gray-200 pb-2">Freibetrag</h2>
+                <dl class="text-sm space-y-2">
+                    <dt class="text-gray-500">Anderer Verein</dt>
+                    <dd>{{ betreuer.freibetrag_verein_name }}</dd>
+                    <dt class="text-gray-500">Betrag dort</dt>
+                    <dd>{{ betreuer.freibetrag_amount_elsewhere }} EUR</dd>
+                </dl>
+            </div>
+            {% endif %}
+
+            {# Accounting identifiers card (Admin only) #}
+            {% if request.user.is_superuser or request.user.profile.is_admin %}
+            <div class="bg-white shadow rounded-lg p-6" x-data="{ editAccounting: false }">
+                <div class="flex items-center justify-between mb-4 border-b border-gray-200 pb-2">
+                    <h2 class="text-lg font-semibold text-credo-dark">Buchhaltung / DMS</h2>
+                    <button @click="editAccounting = !editAccounting"
+                            class="text-xs text-schule-gsh hover:underline font-medium"
+                            x-text="editAccounting ? 'Abbrechen' : 'Bearbeiten'">
+                    </button>
+                </div>
+
+                {# Read view #}
+                <div x-show="!editAccounting">
+                    <dl class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                        <dt class="text-gray-500">Projektnummer</dt>
+                        <dd class="font-mono">
+                            {% if betreuer.projektnummer %}
+                            {{ betreuer.projektnummer }}
+                            {% else %}
+                            <span class="text-gray-400 italic">nicht gesetzt</span>
+                            {% endif %}
+                        </dd>
+                        <dt class="text-gray-500">Kreditorennummer</dt>
+                        <dd class="font-mono">
+                            {% if betreuer.kreditorennummer %}
+                            {{ betreuer.kreditorennummer }}
+                            {% else %}
+                            <span class="text-gray-400 italic">nicht gesetzt</span>
+                            {% endif %}
+                        </dd>
+                    </dl>
+                    {% if betreuer.projektnummer and betreuer.kreditorennummer %}
+                    <p class="text-xs text-green-600 mt-3 flex items-center gap-1">
+                        <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
+                        </svg>
+                        QR-Code wird auf PDFs gedruckt
+                    </p>
+                    {% else %}
+                    <p class="text-xs text-amber-600 mt-3 flex items-center gap-1">
+                        <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M12 3a9 9 0 100 18A9 9 0 0012 3z"/>
+                        </svg>
+                        Noch kein QR-Code – Nummern eintragen
+                    </p>
+                    {% endif %}
+                </div>
+
+                {# Edit form #}
+                <div x-show="editAccounting" x-transition>
+                    <form method="post" action="{% url 'contracts:betreuer_update_accounting' betreuer.pk %}">
+                        {% csrf_token %}
+                        <div class="space-y-3">
+                            <div>
+                                <label class="block text-xs font-medium text-gray-500 mb-1">
+                                    Projektnummer <span class="text-gray-400">(8 Ziffern)</span>
+                                </label>
+                                <input type="text" name="projektnummer"
+                                       value="{{ betreuer.projektnummer }}"
+                                       maxlength="8" pattern="\d{8}"
+                                       placeholder="z.B. 12345678"
+                                       class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-credo-dark">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-gray-500 mb-1">
+                                    Kreditorennummer <span class="text-gray-400">(5 Ziffern)</span>
+                                </label>
+                                <input type="text" name="kreditorennummer"
+                                       value="{{ betreuer.kreditorennummer }}"
+                                       maxlength="5" pattern="\d{5}"
+                                       placeholder="z.B. 54321"
+                                       class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-credo-dark">
+                            </div>
+                            <p class="text-xs text-gray-400">
+                                Nach dem Speichern erscheint der QR-Code auf allen neu generierten PDFs.
+                            </p>
+                            <button type="submit"
+                                    class="w-full bg-credo-dark hover:bg-gray-700 text-white text-sm font-semibold py-2 px-4 rounded-md transition-colors">
+                                Speichern
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

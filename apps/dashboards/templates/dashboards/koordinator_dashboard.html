@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+{% load number_filters %}
+
+{% block title %}Koordinator-Dashboard{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+    <h1 class="text-2xl font-bold text-credo-dark mb-6">Koordinator-Dashboard</h1>
+    <p class="text-gray-600 mb-8">
+        Willkommen, {{ user.get_full_name|default:user.username }}!
+        {% if schools %}
+        &ndash; {{ schools|join:", " }}
+        {% endif %}
+    </p>
+
+    {# ------------------------------------------------------------------ #}
+    {# Kennzahlen-Karten                                                   #}
+    {# ------------------------------------------------------------------ #}
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+        {# Meine Betreuer #}
+        <div class="bg-white rounded-lg shadow p-6 border-l-4 border-credo-dark">
+            <h3 class="text-lg font-semibold text-credo-dark">Meine Betreuer</h3>
+            <p class="text-3xl font-bold text-credo-dark mt-2">{{ betreuer_count }}</p>
+            <p class="text-sm text-gray-500 mt-1">Betreuer an meinen Schulen</p>
+        </div>
+
+        {# Offene Nachweise #}
+        <div class="bg-white rounded-lg shadow p-6 border-l-4 border-schule-gsm">
+            <h3 class="text-lg font-semibold text-credo-dark">Offene Nachweise</h3>
+            <p class="text-3xl font-bold text-credo-dark mt-2">{{ pending_timesheets }}</p>
+            <p class="text-sm text-gray-500 mt-1">Stundennachweise zur Pr&uuml;fung</p>
+        </div>
+
+        {# Meine Schule(n) #}
+        <div class="bg-white rounded-lg shadow p-6 border-l-4 border-schule-gsh">
+            <h3 class="text-lg font-semibold text-credo-dark">Meine Schulen</h3>
+            <p class="text-3xl font-bold text-credo-dark mt-2">{{ school_count }}</p>
+            <p class="text-sm text-gray-500 mt-1">Zugewiesene Standorte</p>
+        </div>
+
+        {# Dokumente #}
+        <div class="bg-white rounded-lg shadow p-6 border-l-4 border-schule-ges">
+            <h3 class="text-lg font-semibold text-credo-dark">Dokumente</h3>
+            <p class="text-3xl font-bold text-credo-dark mt-2">{{ documents_pending }}</p>
+            <p class="text-sm text-gray-500 mt-1">Hochgeladene Dokumente zur Pr&uuml;fung</p>
+        </div>
+
+        {# Aktive Vertraege #}
+        <div class="bg-white rounded-lg shadow p-6 border-l-4 border-schule-gym">
+            <h3 class="text-lg font-semibold text-credo-dark">Vertr&auml;ge</h3>
+            <p class="text-3xl font-bold text-credo-dark mt-2">{{ contract_count }}</p>
+            <p class="text-sm text-gray-500 mt-1">Aktive Vertr&auml;ge an meinen Schulen</p>
+        </div>
+
+        {# Freibetrag Warnings #}
+        <div class="bg-white rounded-lg shadow p-6 border-l-4 border-schule-gss">
+            <h3 class="text-lg font-semibold text-credo-dark">Freibetr&auml;ge</h3>
+            <p class="text-3xl font-bold text-credo-dark mt-2">{{ freibetrag_warning_count }}</p>
+            <p class="text-sm text-gray-500 mt-1">Betreuer nahe Grenze</p>
+        </div>
+
+        {# Programm-Budgets #}
+        <div class="bg-white rounded-lg shadow p-6 border-l-4
+            {% if fp_budget_warning_count %}border-orange-400{% else %}border-green-500{% endif %}">
+            <h3 class="text-lg font-semibold text-credo-dark">Programm-Budgets</h3>
+            <p class="text-3xl font-bold text-credo-dark mt-2">{{ fp_budget_warning_count }}</p>
+            <p class="text-sm text-gray-500 mt-1">Programme mit Budget-Warnung</p>
+        </div>
+
+    </div>
+
+    {# ------------------------------------------------------------------ #}
+    {# Foerderprogramm Budgets Tabelle                                     #}
+    {# ------------------------------------------------------------------ #}
+    {% if fp_budget_statuses %}
+    <h2 class="text-xl font-bold text-credo-dark mt-10 mb-4">F&ouml;rderprogramm Budgets</h2>
+    <div class="bg-white rounded-lg shadow overflow-hidden mb-6">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="text-left text-gray-500 border-b bg-gray-50">
+                    <th scope="col" class="py-3 px-4">Programm</th>
+                    <th scope="col" class="py-3 px-4">Schuljahr</th>
+                    <th scope="col" class="py-3 px-4 text-right">Budget</th>
+                    <th scope="col" class="py-3 px-4 text-right">Ausgegeben</th>
+                    <th scope="col" class="py-3 px-4 text-right">&Uuml;brig</th>
+                    <th scope="col" class="py-3 px-4">Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in fp_budget_statuses %}
+                {% with fp=item.foerderprogramm s=item.status %}
+                <tr class="border-b border-gray-100 hover:bg-gray-50">
+                    <td class="py-2 px-4 font-medium text-credo-dark">{{ fp.name }}</td>
+                    <td class="py-2 px-4 text-gray-500">{{ fp.school_year }}</td>
+                    <td class="py-2 px-4 text-right">{{ s.budget|de_money }} &euro;</td>
+                    <td class="py-2 px-4 text-right font-medium">{{ s.spent|de_money }} &euro;</td>
+                    <td class="py-2 px-4 text-right
+                        {% if s.warning_level == 'red' %}text-red-600 font-semibold
+                        {% elif s.warning_level == 'orange' %}text-orange-600
+                        {% elif s.warning_level == 'yellow' %}text-yellow-700
+                        {% else %}text-green-700{% endif %}">
+                        {{ s.remaining|de_money }} &euro;
+                    </td>
+                    <td class="py-2 px-4">
+                        <div class="flex items-center gap-2">
+                            <div class="w-20 bg-gray-200 rounded-full h-1.5">
+                                <div class="h-1.5 rounded-full
+                                    {% if s.warning_level == 'red' %}bg-red-500
+                                    {% elif s.warning_level == 'orange' %}bg-orange-400
+                                    {% elif s.warning_level == 'yellow' %}bg-yellow-400
+                                    {% else %}bg-green-500{% endif %}"
+                                     style="width: {% if s.percentage > 100 %}100{% else %}{{ s.percentage }}{% endif %}%">
+                                </div>
+                            </div>
+                            <span class="text-xs text-gray-500">{{ s.percentage }}%</span>
+                        </div>
+                    </td>
+                </tr>
+                {% endwith %}
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    {# ------------------------------------------------------------------ #}
+    {# Schnellzugriff                                                      #}
+    {# ------------------------------------------------------------------ #}
+    <h2 class="text-xl font-bold text-credo-dark mt-10 mb-4">Schnellzugriff</h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+        {# Registrierungslink erstellen #}
+        <a href="{% url 'contracts:create_registration_link' %}"
+           class="bg-white rounded-lg shadow p-6 border-l-4 border-schule-ges hover:shadow-md transition-shadow group">
+            <div class="flex items-center">
+                <div class="flex-shrink-0 h-10 w-10 rounded-full bg-green-100 flex items-center justify-center">
+                    <svg class="h-5 w-5 text-schule-ges" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
+                    </svg>
+                </div>
+                <div class="ml-4">
+                    <h3 class="text-lg font-semibold text-credo-dark group-hover:text-schule-ges transition-colors">
+                        Registrierungslink erstellen
+                    </h3>
+                    <p class="text-sm text-gray-500">Neuen Betreuer einladen</p>
+                </div>
+            </div>
+        </a>
+
+        {# Betreuer-Liste #}
+        <a href="{% url 'contracts:betreuer_list' %}"
+           class="bg-white rounded-lg shadow p-6 border-l-4 border-schule-gsh hover:shadow-md transition-shadow group">
+            <div class="flex items-center">
+                <div class="flex-shrink-0 h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+                    <svg class="h-5 w-5 text-schule-gsh" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+                    </svg>
+                </div>
+                <div class="ml-4">
+                    <h3 class="text-lg font-semibold text-credo-dark group-hover:text-schule-gsh transition-colors">
+                        Betreuer-&Uuml;bersicht
+                    </h3>
+                    <p class="text-sm text-gray-500">Alle Betreuer verwalten</p>
+                </div>
+            </div>
+        </a>
+
+        {# Registrierungslinks #}
+        <a href="{% url 'contracts:registration_link_list' %}"
+           class="bg-white rounded-lg shadow p-6 border-l-4 border-schule-gym hover:shadow-md transition-shadow group">
+            <div class="flex items-center">
+                <div class="flex-shrink-0 h-10 w-10 rounded-full bg-yellow-100 flex items-center justify-center">
+                    <svg class="h-5 w-5 text-schule-gym" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                    </svg>
+                </div>
+                <div class="ml-4">
+                    <h3 class="text-lg font-semibold text-credo-dark group-hover:text-schule-gym transition-colors">
+                        Registrierungslinks
+                    </h3>
+                    <p class="text-sm text-gray-500">Erstellte Links verwalten</p>
+                </div>
+            </div>
+        </a>
+
+        {# Stundennachweise #}
+        <a href="{% url 'timetracking:timesheet_list' %}"
+           class="bg-white rounded-lg shadow p-6 border-l-4 border-schule-gsm hover:shadow-md transition-shadow group">
+            <div class="flex items-center">
+                <div class="flex-shrink-0 h-10 w-10 rounded-full bg-red-100 flex items-center justify-center">
+                    <svg class="h-5 w-5 text-schule-gsm" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                </div>
+                <div class="ml-4">
+                    <h3 class="text-lg font-semibold text-credo-dark group-hover:text-schule-gsm transition-colors">
+                        Stundennachweise
+                    </h3>
+                    <p class="text-sm text-gray-500">Eingereichte Nachweise pr&uuml;fen</p>
+                </div>
+            </div>
+        </a>
+
+    </div>
+
+</div>
+{% endblock %}

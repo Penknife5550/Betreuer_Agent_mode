@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}Betreuer genehmigen{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <h1 class="text-2xl font-bold text-gray-900 mb-6">Betreuer genehmigen</h1>
+
+    <!-- Betreuer Info Summary -->
+    <div class="bg-white shadow rounded-lg p-6 mb-6">
+        <h2 class="text-lg font-semibold text-gray-700 mb-4">Betreuer-Daten</h2>
+        <dl class="grid grid-cols-2 gap-4 text-sm">
+            <div>
+                <dt class="font-medium text-gray-500">Name</dt>
+                <dd class="text-gray-900">{{ betreuer.user.get_full_name }}</dd>
+            </div>
+            <div>
+                <dt class="font-medium text-gray-500">E-Mail</dt>
+                <dd class="text-gray-900">{{ betreuer.user.email }}</dd>
+            </div>
+            <div>
+                <dt class="font-medium text-gray-500">Geburtsdatum</dt>
+                <dd class="text-gray-900">{{ betreuer.geburtsdatum|date:"d.m.Y" }}</dd>
+            </div>
+            <div>
+                <dt class="font-medium text-gray-500">Betreuer-Typ</dt>
+                <dd class="text-gray-900">{{ betreuer.get_betreuer_type_display }}</dd>
+            </div>
+            <div>
+                <dt class="font-medium text-gray-500">Status</dt>
+                <dd class="text-gray-900">{{ betreuer.get_onboarding_status_display }}</dd>
+            </div>
+        </dl>
+    </div>
+
+    <!-- Contracts -->
+    {% if contracts %}
+    <div class="bg-white shadow rounded-lg p-6 mb-6">
+        <h2 class="text-lg font-semibold text-gray-700 mb-4">Vertraege</h2>
+        {% for contract in contracts %}
+        <div class="border-b border-gray-200 pb-3 mb-3 last:border-0 last:pb-0 last:mb-0">
+            <p class="text-sm"><strong>{{ contract.contract_number }}</strong></p>
+            <p class="text-sm text-gray-600">{{ contract.school }} &mdash; {{ contract.activity_type }}</p>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Approval Form -->
+    <form method="post" class="bg-white shadow rounded-lg p-6">
+        {% csrf_token %}
+
+        <h2 class="text-lg font-semibold text-gray-700 mb-4">Genehmigung</h2>
+
+        <div class="space-y-4">
+            {% for field in form %}
+            <div>
+                <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
+                    {{ field.label }}
+                    {% if field.field.required %}<span class="text-red-500">*</span>{% endif %}
+                </label>
+                {{ field }}
+                {% if field.help_text %}
+                <p class="mt-1 text-xs text-gray-500">{{ field.help_text }}</p>
+                {% endif %}
+                {% for error in field.errors %}
+                <p class="mt-1 text-xs text-red-600">{{ error }}</p>
+                {% endfor %}
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="mt-6 flex justify-end space-x-3">
+            <a href="{% url 'contracts:betreuer_detail' betreuer.pk %}"
+               class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+                Abbrechen
+            </a>
+            <button type="submit"
+                    class="px-4 py-2 text-sm font-medium text-white bg-green-600 border border-transparent rounded-md hover:bg-green-700">
+                Betreuer genehmigen
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

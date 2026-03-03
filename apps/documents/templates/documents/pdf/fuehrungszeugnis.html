@@ -1,0 +1,74 @@
+{% extends "documents/pdf/_pdf_base.html" %}
+
+{% block content %}
+<h1>Aufforderung zur Vorlage eines erweiterten F&uuml;hrungszeugnisses</h1>
+<p style="font-size: 9pt; color: #666;">gem&auml;&szlig; &sect; 30a Bundeszentralregistergesetz (BZRG)</p>
+
+<h2>Angaben zur Person</h2>
+<table class="meta-table">
+    <tr>
+        <td class="label">Name:</td>
+        <td>{{ betreuer.get_anrede_display }} {{ user.get_full_name }}</td>
+    </tr>
+    <tr>
+        <td class="label">Geburtsdatum:</td>
+        <td>{{ betreuer.geburtsdatum|date:"d.m.Y" }}</td>
+    </tr>
+    <tr>
+        <td class="label">Anschrift:</td>
+        <td>{{ betreuer.full_address }}</td>
+    </tr>
+</table>
+
+<h2>Best&auml;tigung des Tr&auml;gers</h2>
+
+<p>
+    Hiermit best&auml;tigt der Christliche Schulf&ouml;rderverein Minden e.V. (CSFV), dass
+    die oben genannte Person im Rahmen der Nachmittagsbetreuung an einer Freien
+    Evangelischen Schule in Minden eingesetzt wird.
+</p>
+
+<p>
+    Die T&auml;tigkeit umfasst die kinder- und jugendnahe Betreuung im Sinne des
+    &sect; 72a SGB VIII. Gem&auml;&szlig; &sect; 30a Abs. 1 Nr. 1 BZRG ist die Vorlage eines
+    erweiterten F&uuml;hrungszeugnisses erforderlich.
+</p>
+
+<h2>Aufforderung</h2>
+
+<p>
+    Wir fordern Sie hiermit auf, ein <strong>erweitertes F&uuml;hrungszeugnis</strong>
+    gem&auml;&szlig; &sect; 30a BZRG bei der f&uuml;r Ihren Wohnort zust&auml;ndigen Meldebeh&ouml;rde zu
+    beantragen und dem CSFV e.V. vorzulegen.
+</p>
+
+<p>
+    Bitte beachten Sie:
+</p>
+
+<ul style="padding-left: 16pt; margin: 6pt 0;">
+    <li>Das F&uuml;hrungszeugnis darf bei Vorlage nicht &auml;lter als <strong>3 Monate</strong> sein.</li>
+    <li>Beantragen Sie das Zeugnis unter Vorlage dieser Aufforderung bei Ihrer
+        &ouml;rtlichen Meldebeh&ouml;rde (Einwohnermeldeamt/B&uuml;rgeramt).</li>
+    <li>Die Beantragung ist f&uuml;r ehrenamtliche T&auml;tigkeiten in der Regel geb&uuml;hrenfrei
+        (&sect; 12 BZRG).</li>
+    <li>Bitte geben Sie als Verwendungszweck an: &bdquo;Kinder- und Jugendarbeit beim
+        Christlichen Schulf&ouml;rderverein Minden e.V.&ldquo;</li>
+</ul>
+
+<p style="margin-top: 16pt;">
+    Das F&uuml;hrungszeugnis wird nach Einsichtnahme nicht aufbewahrt. Es wird lediglich
+    das Datum der Einsichtnahme und das Ergebnis dokumentiert.
+</p>
+
+<div class="signature-block">
+    <div class="signature-box">
+        <div class="signature-line">
+            Ort, Datum &ndash; CSFV e.V. (Stempel/Unterschrift)
+        </div>
+    </div>
+    <div class="signature-box">
+        &nbsp;
+    </div>
+</div>
+{% endblock %}

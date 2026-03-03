@@ -1,0 +1,82 @@
+{% extends "documents/pdf/_pdf_base.html" %}
+
+{% block content %}
+<h1>Belehrung gem&auml;&szlig; &sect; 35 Infektionsschutzgesetz (IfSG)</h1>
+<p style="font-size: 9pt; color: #666;">Belehrung f&uuml;r Personen in der Betreuung von Kindern und Jugendlichen</p>
+
+<h2>Angaben zur Person</h2>
+<table class="meta-table">
+    <tr>
+        <td class="label">Name:</td>
+        <td>{{ betreuer.get_anrede_display }} {{ user.get_full_name }}</td>
+    </tr>
+    <tr>
+        <td class="label">Geburtsdatum:</td>
+        <td>{{ betreuer.geburtsdatum|date:"d.m.Y" }}</td>
+    </tr>
+    <tr>
+        <td class="label">Schule:</td>
+        <td>{{ school.name }} ({{ school.code }})</td>
+    </tr>
+    <tr>
+        <td class="label">Vertragsnummer:</td>
+        <td>{{ contract.contract_number }}</td>
+    </tr>
+</table>
+
+<h2>Belehrung</h2>
+
+<p>
+    Nach &sect; 35 des Infektionsschutzgesetzes (IfSG) d&uuml;rfen Personen, die an bestimmten
+    &uuml;bertragbaren Krankheiten erkrankt oder dessen verd&auml;chtig sind, in
+    Gemeinschaftseinrichtungen keine Lehr-, Erziehungs-, Pflege-, Aufsichts- oder
+    sonstige T&auml;tigkeiten aus&uuml;ben, bei denen sie Kontakt zu Kindern und Jugendlichen haben.
+</p>
+
+<p>
+    Dies gilt insbesondere bei folgenden Erkrankungen oder Verdacht darauf:
+</p>
+
+<ul style="padding-left: 16pt; margin: 6pt 0; font-size: 9pt;">
+    <li>Cholera, Diphtherie, EHEC, virusbedingtes h&auml;morrhagisches Fieber</li>
+    <li>Haemophilus influenzae Typ b-Meningitis, Impetigo contagiosa</li>
+    <li>Keuchhusten, ansteckungsf&auml;hige Lungentuberkulose</li>
+    <li>Masern, Meningokokken-Infektion, Mumps</li>
+    <li>Paratyphus, Pest, Poliomyelitis, R&ouml;teln</li>
+    <li>Scharlach oder sonstige Streptococcus-pyogenes-Infektionen</li>
+    <li>Shigellose, Typhus abdominalis, Virushepatitis A und E</li>
+    <li>Windpocken, Kopflausbefall, Skabies (Kr&auml;tze)</li>
+</ul>
+
+<p>
+    Bei Auftreten der genannten Erkrankungen oder eines Verdachts bin ich verpflichtet,
+    dies unverz&uuml;glich dem Christlichen Schulf&ouml;rderverein Minden e.V. und der
+    Schulleitung zu melden. Ich darf die T&auml;tigkeit erst wieder aufnehmen, wenn nach
+    &auml;rztlichem Urteil eine Weiterverbreitung der Krankheit nicht mehr zu bef&uuml;rchten ist.
+</p>
+
+<p style="font-weight: 600; margin-top: 12pt;">
+    Hinweis: Diese Belehrung ist alle 24 Monate zu erneuern.
+</p>
+
+<h2>Best&auml;tigung</h2>
+
+<p>
+    Ich best&auml;tige hiermit, &uuml;ber die Bestimmungen des &sect; 35 IfSG belehrt worden zu
+    sein und den Inhalt dieser Belehrung verstanden zu haben. Ich verpflichte mich,
+    die genannten Pflichten einzuhalten.
+</p>
+
+<div class="signature-block">
+    <div class="signature-box">
+        <div class="signature-line">
+            Ort, Datum
+        </div>
+    </div>
+    <div class="signature-box">
+        <div class="signature-line">
+            Unterschrift {{ user.get_full_name }}
+        </div>
+    </div>
+</div>
+{% endblock %}

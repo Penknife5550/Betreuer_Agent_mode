@@ -1,0 +1,1461 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BetreuerApp – Benutzerhandbuch</title>
+<style>
+  :root {
+    --credo: #575756;
+    --gym: #FBC900;
+    --ges: #6BAA24;
+    --gsm: #E2001A;
+    --gsh: #009AC6;
+    --gss: #AD1C28;
+    --bg: #f8f9fa;
+    --white: #ffffff;
+    --border: #e0e0e0;
+    --text: #333333;
+    --light: #6c757d;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Segoe UI', Calibri, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 15px;
+    line-height: 1.7;
+  }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    position: fixed;
+    top: 0; left: 0;
+    width: 270px;
+    height: 100vh;
+    background: var(--credo);
+    color: #fff;
+    overflow-y: auto;
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+  }
+  .sidebar-header {
+    padding: 24px 20px 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.15);
+  }
+  .sidebar-header h2 {
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+  }
+  .sidebar-header p {
+    font-size: 12px;
+    opacity: 0.7;
+    margin-top: 4px;
+  }
+  .sidebar nav { padding: 12px 0; }
+  .nav-section {
+    padding: 10px 20px 4px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    opacity: 0.55;
+    margin-top: 8px;
+  }
+  .nav-link {
+    display: block;
+    padding: 8px 20px 8px 28px;
+    color: rgba(255,255,255,0.82);
+    text-decoration: none;
+    font-size: 13.5px;
+    border-left: 3px solid transparent;
+    transition: all 0.15s;
+  }
+  .nav-link:hover, .nav-link.active {
+    background: rgba(255,255,255,0.1);
+    color: #fff;
+    border-left-color: var(--gym);
+  }
+  .nav-link.sub { padding-left: 40px; font-size: 13px; }
+
+  /* ── Color bar ── */
+  .color-bar {
+    margin-top: auto;
+    display: flex;
+    height: 6px;
+  }
+  .color-bar span { flex: 1; }
+
+  /* ── Main content ── */
+  .main {
+    margin-left: 270px;
+    min-height: 100vh;
+  }
+
+  /* ── Page header ── */
+  .page-header {
+    background: var(--credo);
+    color: #fff;
+    padding: 40px 60px 32px;
+  }
+  .page-header .badge {
+    display: inline-block;
+    background: rgba(255,255,255,0.15);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 3px 10px;
+    border-radius: 20px;
+    margin-bottom: 12px;
+  }
+  .page-header h1 {
+    font-size: 32px;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+  .page-header p {
+    font-size: 16px;
+    opacity: 0.8;
+    max-width: 600px;
+  }
+
+  /* ── Sections ── */
+  .content { padding: 48px 60px; max-width: 960px; }
+
+  h2 {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--credo);
+    margin: 48px 0 16px;
+    padding-top: 48px;
+    border-top: 2px solid var(--border);
+  }
+  h2:first-child { border-top: none; padding-top: 0; margin-top: 0; }
+  h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--credo);
+    margin: 28px 0 10px;
+  }
+  h4 {
+    font-size: 15px;
+    font-weight: 600;
+    color: #444;
+    margin: 20px 0 8px;
+  }
+  p { margin-bottom: 12px; }
+  ul, ol { margin: 10px 0 14px 24px; }
+  li { margin-bottom: 6px; }
+
+  /* ── Role badges ── */
+  .role-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    margin-bottom: 20px;
+  }
+  .role-admin { background: #f0f0f0; color: var(--credo); border: 2px solid var(--credo); }
+  .role-koord { background: #e8f5e9; color: #2e7d32; border: 2px solid var(--ges); }
+  .role-betreuer { background: #e3f2fd; color: #1565c0; border: 2px solid var(--gsh); }
+
+  /* ── Callouts ── */
+  .callout {
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin: 16px 0;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+  .callout-icon { font-size: 20px; flex-shrink: 0; margin-top: 1px; }
+  .callout-body h4 { margin: 0 0 4px; font-size: 14px; }
+  .callout-body p { margin: 0; font-size: 14px; }
+  .callout-info { background: #e3f2fd; border-left: 4px solid var(--gsh); }
+  .callout-info .callout-body h4 { color: #1565c0; }
+  .callout-warn { background: #fff8e1; border-left: 4px solid var(--gym); }
+  .callout-warn .callout-body h4 { color: #f57f17; }
+  .callout-tip { background: #e8f5e9; border-left: 4px solid var(--ges); }
+  .callout-tip .callout-body h4 { color: #2e7d32; }
+  .callout-danger { background: #ffebee; border-left: 4px solid var(--gsm); }
+  .callout-danger .callout-body h4 { color: #b71c1c; }
+
+  /* ── Screenshot frames ── */
+  .screenshot {
+    margin: 20px 0 28px;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+    border: 1px solid var(--border);
+  }
+  .screenshot-caption {
+    background: #f5f5f5;
+    border-top: 1px solid var(--border);
+    padding: 8px 16px;
+    font-size: 13px;
+    color: var(--light);
+    font-style: italic;
+  }
+  .screenshot img { width: 100%; display: block; }
+
+  /* ── Step flow ── */
+  .steps { margin: 16px 0 24px; }
+  .step {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 20px;
+    align-items: flex-start;
+  }
+  .step-num {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--credo);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 14px;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+  .step-body { flex: 1; }
+  .step-body strong { display: block; margin-bottom: 4px; font-size: 15px; }
+  .step-body p { margin: 0; font-size: 14px; color: #555; }
+
+  /* ── Process diagram ── */
+  .process {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0;
+    margin: 24px 0;
+    align-items: stretch;
+  }
+  .process-step {
+    flex: 1;
+    min-width: 130px;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 12px;
+    text-align: center;
+    position: relative;
+    margin: 4px;
+  }
+  .process-step .ps-icon { font-size: 28px; margin-bottom: 8px; }
+  .process-step .ps-label { font-size: 12px; font-weight: 700; color: var(--credo); }
+  .process-step .ps-who {
+    font-size: 11px;
+    color: var(--light);
+    margin-top: 4px;
+    background: #f5f5f5;
+    border-radius: 10px;
+    padding: 2px 8px;
+    display: inline-block;
+  }
+  .process-arrow {
+    display: flex;
+    align-items: center;
+    color: #bbb;
+    font-size: 20px;
+    padding: 0 2px;
+    margin: 4px 0;
+  }
+
+  /* ── Table ── */
+  table { width: 100%; border-collapse: collapse; margin: 16px 0 24px; font-size: 14px; }
+  th { background: var(--credo); color: #fff; padding: 10px 14px; text-align: left; font-weight: 600; }
+  td { padding: 10px 14px; border-bottom: 1px solid #eee; }
+  tr:hover td { background: #fafafa; }
+
+  /* ── Inline code ── */
+  code {
+    background: #f0f0f0;
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 13px;
+    font-family: 'Courier New', monospace;
+    color: var(--gsm);
+  }
+
+  /* ── Intro cards ── */
+  .intro-cards {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin: 24px 0;
+  }
+  .intro-card {
+    background: #fff;
+    border-radius: 10px;
+    padding: 24px 20px;
+    border-top: 4px solid var(--credo);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+    text-decoration: none;
+    color: inherit;
+    transition: box-shadow 0.2s;
+  }
+  .intro-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.12); }
+  .intro-card.admin { border-top-color: var(--credo); }
+  .intro-card.koord { border-top-color: var(--ges); }
+  .intro-card.betreuer { border-top-color: var(--gsh); }
+  .intro-card .ic-icon { font-size: 36px; margin-bottom: 12px; }
+  .intro-card h3 { font-size: 16px; margin: 0 0 8px; }
+  .intro-card p { font-size: 13px; color: var(--light); margin: 0; }
+
+  /* ── Footer ── */
+  .footer {
+    margin-left: 270px;
+    padding: 24px 60px;
+    border-top: 1px solid var(--border);
+    font-size: 13px;
+    color: var(--light);
+    background: #fff;
+  }
+  .footer-bar {
+    margin-left: 270px;
+    display: flex;
+    height: 6px;
+  }
+  .footer-bar span { flex: 1; }
+
+  /* ── Print ── */
+  @media print {
+    .sidebar { display: none; }
+    .main, .footer, .footer-bar { margin-left: 0; }
+    .content { padding: 20px; }
+    h2 { page-break-before: always; }
+  }
+
+  /* ── Responsive ── */
+  @media (max-width: 900px) {
+    .sidebar { width: 220px; }
+    .main, .footer, .footer-bar { margin-left: 220px; }
+    .content { padding: 32px 28px; }
+    .intro-cards { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════ SIDEBAR ════════════════════════════════ -->
+<aside class="sidebar">
+  <div class="sidebar-header">
+    <h2>BetreuerApp</h2>
+    <p>Benutzerhandbuch v1.0 · 2026</p>
+  </div>
+  <nav>
+    <div class="nav-section">Einführung</div>
+    <a class="nav-link" href="#uebersicht">Was ist die BetreuerApp?</a>
+    <a class="nav-link" href="#rollen">Benutzerrollen</a>
+    <a class="nav-link" href="#login">Anmelden</a>
+    <a class="nav-link" href="#prozess">Gesamtprozess</a>
+
+    <div class="nav-section">Admin</div>
+    <a class="nav-link" href="#admin-dashboard">Dashboard</a>
+    <a class="nav-link sub" href="#admin-betreuer">Betreuer verwalten</a>
+    <a class="nav-link sub" href="#admin-budget">Budget anlegen</a>
+    <a class="nav-link sub" href="#admin-auswertung">Zentrale Auswertung</a>
+    <a class="nav-link sub" href="#admin-django">Django-Verwaltung</a>
+
+    <div class="nav-section">Koordinator</div>
+    <a class="nav-link" href="#koord-dashboard">Dashboard</a>
+    <a class="nav-link sub" href="#koord-einladen">Betreuer einladen</a>
+    <a class="nav-link sub" href="#koord-pruefen">Betreuer prüfen</a>
+    <a class="nav-link sub" href="#koord-nachweise">Stundennachweise</a>
+    <a class="nav-link sub" href="#koord-aktivieren">Betreuer aktivieren</a>
+
+    <div class="nav-section">Betreuer</div>
+    <a class="nav-link" href="#betreuer-registrierung">Registrierung</a>
+    <a class="nav-link sub" href="#betreuer-passwort">Passwort setzen</a>
+    <a class="nav-link" href="#betreuer-dashboard">Dashboard</a>
+    <a class="nav-link sub" href="#betreuer-stunden">Stunden erfassen</a>
+    <a class="nav-link sub" href="#betreuer-einreichen">Monat einreichen</a>
+    <a class="nav-link sub" href="#betreuer-dokumente">Dokumente</a>
+    <a class="nav-link sub" href="#betreuer-profil">Profil</a>
+
+    <div class="nav-section">Prozesse</div>
+    <a class="nav-link" href="#prozess-registrierung">Registrierungsablauf</a>
+    <a class="nav-link" href="#prozess-abrechnung">Abrechnungsablauf</a>
+    <a class="nav-link" href="#prozess-budget">Budget einrichten</a>
+
+    <div class="nav-section">Hilfe</div>
+    <a class="nav-link" href="#faq">Häufige Fragen</a>
+    <a class="nav-link" href="#kontakt">Kontakt</a>
+  </nav>
+  <div class="color-bar">
+    <span style="background:#575756;flex:4"></span>
+    <span style="background:#FBC900"></span>
+    <span style="background:#6BAA24"></span>
+    <span style="background:#E2001A"></span>
+    <span style="background:#009AC6"></span>
+  </div>
+</aside>
+
+<!-- ════════════════════════════════ MAIN ════════════════════════════════ -->
+<main class="main">
+
+  <!-- Page Header -->
+  <div class="page-header">
+    <div class="badge">Offizielles Benutzerhandbuch</div>
+    <h1>BetreuerApp – Handbuch</h1>
+    <p>Vollständige Anleitung für Admins, Koordinatoren und Betreuer des Christlichen Schulförderverein Minden e.V.</p>
+  </div>
+
+  <div class="content">
+
+    <!-- ══════════════════════════════════════════════════════ -->
+    <!-- EINFÜHRUNG                                            -->
+    <!-- ══════════════════════════════════════════════════════ -->
+    <h2 id="uebersicht">Was ist die BetreuerApp?</h2>
+    <p>
+      Die <strong>BetreuerApp</strong> ist das digitale Verwaltungssystem des Christlichen Schulförderverein Minden e.V. (CSFV) für alle Betreuer-AGs an den angeschlossenen Schulen. Sie deckt den gesamten Ablauf ab – von der Einladung neuer Betreuer über die Stundenerfassung bis zur Abrechnung mit der Buchhaltung.
+    </p>
+
+    <div class="intro-cards">
+      <a class="intro-card admin" href="#admin-dashboard">
+        <div class="ic-icon">🏛️</div>
+        <h3>Admin</h3>
+        <p>Personal- und Finanzbuchhaltung. Gesamtübersicht, Budgets, Auswertungen und Systemverwaltung.</p>
+      </a>
+      <a class="intro-card koord" href="#koord-dashboard">
+        <div class="ic-icon">🏫</div>
+        <h3>Koordinator</h3>
+        <p>Lehrer an den Schulen. Betreuer einladen, Daten prüfen, Stundennachweise genehmigen.</p>
+      </a>
+      <a class="intro-card betreuer" href="#betreuer-dashboard">
+        <div class="ic-icon">🎒</div>
+        <h3>Betreuer</h3>
+        <p>Schülerinnen und Schüler. Stunden erfassen, monatliche Nachweise einreichen, Profil verwalten.</p>
+      </a>
+    </div>
+
+    <h2 id="rollen">Benutzerrollen</h2>
+    <table>
+      <thead>
+        <tr><th>Rolle</th><th>Wer?</th><th>Kann was?</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Admin</strong></td>
+          <td>Personal- und Finanzbuchhaltung des CSFV</td>
+          <td>Alles sehen und verwalten: Betreuer, Schulen, Budgets, Förderprogramme, Auswertungen, Systemeinstellungen</td>
+        </tr>
+        <tr>
+          <td><strong>Koordinator</strong></td>
+          <td>Lehrer / Ansprechpartner an einer oder mehreren Schulen</td>
+          <td>Betreuer für eigene Schulen einladen, prüfen, aktivieren; Stundennachweise genehmigen oder ablehnen</td>
+        </tr>
+        <tr>
+          <td><strong>Betreuer</strong></td>
+          <td>Schüler, die eine AG leiten</td>
+          <td>Eigene Stunden erfassen, monatliche Nachweise einreichen, Dokumente hochladen, Profil bearbeiten</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="callout callout-info">
+      <div class="callout-icon">ℹ️</div>
+      <div class="callout-body">
+        <h4>Keine eigene Anmeldung möglich</h4>
+        <p>Betreuer können sich nur über einen Einladungslink registrieren, den der Koordinator erstellt. Eine eigenständige Registrierung ohne Einladung ist auf der Seite <code>/registrierung/</code> möglich, muss aber vom Admin freigeschaltet sein.</p>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════ -->
+    <!-- LOGIN                                                 -->
+    <!-- ══════════════════════════════════════════════════════ -->
+    <h2 id="login">Anmelden</h2>
+    <p>Die BetreuerApp ist über den Browser erreichbar. Rufen Sie die Adresse auf, die Ihnen mitgeteilt wurde, und melden Sie sich mit Ihrem Benutzernamen und Passwort an.</p>
+
+    <div class="screenshot">
+      <img src="screenshots/login.png" alt="Anmeldeseite" onerror="this.parentElement.innerHTML='<div style=\'padding:60px;text-align:center;background:#f5f5f5;color:#999;font-size:14px\'>📷 Screenshot: Anmeldeseite (login.png)</div>'">
+      <div class="screenshot-caption">Anmeldeseite der BetreuerApp – Benutzername und Passwort eingeben und auf „Anmelden" klicken</div>
+    </div>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <strong>Benutzername eingeben</strong>
+          <p>Geben Sie Ihren Benutzernamen ein. Dieser ist meist Ihr Nachname oder die ersten Buchstaben Ihres Namens (z.B. <code>mmustermann</code>).</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <strong>Passwort eingeben</strong>
+          <p>Bei der ersten Anmeldung haben Sie Ihr Passwort über den Einladungslink gesetzt. Das Passwort kann unter „Profil → Passwort ändern" jederzeit geändert werden.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <strong>„Anmelden" klicken</strong>
+          <p>Nach erfolgreicher Anmeldung landen Sie automatisch auf Ihrem Dashboard (Admin-, Koordinator- oder Betreuer-Dashboard, je nach Ihrer Rolle).</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout callout-warn">
+      <div class="callout-icon">⚠️</div>
+      <div class="callout-body">
+        <h4>Mehrfach falsch angemeldet?</h4>
+        <p>Nach mehreren fehlgeschlagenen Anmeldeversuchen wird der Zugang vorübergehend gesperrt. Bitte wenden Sie sich in diesem Fall an Ihren Koordinator oder den Admin.</p>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════ -->
+    <!-- GESAMTPROZESS                                         -->
+    <!-- ══════════════════════════════════════════════════════ -->
+    <h2 id="prozess">Gesamtprozess im Überblick</h2>
+    <p>Der folgende Ablauf zeigt, wie ein neuer Betreuer in das System kommt – von der Einladung bis zur ersten Auszahlung:</p>
+
+    <div class="process">
+      <div class="process-step">
+        <div class="ps-icon">🔗</div>
+        <div class="ps-label">Einladungslink erstellen</div>
+        <div class="ps-who">Koordinator</div>
+      </div>
+      <div class="process-arrow">→</div>
+      <div class="process-step">
+        <div class="ps-icon">📝</div>
+        <div class="ps-label">Registrierung ausfüllen</div>
+        <div class="ps-who">Betreuer</div>
+      </div>
+      <div class="process-arrow">→</div>
+      <div class="process-step">
+        <div class="ps-icon">🔑</div>
+        <div class="ps-label">Passwort per E-Mail setzen</div>
+        <div class="ps-who">Betreuer</div>
+      </div>
+      <div class="process-arrow">→</div>
+      <div class="process-step">
+        <div class="ps-icon">🔍</div>
+        <div class="ps-label">Daten prüfen &amp; Dokumente generieren</div>
+        <div class="ps-who">Koordinator</div>
+      </div>
+      <div class="process-arrow">→</div>
+      <div class="process-step">
+        <div class="ps-icon">📄</div>
+        <div class="ps-label">Dokumente unterschreiben &amp; hochladen</div>
+        <div class="ps-who">Betreuer</div>
+      </div>
+      <div class="process-arrow">→</div>
+      <div class="process-step">
+        <div class="ps-icon">✅</div>
+        <div class="ps-label">Aktivieren</div>
+        <div class="ps-who">Koordinator</div>
+      </div>
+      <div class="process-arrow">→</div>
+      <div class="process-step">
+        <div class="ps-icon">⏱️</div>
+        <div class="ps-label">Stunden erfassen &amp; einreichen</div>
+        <div class="ps-who">Betreuer</div>
+      </div>
+      <div class="process-arrow">→</div>
+      <div class="process-step">
+        <div class="ps-icon">💶</div>
+        <div class="ps-label">Genehmigen &amp; Abrechnung</div>
+        <div class="ps-who">Koordinator / Admin</div>
+      </div>
+    </div>
+
+
+    <!-- ══════════════════════════════════════════════════════ -->
+    <!-- ADMIN BEREICH                                         -->
+    <!-- ══════════════════════════════════════════════════════ -->
+    <h2 id="admin-dashboard">Admin – Dashboard</h2>
+    <div class="role-badge role-admin">👤 Nur für Admins</div>
+
+    <p>Nach der Anmeldung sehen Admins das <strong>Admin-Dashboard</strong>. Es zeigt auf einen Blick alle wichtigen Kennzahlen des gesamten Systems.</p>
+
+    <div class="screenshot">
+      <img src="screenshots/admin_dashboard.png" alt="Admin Dashboard" onerror="this.parentElement.innerHTML='<div style=\'padding:60px;text-align:center;background:#f5f5f5;color:#999;font-size:14px\'>📷 Screenshot: Admin-Dashboard (admin_dashboard.png)</div>'">
+      <div class="screenshot-caption">Admin-Dashboard mit Übersichtskacheln und Förderprogramm-Budgettabelle</div>
+    </div>
+
+    <h4>Die Kennzahl-Kacheln im Überblick</h4>
+    <table>
+      <thead><tr><th>Kachel</th><th>Was wird angezeigt?</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Betreuer</strong></td><td>Anzahl aller aktiven Betreuer im System</td></tr>
+        <tr><td><strong>Schulen</strong></td><td>Anzahl der aktiven Schulstandorte</td></tr>
+        <tr><td><strong>Genehmigungen</strong></td><td>Stundennachweise, die auf Genehmigung warten</td></tr>
+        <tr><td><strong>Verträge</strong></td><td>Aktive Verträge systemweit</td></tr>
+        <tr><td><strong>Dokumente</strong></td><td>Auslaufende Dokumente (z.B. Führungszeugnisse)</td></tr>
+        <tr><td><strong>Freibeträge</strong></td><td>Betreuer, die sich dem Jahresfreibetrag (3.300 €) nähern</td></tr>
+        <tr><td><strong>Programm-Budgets</strong></td><td>Förderprogramme mit Budget-Warnung (orange = Warnung, rot = überschritten)</td></tr>
+      </tbody>
+    </table>
+
+    <h4>Förderprogramm-Budgettabelle</h4>
+    <p>Unterhalb der Kacheln sehen Admins eine Tabelle aller Förderprogramme mit hinterlegtem Budget. Die Spalte <strong>Übrig</strong> ist farbig: grün = ausreichend, gelb = 80 % verbraucht, orange = 90 %, rot = 100 % (überschritten).</p>
+
+    <h4>Schnellzugriff</h4>
+    <p>Im unteren Bereich des Dashboards finden Sie direkte Links zu den wichtigsten Funktionen:</p>
+    <ul>
+      <li><strong>Registrierungslink erstellen</strong> – Neuen Betreuer einladen</li>
+      <li><strong>Betreuer-Übersicht</strong> – Alle Betreuer verwalten</li>
+      <li><strong>Registrierungslinks</strong> – Erstelle Links verwalten</li>
+      <li><strong>Zentrale Auswertung</strong> – Stunden &amp; Beträge nach Schule/Programm</li>
+      <li><strong>Django-Verwaltung</strong> – Systemeinstellungen (nur für technische Admins)</li>
+    </ul>
+
+    <!-- ── Admin: Betreuer verwalten ── -->
+    <h3 id="admin-betreuer">Betreuer verwalten</h3>
+    <p>Über den Menüpunkt <strong>„Betreuer"</strong> (Navigationsleiste oben) gelangen Sie zur Betreuer-Übersicht.</p>
+
+    <div class="screenshot">
+      <img src="screenshots/betreuer_liste.png" alt="Betreuer Liste" onerror="this.parentElement.innerHTML='<div style=\'padding:60px;text-align:center;background:#f5f5f5;color:#999;font-size:14px\'>📷 Screenshot: Betreuer-Liste (betreuer_liste.png)</div>'">
+      <div class="screenshot-caption">Betreuer-Übersicht: alle Betreuer mit Status, Schule und Aktionen</div>
+    </div>
+
+    <p>Die Liste zeigt Name, Schule(n), Typ (Schüler/in oder Externe Person) und den aktuellen <strong>Onboarding-Status</strong>:</p>
+    <table>
+      <thead><tr><th>Status</th><th>Bedeutung</th></tr></thead>
+      <tbody>
+        <tr><td>Registriert</td><td>Formular ausgefüllt, noch nicht geprüft</td></tr>
+        <tr><td>Dokumente ausstehend</td><td>Vertrag generiert, Betreuer muss unterschreiben</td></tr>
+        <tr><td>Dokumente vollständig</td><td>Alle Dokumente hochgeladen</td></tr>
+        <tr><td>Aktiv</td><td>Betreuer kann Stunden erfassen</td></tr>
+        <tr><td>Inaktiv / Archiviert</td><td>Kein aktiver Einsatz mehr</td></tr>
+      </tbody>
+    </table>
+
+    <h4>Betreuer-Detailseite</h4>
+    <div class="screenshot">
+      <img src="screenshots/betreuer_detail.png" alt="Betreuer Detail" onerror="this.parentElement.innerHTML='<div style=\'padding:60px;text-align:center;background:#f5f5f5;color:#999;font-size:14px\'>📷 Screenshot: Betreuer-Detail (betreuer_detail.png)</div>'">
+      <div class="screenshot-caption">Betreuer-Detailseite mit persönlichen Daten, Bankverbindung, Vertrag und Dokumentenstatus</div>
+    </div>
+
+    <p>Auf der Detailseite sehen Sie:</p>
+    <ul>
+      <li>Persönliche Daten (Anrede, Geburtsdatum, Adresse, Staatsangehörigkeit)</li>
+      <li>Bankdaten (IBAN – aus Datenschutzgründen teilweise verdeckt)</li>
+      <li>Den Vertrag mit Schule, Programm und Stundensatz</li>
+      <li>Den Dokumentenstatus (ausstehend, hochgeladen, geprüft, abgelehnt)</li>
+      <li>Buchhaltungsdaten (Projektnummer, Kreditorennummer) für den QR-Code</li>
+    </ul>
+
+    <div class="callout callout-tip">
+      <div class="callout-icon">💡</div>
+      <div class="callout-body">
+        <h4>Buchhaltungsdaten eintragen</h4>
+        <p>Tragen Sie Projektnummer (8-stellig) und Kreditorennummer (5-stellig) ein, damit auf dem PDF-Stundennachweis ein QR-Code für die Buchhaltungssoftware erscheint.</p>
+      </div>
+    </div>
+
+    <!-- ── Admin: Budget anlegen ── -->
+    <h3 id="admin-budget">Budget für ein Förderprogramm anlegen</h3>
+    <p>Admins können für jedes Förderprogramm ein Jahresbudget hinterlegen. Das System berechnet dann automatisch, wie viel bereits ausgegeben wurde.</p>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <strong>Django-Verwaltung öffnen</strong>
+          <p>Klicken Sie im Schnellzugriff auf <strong>„Django-Verwaltung"</strong> oder rufen Sie <code>/django-admin/</code> auf.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <strong>Zu „Schulen → Förderprogramme" navigieren</strong>
+          <p>Wählen Sie das gewünschte Förderprogramm aus der Liste.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <strong>Budget eintragen</strong>
+          <p>Im Abschnitt <strong>„Finanzen"</strong> finden Sie das Feld <em>Budget (EUR)</em>. Tragen Sie den Betrag ein (z.B. <code>75000.00</code>) und speichern Sie.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <strong>Budget wird automatisch berechnet</strong>
+          <p>Das System summiert alle genehmigten Stunden × Stundensatz innerhalb des Schuljahres dieses Programms und zeigt den Verbrauch auf allen Dashboards.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout callout-info">
+      <div class="callout-icon">ℹ️</div>
+      <div class="callout-body">
+        <h4>Budget-Warnungen</h4>
+        <p>Ab <strong>80 % Verbrauch</strong> erscheint eine gelbe Warnung, ab <strong>90 %</strong> orange und ab <strong>100 %</strong> rot – auf dem Dashboard und in der Budgettabelle.</p>
+      </div>
+    </div>
+
+    <!-- ── Admin: Freibetrag ── -->
+    <h3>Freibetrag-Grenze anpassen</h3>
+    <p>Ändert sich der gesetzliche Übungsleiterfreibetrag (aktuell 3.300 € pro Kalenderjahr), kann dies zentral in der Django-Verwaltung angepasst werden:</p>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <strong>Django-Verwaltung → Schulen → Schuljahre</strong>
+          <p>Das aktuelle Schuljahr öffnen.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <strong>Feld „Freibetrag Limit" anpassen</strong>
+          <p>Den neuen gesetzlichen Betrag eintragen und speichern. Das System verwendet diesen Wert sofort für alle Berechnungen.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Admin: Zentrale Auswertung ── -->
+    <h3 id="admin-auswertung">Zentrale Auswertung</h3>
+    <p>Die zentrale Auswertung gibt einen vollständigen Überblick über alle genehmigten Stunden und die daraus resultierenden Auszahlungsbeträge.</p>
+
+    <div class="screenshot">
+      <img src="screenshots/auswertung.png" alt="Zentrale Auswertung" onerror="this.parentElement.innerHTML='<div style=\'padding:60px;text-align:center;background:#f5f5f5;color:#999;font-size:14px\'>📷 Screenshot: Zentrale Auswertung (auswertung.png)</div>'">
+      <div class="screenshot-caption">Zentrale Auswertung – filterbar nach Jahr, Monat, Schule und Förderprogramm, mit CSV-Export</div>
+    </div>
+
+    <h4>Filter nutzen</h4>
+    <ul>
+      <li><strong>Jahr:</strong> Das Kalenderjahr der Auswertung</li>
+      <li><strong>Monat von / bis:</strong> Zeitraum einschränken (z.B. nur September bis Dezember)</li>
+      <li><strong>Schule:</strong> Nur eine bestimmte Schule anzeigen</li>
+      <li><strong>Förderprogramm:</strong> Nur ein bestimmtes Programm anzeigen</li>
+    </ul>
+
+    <p>Klicken Sie auf <strong>„Filtern"</strong>, um die Ergebnisse zu aktualisieren. Mit <strong>„CSV Export"</strong> laden Sie alle Daten als Excel-kompatible Tabelle herunter.</p>
+
+    <div class="callout callout-tip">
+      <div class="callout-icon">💡</div>
+      <div class="callout-body">
+        <h4>Tipp: Nur genehmigte Stunden</h4>
+        <p>Die Auswertung zeigt ausschließlich <em>genehmigte</em> Stundennachweise. Eingereichte, aber noch nicht genehmigte Nachweise erscheinen erst nach der Genehmigung durch den Koordinator.</p>
+      </div>
+    </div>
+
+    <!-- ── Admin: Django-Verwaltung ── -->
+    <h3 id="admin-django">Django-Verwaltung (technische Einstellungen)</h3>
+    <p>Über den Link <strong>„Django-Verwaltung"</strong> im Dashboard oder unter <code>/django-admin/</code> gelangen technische Admins in den Systembereich. Hier können unter anderem verwaltet werden:</p>
+    <ul>
+      <li><strong>Schulen</strong> – neue Standorte anlegen oder deaktivieren</li>
+      <li><strong>Förderprogramme</strong> – Programme anlegen, Budget und Kostenstelle zuweisen</li>
+      <li><strong>Kostenstellen</strong> – Kostenstellen-Codes für die Buchhaltung</li>
+      <li><strong>Schuljahre</strong> – neues Schuljahr anlegen, Freibetrag-Limit setzen</li>
+      <li><strong>Stundensätze</strong> – Stundensätze pro Tätigkeit und Betreuungstyp</li>
+      <li><strong>Benutzer</strong> – Konten verwalten, Rollen zuweisen</li>
+    </ul>
+
+    <div class="callout callout-danger">
+      <div class="callout-icon">🚨</div>
+      <div class="callout-body">
+        <h4>Achtung</h4>
+        <p>Änderungen in der Django-Verwaltung wirken sich sofort auf das gesamte System aus. Bitte nur nach Absprache mit dem technischen Administrator vornehmen.</p>
+      </div>
+    </div>
+
+
+    <!-- ══════════════════════════════════════════════════════ -->
+    <!-- KOORDINATOR BEREICH                                   -->
+    <!-- ══════════════════════════════════════════════════════ -->
+    <h2 id="koord-dashboard">Koordinator – Dashboard</h2>
+    <div class="role-badge role-koord">🏫 Für Koordinatoren</div>
+
+    <p>Koordinatoren sehen nach der Anmeldung ihr persönliches Dashboard. Es zeigt nur Daten für die Schulen, denen sie zugewiesen sind.</p>
+
+    <div class="screenshot">
+      <img src="screenshots/koordinator_dashboard.png" alt="Koordinator Dashboard" onerror="this.parentElement.innerHTML='<div style=\'padding:60px;text-align:center;background:#f5f5f5;color:#999;font-size:14px\'>📷 Screenshot: Koordinator-Dashboard (koordinator_dashboard.png)</div>'">
+      <div class="screenshot-caption">Koordinator-Dashboard mit den zugewiesenen Schulen und Kennzahlen</div>
+    </div>
+
+    <p>Die Begrüßungszeile nennt alle Schulen des Koordinators. Die Kennzahl-Kacheln umfassen:</p>
+    <ul>
+      <li><strong>Meine Betreuer</strong> – Anzahl Betreuer an Ihren Schulen</li>
+      <li><strong>Offene Nachweise</strong> – eingereichte Stundennachweise, die auf Ihre Prüfung warten</li>
+      <li><strong>Meine Schulen</strong> – Anzahl der zugewiesenen Standorte</li>
+      <li><strong>Dokumente</strong> – hochgeladene Dokumente, die geprüft werden müssen</li>
+      <li><strong>Verträge</strong> – aktive Verträge an Ihren Schulen</li>
+      <li><strong>Freibeträge</strong> – Betreuer, die sich dem Jahreslimit nähern</li>
+      <li><strong>Programm-Budgets</strong> – Programme mit Budget-Warnung</li>
+    </ul>
+
+    <!-- ── Koord: Einladen ── -->
+    <h3 id="koord-einladen">Neuen Betreuer einladen</h3>
+    <p>Um einen neuen Betreuer in das System aufzunehmen, erstellen Sie einen Einladungslink:</p>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <strong>„Registrierungslink erstellen" klicken</strong>
+          <p>Im Dashboard unter Schnellzugriff oder über den Menüpunkt <strong>Reg.-Links → Neuer Link</strong>.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <strong>Schule auswählen</strong>
+          <p>Wählen Sie die Schule des neuen Betreuers aus der Dropdown-Liste.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <strong>Einstellungen festlegen</strong>
+          <p><em>Einmaliger Link:</em> Der Link kann nur einmal verwendet werden (empfohlen). <em>Gültig für (Tage):</em> Wie lange der Link aktiv bleibt (Standard: 30 Tage). <em>Notizen:</em> Optional, z.B. Name des künftigen Betreuers.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <strong>„Link erstellen" klicken</strong>
+          <p>Die vollständige Link-URL wird oben auf der Seite angezeigt. Kopieren Sie diese und senden Sie sie per E-Mail an den zukünftigen Betreuer.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="screenshot">
+      <img src="screenshots/reg_link_erstellen.png" alt="Registrierungslink erstellen" onerror="this.parentElement.innerHTML='<div style=\'padding:60px;text-align:center;background:#f5f5f5;color:#999;font-size:14px\'>📷 Screenshot: Registrierungslink erstellen (reg_link_erstellen.png)</div>'">
+      <div class="screenshot-caption">Formular zum Erstellen eines Registrierungslinks – Schule wählen, Gültigkeit setzen</div>
+    </div>
+
+    <h4>Registrierungslinks verwalten</h4>
+    <p>Unter <strong>Reg.-Links</strong> in der Navigationsleiste sehen Sie alle erstellen Links mit Status (aktiv, verwendet, abgelaufen) und Erstellungsdatum.</p>
+
+    <div class="screenshot">
+      <img src="screenshots/reg_links_liste.png" alt="Registrierungslinks Liste" onerror="this.parentElement.innerHTML='<div style=\'padding:60px;text-align:center;background:#f5f5f5;color:#999;font-size:14px\'>📷 Screenshot: Registrierungslink-Liste (reg_links_liste.png)</div>'">
+      <div class="screenshot-caption">Übersicht aller erstellten Registrierungslinks mit Status und Ablaufdatum</div>
+    </div>
+
+    <!-- ── Koord: Prüfen ── -->
+    <h3 id="koord-pruefen">Betreuer-Daten prüfen und Vertrag generieren</h3>
+    <p>Nachdem sich ein Betreuer registriert hat, erscheint er in der Betreuer-Liste mit dem Status <strong>„Registriert"</strong>. Als Koordinator prüfen Sie die Daten:</p>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <strong>Betreuer-Liste öffnen</strong>
+          <p>Im Dashboard auf <strong>„Betreuer-Übersicht"</strong> klicken oder den Menüpunkt <strong>„Betreuer"</strong> nutzen.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <strong>„Prüfen" klicken</strong>
+          <p>Neben dem neuen Betreuer erscheint ein Link <strong>„Prüfen"</strong>. Klicken Sie darauf.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <strong>Daten kontrollieren</strong>
+          <p>Prüfen Sie persönliche Angaben, Bankdaten und Vertragsdaten (Stundensatz, Programm, Schule). Bei Fehlern wenden Sie sich an den Betreuer, um die Daten zu korrigieren.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <strong>„Bestätigen" klicken</strong>
+          <p>Wenn alles stimmt, auf <strong>„Daten bestätigen"</strong> klicken. Das System generiert automatisch alle erforderlichen Dokumente (Vertrag, Verpflichtungserklärung, etc.) als PDF.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Koord: Stundennachweise ── -->
+    <h3 id="koord-nachweise">Stundennachweise prüfen und genehmigen</h3>
+    <p>Betreuer reichen ihre Stundennachweise monatlich ein. Sie erscheinen dann in Ihrer Nachweise-Liste.</p>
+
+    <div class="screenshot">
+      <img src="screenshots/stundennachweise.png" alt="Stundennachweise" onerror="this.parentElement.innerHTML='<div style=\'padding:60px;text-align:center;background:#f5f5f5;color:#999;font-size:14px\'>📷 Screenshot: Stundennachweise (stundennachweise.png)</div>'">
+      <div class="screenshot-caption">Stundennachweise – nach Status filterbar (Alle / Entwurf / Eingereicht / Genehmigt / Abgelehnt)</div>
+    </div>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <strong>Filter „Eingereicht" wählen</strong>
+          <p>So sehen Sie nur die Nachweise, die auf Ihre Prüfung warten.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <strong>Nachweis öffnen</strong>
+          <p>Auf den Betreuer-Namen oder „Details" klicken, um alle Einzeleinträge des Monats zu sehen.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <strong>Prüfen und entscheiden</strong>
+          <p>Stimmen Datum, Zeiten und Beschreibung? Dann auf <strong>„Genehmigen"</strong> klicken. Bei Unstimmigkeiten <strong>„Ablehnen"</strong> und einen Ablehnungsgrund eingeben – der Betreuer wird automatisch benachrichtigt.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout callout-info">
+      <div class="callout-icon">ℹ️</div>
+      <div class="callout-body">
+        <h4>Nach der Genehmigung</h4>
+        <p>Das System erzeugt automatisch ein PDF des Stundennachweises und informiert die Buchhaltung (Admin) via N8N-Benachrichtigung. Der genehmigte Betrag fließt in die zentrale Auswertung und das Budget des Förderprogramms ein.</p>
+      </div>
+    </div>
+
+    <!-- ── Koord: Aktivieren ── -->
+    <h3 id="koord-aktivieren">Betreuer aktivieren</h3>
+    <p>Sobald alle Dokumente geprüft und akzeptiert sind, können Sie den Betreuer aktivieren:</p>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <strong>Betreuer-Detailseite öffnen</strong>
+          <p>Betreuer-Liste → Details klicken.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <strong>„Betreuer aktivieren" klicken</strong>
+          <p>Der Status wechselt zu <strong>„Aktiv"</strong>. Ab diesem Moment kann der Betreuer Stunden erfassen.</p>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- ══════════════════════════════════════════════════════ -->
+    <!-- BETREUER BEREICH                                      -->
+    <!-- ══════════════════════════════════════════════════════ -->
+    <h2 id="betreuer-registrierung">Betreuer – Registrierung</h2>
+    <div class="role-badge role-betreuer">🎒 Für Betreuer</div>
+
+    <p>Als neuer Betreuer erhalten Sie per E-Mail oder direkt vom Koordinator einen Registrierungslink. Klicken Sie auf diesen Link, um das Registrierungsformular zu öffnen.</p>
+
+    <div class="screenshot">
+      <img src="screenshots/registrierung_oben.png" alt="Registrierung oben" onerror="this.parentElement.innerHTML='<div style=\'padding:60px;text-align:center;background:#f5f5f5;color:#999;font-size:14px\'>📷 Screenshot: Registrierungsformular oben (registrierung_oben.png)</div>'">
+      <div class="screenshot-caption">Registrierungsformular – persönliche Daten: Name, E-Mail, Anrede, Geburtsdatum, Staatsangehörigkeit</div>
+    </div>
+
+    <h4>Das Formular Schritt für Schritt ausfüllen</h4>
+
+    <h4>1. Persönliche Daten</h4>
+    <ul>
+      <li><strong>Vorname &amp; Nachname</strong> – wie im Personalausweis</li>
+      <li><strong>E-Mail-Adresse</strong> – wird für den Login verwendet; bitte sorgfältig prüfen</li>
+      <li><strong>Anrede</strong> – Herr / Frau / Divers</li>
+      <li><strong>Geburtsdatum</strong> – TT.MM.JJJJ</li>
+      <li><strong>Geschlecht &amp; Staatsangehörigkeit</strong></li>
+    </ul>
+
+    <h4>2. Adresse</h4>
+    <ul>
+      <li>Straße, Hausnummer, PLZ und Ort (Wohnanschrift)</li>
+    </ul>
+
+    <h4>3. Bankverbindung</h4>
+    <ul>
+      <li><strong>Kontoinhaber</strong> – Name des Kontoinhabers (darf auch eine andere Person sein)</li>
+      <li><strong>IBAN</strong> – Deutsche IBAN beginnt mit DE (22 Stellen)</li>
+      <li><strong>BIC</strong> – Optional, nur für ausländische Konten nötig</li>
+    </ul>
+
+    <div class="screenshot">
+      <img src="screenshots/registrierung_unten.png" alt="Registrierung unten" onerror="this.parentElement.innerHTML='<div style=\'padding:60px;text-align:center;background:#f5f5f5;color:#999;font-size:14px\'>📷 Screenshot: Registrierungsformular unten (registrierung_unten.png)</div>'">
+      <div class="screenshot-caption">Registrierungsformular – Vertragsdaten: Schule, Förderprogramm, Tätigkeit und Freibetrag-Erklärung</div>
+    </div>
+
+    <h4>4. Vertrag &amp; Tätigkeit</h4>
+    <ul>
+      <li><strong>Einsatzschule</strong> – An welcher Schule leiten Sie die AG?</li>
+      <li><strong>Projekt / Förderprogramm</strong> – Wird nach Schulwahl automatisch geladen</li>
+      <li><strong>Tätigkeit</strong> – z.B. AG-Leitung, Hausaufgabenbetreuung</li>
+      <li><strong>Betreuer-Typ</strong> – Schüler/in oder Externe Person</li>
+      <li><strong>Stundendauer</strong> – 60 Minuten oder 45 Minuten pro Einheit</li>
+      <li>Der <strong>Stundensatz</strong> wird automatisch berechnet und angezeigt</li>
+    </ul>
+
+    <h4>5. Freibetrag-Erklärung</h4>
+    <p>Der Übungsleiterfreibetrag beträgt <strong>3.300 € pro Kalenderjahr</strong>. Geben Sie an, ob Sie diesen Freibetrag bereits bei einem anderen Verein nutzen. Falls ja, erscheinen zusätzliche Felder für den Betrag und den Vereinsnamen.</p>
+
+    <div class="callout callout-warn">
+      <div class="callout-icon">⚠️</div>
+      <div class="callout-body">
+        <h4>Wichtig: Freibetrag-Erklärung</h4>
+        <p>Die Angabe zum Freibetrag ist rechtlich relevant. Bitte machen Sie wahrheitsgemäße Angaben. Bei Überschreitung des Freibetrags fallen Steuern und Sozialabgaben an.</p>
+      </div>
+    </div>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">✓</div>
+        <div class="step-body">
+          <strong>„Registrierung absenden" klicken</strong>
+          <p>Nach dem Absenden erhalten Sie eine Bestätigungsseite. Der Koordinator prüft nun Ihre Daten und sendet Ihnen die Vertragsdokumente zu.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Betreuer: Passwort ── -->
+    <h3 id="betreuer-passwort">Passwort setzen (nach der Registrierung)</h3>
+    <p>Nach Ihrer Registrierung erhalten Sie eine automatische E-Mail von N8N mit einem <strong>Link zum Passwort setzen</strong>. Dieser Link ist einmalig verwendbar und 72 Stunden gültig.</p>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <strong>E-Mail öffnen</strong>
+          <p>Betreff: „Willkommen bei der BetreuerApp – Passwort setzen". Klicken Sie auf den enthaltenen Link.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <strong>Passwort eingeben</strong>
+          <p>Wählen Sie ein sicheres Passwort (mindestens 8 Zeichen, Groß- und Kleinbuchstaben empfohlen). Wiederholen Sie die Eingabe zur Bestätigung.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <strong>„Passwort speichern" klicken</strong>
+          <p>Sie werden zur Bestätigungsseite weitergeleitet. Anschließend können Sie sich mit Ihrem Benutzernamen (E-Mail-Präfix) und dem neuen Passwort anmelden.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout callout-warn">
+      <div class="callout-icon">⚠️</div>
+      <div class="callout-body">
+        <h4>Link abgelaufen?</h4>
+        <p>Falls der Link nicht mehr gültig ist, wenden Sie sich an Ihren Koordinator. Er kann über den Admin einen neuen Link anfordern.</p>
+      </div>
+    </div>
+
+    <!-- ── Betreuer: Dashboard ── -->
+    <h3 id="betreuer-dashboard">Betreuer – Dashboard</h3>
+    <p>Nach der Anmeldung sehen Sie Ihr persönliches Dashboard mit einem Überblick über Ihre aktuelle Situation:</p>
+
+    <div class="screenshot">
+      <img src="screenshots/betreuer_dashboard.png" alt="Betreuer Dashboard" onerror="this.parentElement.innerHTML='<div style=\'padding:60px;text-align:center;background:#f5f5f5;color:#999;font-size:14px\'>📷 Screenshot: Betreuer-Dashboard (betreuer_dashboard.png)</div>'">
+      <div class="screenshot-caption">Betreuer-Dashboard mit Stunden, Freibetrag, Dokumenten-Checkliste und Schnellzugriff</div>
+    </div>
+
+    <table>
+      <thead><tr><th>Kachel</th><th>Was wird angezeigt?</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Meine Stunden</strong></td><td>Stunden im aktuellen Monat – klicken führt zur Stundenübersicht</td></tr>
+        <tr><td><strong>Freibetrag</strong></td><td>Verbrauchter Betrag im Kalenderjahr im Verhältnis zum Limit (3.300 €), mit farbigem Balken</td></tr>
+        <tr><td><strong>Meine Dokumente</strong></td><td>Gesamtanzahl der Dokumente und wie viele noch ausstehend sind</td></tr>
+        <tr><td><strong>Meine Verträge</strong></td><td>Anzahl aktiver Verträge</td></tr>
+        <tr><td><strong>Nächster Stichtag</strong></td><td>Immer der 17. des Folgemonats – bis dahin müssen die Stunden eingereicht sein</td></tr>
+        <tr><td><strong>Offene Nachweise</strong></td><td>Monate, für die noch kein Nachweis eingereicht wurde</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout callout-info">
+      <div class="callout-icon">ℹ️</div>
+      <div class="callout-body">
+        <h4>Freibetrag-Ampel</h4>
+        <p>Der Freibetrag-Balken zeigt: <span style="color:#6BAA24">■ grün</span> = noch viel Spielraum, <span style="color:#FBC900">■ gelb</span> = 80 % verbraucht, <span style="color:#FF8C00">■ orange</span> = 90 % verbraucht, <span style="color:#E2001A">■ rot</span> = Freibetrag ausgeschöpft!</p>
+      </div>
+    </div>
+
+    <!-- ── Betreuer: Stunden ── -->
+    <h3 id="betreuer-stunden">Stunden erfassen</h3>
+    <p>Klicken Sie im Dashboard auf <strong>„Meine Stunden"</strong> oder in der Navigationsleiste auf <strong>„Stunden"</strong>.</p>
+
+    <div class="screenshot">
+      <img src="screenshots/stunden_erfassen.png" alt="Stunden erfassen" onerror="this.parentElement.innerHTML='<div style=\'padding:60px;text-align:center;background:#f5f5f5;color:#999;font-size:14px\'>📷 Screenshot: Stunden erfassen (stunden_erfassen.png)</div>'">
+      <div class="screenshot-caption">Stundenerfassung für den aktuellen Monat – vorhandene Einträge und Eingabeformular</div>
+    </div>
+
+    <p>Die Seite zeigt den aktuellen Monat mit allen bereits eingetragenen Stunden. Mit den Pfeilen ← Vormonat / Folgemonat → wechseln Sie den Monat.</p>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <strong>„+ Stunde eintragen" klicken</strong>
+          <p>Ein Eingabeformular klappt direkt unterhalb auf.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <strong>Datum, Von und Bis eingeben</strong>
+          <p>Wählen Sie das genaue Datum und die Start- sowie Endzeit der AG-Einheit.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <strong>Pause eingeben (optional)</strong>
+          <p>Falls eine Pause stattfand, tragen Sie die Minuten ein. Standard ist 0.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <strong>Förderprogramm wählen</strong>
+          <p>Das Programm, dem diese Stunde zugeordnet wird. Wird bei mehreren Programmen im Vertrag angezeigt.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">5</div>
+        <div class="step-body">
+          <strong>Beschreibung (optional)</strong>
+          <p>Kurze Notiz zur AG-Einheit, z.B. „Schach-Turniervorbereitung".</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">6</div>
+        <div class="step-body">
+          <strong>„Speichern" klicken</strong>
+          <p>Der Eintrag erscheint sofort in der Tabelle. Sie können ihn über „Bearb." bearbeiten oder über „Löschen" entfernen – solange der Monat noch nicht eingereicht wurde.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout callout-tip">
+      <div class="callout-icon">💡</div>
+      <div class="callout-body">
+        <h4>Stunden können jederzeit nachgetragen werden</h4>
+        <p>Sie können Stunden für vergangene Monate nachtragen, solange der Monat noch nicht eingereicht wurde. Nach dem Einreichen sind keine Änderungen mehr möglich.</p>
+      </div>
+    </div>
+
+    <!-- ── Betreuer: Einreichen ── -->
+    <h3 id="betreuer-einreichen">Monat einreichen</h3>
+    <p>Am Ende des Monats (Frist: <strong>17. des Folgemonats</strong>) müssen Sie Ihre Stunden einreichen:</p>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <strong>Alle Stunden prüfen</strong>
+          <p>Schauen Sie nochmals alle Einträge durch. Korrekturen sind nach dem Einreichen nicht mehr möglich.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <strong>„Monat einreichen" klicken</strong>
+          <p>Der Button befindet sich rechts unterhalb der Stundentabelle.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <strong>Warten auf Genehmigung</strong>
+          <p>Der Koordinator prüft den Nachweis. Bei der Genehmigung oder Ablehnung werden Sie per E-Mail informiert.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout callout-danger">
+      <div class="callout-icon">🚨</div>
+      <div class="callout-body">
+        <h4>Frist beachten!</h4>
+        <p>Reichen Sie Ihre Stunden <strong>bis zum 17. des Folgemonats</strong> ein. Verspätete Einreichungen können zu verzögerter Auszahlung führen.</p>
+      </div>
+    </div>
+
+    <!-- ── Betreuer: Dokumente ── -->
+    <h3 id="betreuer-dokumente">Dokumente</h3>
+    <p>Im Dashboard-Abschnitt <strong>„Meine Dokumente"</strong> sehen Sie alle erforderlichen Unterlagen mit ihrem aktuellen Status:</p>
+
+    <table>
+      <thead><tr><th>Status</th><th>Symbol</th><th>Bedeutung / Was tun?</th></tr></thead>
+      <tbody>
+        <tr><td>Ausstehend</td><td>⚪ Grau</td><td>Dokument noch nicht generiert. Warten Sie auf den Koordinator.</td></tr>
+        <tr><td>Generiert / Versendet</td><td>🔵 Blau</td><td>PDF wurde erstellt und Ihnen zugesandt. Bitte ausdrucken, unterschreiben und hochladen.</td></tr>
+        <tr><td>Hochgeladen</td><td>🟡 Gelb</td><td>Dokument hochgeladen, wartet auf Prüfung durch den Koordinator.</td></tr>
+        <tr><td>Geprüft</td><td>🟢 Grün</td><td>Dokument akzeptiert. Kein Handlungsbedarf.</td></tr>
+        <tr><td>Abgelehnt</td><td>🔴 Rot</td><td>Dokument wurde abgelehnt. Ablehnungsgrund wird angezeigt. Bitte erneut hochladen.</td></tr>
+      </tbody>
+    </table>
+
+    <h4>Dokument hochladen</h4>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <strong>PDF herunterladen (falls vorhanden)</strong>
+          <p>Klicken Sie auf <strong>„PDF"</strong> neben dem Dokument, um es herunterzuladen und auszudrucken.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <strong>Unterschreiben</strong>
+          <p>Drucken Sie das Dokument aus, unterschreiben Sie es handschriftlich und scannen Sie es ein (oder fotografieren Sie es ab).</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <strong>„Hochladen" klicken</strong>
+          <p>Klicken Sie auf den blauen Button neben dem Dokument. Wählen Sie die Datei aus (PDF, JPG oder PNG, max. empfohlen 5 MB).</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <strong>„Absenden" klicken</strong>
+          <p>Das Dokument wird hochgeladen und wartet nun auf die Prüfung durch den Koordinator.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Betreuer: Profil ── -->
+    <h3 id="betreuer-profil">Profil verwalten</h3>
+    <p>Über das Dropdown oben rechts (Ihr Name) → <strong>„Profil"</strong> oder im Schnellzugriff des Dashboards gelangen Sie zu Ihrer Profilseite.</p>
+
+    <div class="screenshot">
+      <img src="screenshots/betreuer_profil.png" alt="Betreuer Profil" onerror="this.parentElement.innerHTML='<div style=\'padding:60px;text-align:center;background:#f5f5f5;color:#999;font-size:14px\'>📷 Screenshot: Betreuer-Profil (betreuer_profil.png)</div>'">
+      <div class="screenshot-caption">Profilseite mit Kontoinformationen, Adresse und (geschwärzter) Bankverbindung</div>
+    </div>
+
+    <p>Auf der Profilseite sehen Sie Ihre hinterlegten Daten. Mit <strong>„Profil bearbeiten"</strong> können Sie Adresse, Telefonnummer und andere Angaben aktualisieren. Mit <strong>„Passwort ändern"</strong> setzen Sie ein neues Passwort.</p>
+
+    <div class="callout callout-info">
+      <div class="callout-icon">ℹ️</div>
+      <div class="callout-body">
+        <h4>Bankverbindung geändert?</h4>
+        <p>Änderungen der Bankverbindung müssen über den Koordinator oder Admin vorgenommen werden, da diese Daten für die Auszahlung relevant sind und verifiziert werden müssen.</p>
+      </div>
+    </div>
+
+
+    <!-- ══════════════════════════════════════════════════════ -->
+    <!-- PROZESSABLÄUFE                                        -->
+    <!-- ══════════════════════════════════════════════════════ -->
+    <h2 id="prozess-registrierung">Prozessablauf: Betreuer-Registrierung</h2>
+
+    <p>Der vollständige Ablauf von der Einladung bis zur Aktivierung:</p>
+
+    <div class="process" style="flex-wrap:wrap">
+      <div class="process-step" style="min-width:110px">
+        <div class="ps-icon">📧</div>
+        <div class="ps-label">Koordinator erstellt Einladungslink</div>
+        <div class="ps-who">Koordinator</div>
+      </div>
+      <div class="process-arrow">→</div>
+      <div class="process-step" style="min-width:110px">
+        <div class="ps-icon">📝</div>
+        <div class="ps-label">Betreuer füllt Registrierungsformular aus</div>
+        <div class="ps-who">Betreuer</div>
+      </div>
+      <div class="process-arrow">→</div>
+      <div class="process-step" style="min-width:110px">
+        <div class="ps-icon">📬</div>
+        <div class="ps-label">Passwort-Link per E-Mail (automatisch)</div>
+        <div class="ps-who">System</div>
+      </div>
+      <div class="process-arrow">→</div>
+      <div class="process-step" style="min-width:110px">
+        <div class="ps-icon">🔑</div>
+        <div class="ps-label">Betreuer setzt Passwort</div>
+        <div class="ps-who">Betreuer</div>
+      </div>
+    </div>
+    <div class="process" style="flex-wrap:wrap;margin-top:0">
+      <div class="process-step" style="min-width:110px">
+        <div class="ps-icon">🔍</div>
+        <div class="ps-label">Koordinator prüft Daten</div>
+        <div class="ps-who">Koordinator</div>
+      </div>
+      <div class="process-arrow">→</div>
+      <div class="process-step" style="min-width:110px">
+        <div class="ps-icon">📄</div>
+        <div class="ps-label">Dokumente generiert &amp; versendet</div>
+        <div class="ps-who">System</div>
+      </div>
+      <div class="process-arrow">→</div>
+      <div class="process-step" style="min-width:110px">
+        <div class="ps-icon">✍️</div>
+        <div class="ps-label">Betreuer unterschreibt &amp; lädt hoch</div>
+        <div class="ps-who">Betreuer</div>
+      </div>
+      <div class="process-arrow">→</div>
+      <div class="process-step" style="min-width:110px">
+        <div class="ps-icon">✅</div>
+        <div class="ps-label">Betreuer wird aktiviert</div>
+        <div class="ps-who">Koordinator</div>
+      </div>
+    </div>
+
+    <h2 id="prozess-abrechnung">Prozessablauf: Monatliche Abrechnung</h2>
+    <p>So läuft die monatliche Stundenabrechnung ab:</p>
+
+    <div class="process">
+      <div class="process-step">
+        <div class="ps-icon">⏱️</div>
+        <div class="ps-label">Betreuer trägt Stunden ein (laufend)</div>
+        <div class="ps-who">Betreuer</div>
+      </div>
+      <div class="process-arrow">→</div>
+      <div class="process-step">
+        <div class="ps-icon">📤</div>
+        <div class="ps-label">Monat einreichen (bis 17.)</div>
+        <div class="ps-who">Betreuer</div>
+      </div>
+      <div class="process-arrow">→</div>
+      <div class="process-step">
+        <div class="ps-icon">🔍</div>
+        <div class="ps-label">Koordinator prüft &amp; genehmigt</div>
+        <div class="ps-who">Koordinator</div>
+      </div>
+      <div class="process-arrow">→</div>
+      <div class="process-step">
+        <div class="ps-icon">📊</div>
+        <div class="ps-label">PDF erzeugt, Buchhaltung informiert</div>
+        <div class="ps-who">System</div>
+      </div>
+      <div class="process-arrow">→</div>
+      <div class="process-step">
+        <div class="ps-icon">💶</div>
+        <div class="ps-label">Auszahlung durch Buchhaltung</div>
+        <div class="ps-who">Admin</div>
+      </div>
+    </div>
+
+    <h2 id="prozess-budget">Prozessablauf: Budget einrichten</h2>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <strong>Admin erstellt Förderprogramm in der Django-Verwaltung</strong>
+          <p>Name, Schuljahr und ggf. Kostenstelle zuweisen.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <strong>Budget eintragen</strong>
+          <p>Im Feld „Budget (EUR)" den Jahresbetrag für das Programm eintragen und speichern.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <strong>Koordinator verknüpft Betreuer-Verträge mit dem Programm</strong>
+          <p>Bei der Betreuer-Registrierung wird das Programm im Formular gewählt.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <strong>Automatische Budget-Überwachung</strong>
+          <p>Ab dem ersten genehmigten Stundennachweis berechnet das System den Verbrauch und zeigt ihn auf allen Dashboards. Bei 80/90/100 % erscheinen farbige Warnungen.</p>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- ══════════════════════════════════════════════════════ -->
+    <!-- FAQ                                                   -->
+    <!-- ══════════════════════════════════════════════════════ -->
+    <h2 id="faq">Häufige Fragen (FAQ)</h2>
+
+    <h3>Ich habe mein Passwort vergessen – was nun?</h3>
+    <p>Wenden Sie sich an Ihren Koordinator. Der Admin kann über die Django-Verwaltung einen neuen Passwort-Reset-Link für Sie generieren und Ihnen zusenden.</p>
+
+    <h3>Ich sehe keine „Monat einreichen"-Schaltfläche.</h3>
+    <p>Die Schaltfläche erscheint nur, wenn mindestens ein Stundeneintrag im Monat vorhanden ist und der Monat noch nicht eingereicht wurde. Prüfen Sie, ob Sie im richtigen Monat sind.</p>
+
+    <h3>Mein Stundeneintrag wurde abgelehnt – was passiert?</h3>
+    <p>Der Koordinator hat den gesamten Monatsnachweis mit einem Ablehnungsgrund zurückgeschickt. Sie werden per E-Mail benachrichtigt. Korrigieren Sie die betreffenden Einträge und reichen Sie den Monat erneut ein.</p>
+
+    <h3>Wie wechsle ich zwischen Vormonat und aktuellem Monat?</h3>
+    <p>Auf der Stunden-Seite gibt es oben links den Pfeil „← Vormonat" und rechts „Folgemonat →". Sie können bis zu 12 Monate zurückgehen, um nachzutragen.</p>
+
+    <h3>Ich habe mich an einer falschen Schule registriert.</h3>
+    <p>Wenden Sie sich an den Koordinator. Er kann über die Django-Verwaltung die Schule im Vertrag korrigieren.</p>
+
+    <h3>Wann erhalte ich meine Auszahlung?</h3>
+    <p>Das System informiert die Buchhaltung automatisch nach der Genehmigung des Stundennachweises. Die tatsächliche Auszahlung erfolgt gemäß dem internen Auszahlungsrhythmus des CSFV – in der Regel einmal monatlich.</p>
+
+    <h3>Was ist die Kostenstelle?</h3>
+    <p>Die Kostenstelle ist ein Buchungsschlüssel für die interne Finanzbuchhaltung (z.B. KST-4711). Sie wird vom Admin dem jeweiligen Förderprogramm zugeordnet und erscheint automatisch auf den Stundennachweisen und in der zentralen Auswertung.</p>
+
+    <h3>Was bedeutet „Freibetrag bei anderem Verein genutzt"?</h3>
+    <p>Wenn Sie bereits bei einem anderen Verein den Übungsleiterfreibetrag beanspruchen, müssen Sie das angeben. Das System berücksichtigt dann nur den verbleibenden Restbetrag, damit Sie steuerlich korrekt abgerechnet werden.</p>
+
+    <h3>Wie ändere ich meine E-Mail-Adresse?</h3>
+    <p>Über Profil → Profil bearbeiten. Die neue E-Mail wird für zukünftige Benachrichtigungen verwendet.</p>
+
+
+    <!-- ══════════════════════════════════════════════════════ -->
+    <!-- KONTAKT                                               -->
+    <!-- ══════════════════════════════════════════════════════ -->
+    <h2 id="kontakt">Kontakt &amp; Support</h2>
+
+    <table>
+      <thead><tr><th>Wer?</th><th>Womit kann ich mich melden?</th><th>An wen?</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>Betreuer</td>
+          <td>Login-Probleme, vergessenes Passwort, Fehler bei Stunden</td>
+          <td>Koordinator der eigenen Schule</td>
+        </tr>
+        <tr>
+          <td>Koordinator</td>
+          <td>Systemfehler, fehlende Berechtigungen, neue Schule einrichten</td>
+          <td>Admin / CSFV-Geschäftsstelle</td>
+        </tr>
+        <tr>
+          <td>Admin</td>
+          <td>Technische Probleme, Systemkonfiguration</td>
+          <td>Technischer Administrator</td>
+        </tr>
+      </tbody>
+    </table>
+
+  </div><!-- /content -->
+</main>
+
+<footer class="footer">
+  © 2026 Christlicher Schulförderverein Minden e.V. &nbsp;·&nbsp; BetreuerApp Handbuch v1.0 &nbsp;·&nbsp; Stand: Februar 2026
+</footer>
+<div class="footer-bar">
+  <span style="background:#575756;flex:4"></span>
+  <span style="background:#FBC900"></span>
+  <span style="background:#6BAA24"></span>
+  <span style="background:#E2001A"></span>
+  <span style="background:#009AC6"></span>
+</div>
+
+<script>
+  // Active nav link on scroll
+  const links = document.querySelectorAll('.nav-link');
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        links.forEach(l => l.classList.remove('active'));
+        const link = document.querySelector(`.nav-link[href="#${e.target.id}"]`);
+        if (link) link.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-20% 0px -70% 0px' });
+  document.querySelectorAll('h2[id], h3[id]').forEach(h => observer.observe(h));
+</script>
+</body>
+</html>

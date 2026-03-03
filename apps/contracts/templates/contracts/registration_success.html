@@ -1,0 +1,61 @@
+{% load static %}<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registrierung erfolgreich | CSFV</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: { extend: { fontFamily: { 'sans': ['Montserrat', 'Calibri', 'system-ui', 'sans-serif'] }, colors: { 'credo': { 'dark': '#575756' } } } }
+        }
+    </script>
+</head>
+<body class="bg-gray-50 font-sans text-credo-dark min-h-screen flex flex-col items-center justify-center">
+    <div class="max-w-md mx-auto px-6 text-center">
+        <img src="{% static 'img/logo_foerderverein_credo.svg' %}" alt="CSFV" class="h-16 mx-auto mb-8">
+
+        <div class="bg-white shadow rounded-lg p-8">
+            <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-100 mb-4">
+                <svg class="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                </svg>
+            </div>
+
+            <h1 class="text-xl font-bold text-credo-dark mb-2">Registrierung erfolgreich!</h1>
+            <p class="text-sm text-gray-600 mb-6">
+                Vielen Dank fuer Ihre Registrierung. Der Koordinator wird Ihre Daten pruefen
+                und Ihnen die Vertragsdokumente zusenden. Sie erhalten eine E-Mail mit
+                Ihren Zugangsdaten.
+            </p>
+
+            <div class="bg-blue-50 border border-blue-200 rounded-md p-4 text-sm text-blue-800">
+                <strong>Naechste Schritte:</strong>
+                <ol class="mt-2 ml-4 list-decimal text-left space-y-1">
+                    <li>Koordinator prueft Ihre Daten</li>
+                    <li>Sie erhalten die Dokumente per E-Mail</li>
+                    <li>Dokumente unterschreiben und hochladen</li>
+                    <li>Nach Pruefung: Stunden erfassen</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+
+    {# CREDO Footer #}
+    <footer class="mt-auto w-full">
+        <div class="text-center text-xs text-gray-400 py-4">
+            &copy; 2026 Christlicher Schulf&ouml;rderverein Minden e.V.
+        </div>
+        <div class="flex items-stretch h-2">
+            <div style="width: 50%; background-color: #575756;"></div>
+            <div style="width: 12.5%; background-color: #FBC900;"></div>
+            <div style="width: 12.5%; background-color: #6BAA24;"></div>
+            <div style="width: 12.5%; background-color: #E2001A;"></div>
+            <div style="width: 12.5%; background-color: #009AC6;"></div>
+        </div>
+    </footer>
+</body>
+</html>

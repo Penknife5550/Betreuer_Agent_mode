@@ -1,0 +1,254 @@
+{% extends "base.html" %}
+{% load number_filters %}
+
+{% block title %}Mein Dashboard{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+    <h1 class="text-2xl font-bold text-credo-dark mb-6">Mein Dashboard</h1>
+    <p class="text-gray-600 mb-8">
+        Willkommen, {{ user.get_full_name|default:user.username }}!
+    </p>
+
+    {# ------------------------------------------------------------------ #}
+    {# Kennzahlen-Karten                                                   #}
+    {# ------------------------------------------------------------------ #}
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+        {# Meine Stunden #}
+        <a href="{% url 'timetracking:time_entry_list' %}"
+           class="bg-white rounded-lg shadow p-6 border-l-4 border-credo-dark hover:shadow-md transition-shadow">
+            <h3 class="text-lg font-semibold text-credo-dark">Meine Stunden</h3>
+            <p class="text-3xl font-bold text-credo-dark mt-2">{{ current_hours|default:"0" }}</p>
+            <p class="text-sm text-gray-500 mt-1">Stunden im aktuellen Monat</p>
+        </a>
+
+        {# Freibetrag #}
+        <div class="bg-white rounded-lg shadow p-6 border-l-4 border-schule-gym">
+            <h3 class="text-lg font-semibold text-credo-dark">Freibetrag</h3>
+            <p class="text-3xl font-bold text-credo-dark mt-2">
+                {{ freibetrag.total_used|default:"0" }}
+                <span class="text-base font-normal text-gray-500">/ {{ freibetrag.limit|default:"3300" }} &euro;</span>
+            </p>
+            {% if freibetrag.warning_level == 'red' %}
+            <div class="w-full bg-gray-200 rounded-full h-2 mt-2">
+                <div class="bg-red-500 h-2 rounded-full" style="width: 100%"></div>
+            </div>
+            <p class="text-sm text-red-600 mt-1 font-medium">Freibetrag ausgeschoepft!</p>
+            {% elif freibetrag.warning_level == 'orange' %}
+            <div class="w-full bg-gray-200 rounded-full h-2 mt-2">
+                <div class="bg-orange-500 h-2 rounded-full" style="width: {{ freibetrag.percentage }}%"></div>
+            </div>
+            <p class="text-sm text-orange-600 mt-1">{{ freibetrag.percentage }}% verbraucht</p>
+            {% elif freibetrag.warning_level == 'yellow' %}
+            <div class="w-full bg-gray-200 rounded-full h-2 mt-2">
+                <div class="bg-yellow-500 h-2 rounded-full" style="width: {{ freibetrag.percentage }}%"></div>
+            </div>
+            <p class="text-sm text-yellow-600 mt-1">{{ freibetrag.percentage }}% verbraucht</p>
+            {% else %}
+            <div class="w-full bg-gray-200 rounded-full h-2 mt-2">
+                <div class="bg-green-500 h-2 rounded-full" style="width: {{ freibetrag.percentage|default:0 }}%"></div>
+            </div>
+            <p class="text-sm text-gray-500 mt-1">Verbraucht im Kalenderjahr {{ freibetrag.year|default:"2026" }}</p>
+            {% endif %}
+        </div>
+
+        {# Meine Dokumente #}
+        <div class="bg-white rounded-lg shadow p-6 border-l-4 border-schule-ges">
+            <h3 class="text-lg font-semibold text-credo-dark">Meine Dokumente</h3>
+            <p class="text-3xl font-bold text-credo-dark mt-2">{{ documents_total|default:"0" }}</p>
+            {% if documents_pending %}
+            <p class="text-sm text-yellow-600 mt-1">{{ documents_pending }} offen</p>
+            {% else %}
+            <p class="text-sm text-green-600 mt-1">Alle Dokumente erledigt</p>
+            {% endif %}
+        </div>
+
+        {# Aktive Vertraege #}
+        <div class="bg-white rounded-lg shadow p-6 border-l-4 border-schule-gsh">
+            <h3 class="text-lg font-semibold text-credo-dark">Meine Vertr&auml;ge</h3>
+            <p class="text-3xl font-bold text-credo-dark mt-2">{{ contract_count|default:"0" }}</p>
+            <p class="text-sm text-gray-500 mt-1">Aktive Vertr&auml;ge</p>
+        </div>
+
+        {# Naechster Stichtag #}
+        <div class="bg-white rounded-lg shadow p-6 border-l-4 border-schule-gsm">
+            <h3 class="text-lg font-semibold text-credo-dark">N&auml;chster Stichtag</h3>
+            <p class="text-3xl font-bold text-credo-dark mt-2">17.</p>
+            <p class="text-sm text-gray-500 mt-1">Abgabefrist Stundennachweis</p>
+        </div>
+
+        {# Offene Nachweise #}
+        <div class="bg-white rounded-lg shadow p-6 border-l-4 border-schule-gss">
+            <h3 class="text-lg font-semibold text-credo-dark">Offene Nachweise</h3>
+            <p class="text-3xl font-bold text-credo-dark mt-2">{{ open_timesheets|default:"0" }}</p>
+            <p class="text-sm text-gray-500 mt-1">Noch nicht eingereichte Monate</p>
+        </div>
+
+    </div>
+
+    {# ------------------------------------------------------------------ #}
+    {# Foerderprogramm Budgets                                             #}
+    {# ------------------------------------------------------------------ #}
+    {% if foerderprogramm_budgets %}
+    <h2 class="text-xl font-bold text-credo-dark mt-10 mb-4">Meine F&ouml;rderprogramme</h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for item in foerderprogramm_budgets %}
+        {% with fp=item.foerderprogramm s=item.status %}
+        <div class="bg-white rounded-lg shadow p-6 border-l-4
+            {% if s.warning_level == 'red' %}border-red-500
+            {% elif s.warning_level == 'orange' %}border-orange-400
+            {% elif s.warning_level == 'yellow' %}border-yellow-400
+            {% else %}border-green-500{% endif %}">
+            <h3 class="text-base font-semibold text-credo-dark truncate">{{ fp.name }}</h3>
+            <p class="text-xs text-gray-400 mb-3">{{ fp.school_year }}
+                {% if fp.kostenstelle %}&ndash; {{ fp.kostenstelle.code }}{% endif %}
+            </p>
+            <p class="text-2xl font-bold text-credo-dark">
+                {{ s.spent|de_money }} <span class="text-sm font-normal text-gray-500">/ {{ s.budget|de_money }} &euro;</span>
+            </p>
+            {# Progress bar #}
+            <div class="w-full bg-gray-200 rounded-full h-2 mt-2 mb-1">
+                <div class="h-2 rounded-full
+                    {% if s.warning_level == 'red' %}bg-red-500
+                    {% elif s.warning_level == 'orange' %}bg-orange-400
+                    {% elif s.warning_level == 'yellow' %}bg-yellow-400
+                    {% else %}bg-green-500{% endif %}"
+                     style="width: {% if s.percentage > 100 %}100{% else %}{{ s.percentage }}{% endif %}%">
+                </div>
+            </div>
+            {% if s.warning_level == 'red' %}
+            <p class="text-xs text-red-600 font-medium">Budget ausgesch&ouml;pft!</p>
+            {% elif s.warning_level == 'orange' %}
+            <p class="text-xs text-orange-600">{{ s.percentage }}% verbraucht &ndash; {{ s.remaining|de_money }} &euro; &uuml;brig</p>
+            {% elif s.warning_level == 'yellow' %}
+            <p class="text-xs text-yellow-700">{{ s.percentage }}% verbraucht &ndash; {{ s.remaining|de_money }} &euro; &uuml;brig</p>
+            {% else %}
+            <p class="text-xs text-gray-500">{{ s.remaining|de_money }} &euro; noch verf&uuml;gbar</p>
+            {% endif %}
+        </div>
+        {% endwith %}
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {# ------------------------------------------------------------------ #}
+    {# Dokumenten-Checkliste                                               #}
+    {# ------------------------------------------------------------------ #}
+    {% if documents %}
+    <h2 class="text-xl font-bold text-credo-dark mt-10 mb-4">Meine Dokumente</h2>
+    <div class="bg-white rounded-lg shadow">
+        <ul class="divide-y divide-gray-100">
+            {% for doc in documents %}
+            <li class="px-6 py-4 flex items-center gap-4">
+                {# Status icon #}
+                {% if doc.status == 'verified' %}
+                <div class="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                    <svg class="h-4 w-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/>
+                    </svg>
+                </div>
+                {% elif doc.status == 'rejected' %}
+                <div class="h-8 w-8 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                    <svg class="h-4 w-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </div>
+                {% elif doc.status == 'uploaded' %}
+                <div class="h-8 w-8 rounded-full bg-yellow-100 flex items-center justify-center flex-shrink-0">
+                    <div class="h-3 w-3 rounded-full bg-yellow-500"></div>
+                </div>
+                {% elif doc.status == 'generated' or doc.status == 'sent' %}
+                <div class="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                    <div class="h-3 w-3 rounded-full bg-blue-500"></div>
+                </div>
+                {% else %}
+                <div class="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
+                    <div class="h-3 w-3 rounded-full bg-gray-400"></div>
+                </div>
+                {% endif %}
+
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm font-medium text-credo-dark">{{ doc.requirement.name }}</p>
+                    <p class="text-xs text-gray-500">{{ doc.get_status_display }}</p>
+                    {% if doc.status == 'rejected' and doc.rejection_reason %}
+                    <p class="text-xs text-red-600 mt-0.5">Grund: {{ doc.rejection_reason }}</p>
+                    {% endif %}
+                </div>
+
+                <div class="flex items-center gap-2 flex-shrink-0">
+                    {% if doc.generated_file %}
+                    <a href="{% url 'documents:document_download' doc.pk %}"
+                       class="text-xs text-schule-gsh hover:underline">PDF</a>
+                    {% endif %}
+                    {% if doc.status == 'sent' or doc.status == 'rejected' %}
+                    <form method="post" action="{% url 'documents:document_upload' doc.pk %}"
+                          enctype="multipart/form-data"
+                          class="inline" x-data="{ showUp: false }">
+                        {% csrf_token %}
+                        <button type="button" @click="showUp = !showUp"
+                                class="text-xs bg-schule-gsh text-white px-2 py-1 rounded hover:bg-blue-600">
+                            Hochladen
+                        </button>
+                        <div x-show="showUp" x-transition class="absolute mt-1 bg-white shadow-lg rounded p-3 z-10">
+                            <input type="file" name="file" accept=".pdf,.jpg,.jpeg,.png" class="text-xs">
+                            <button type="submit" class="mt-1 text-xs bg-credo-dark text-white px-2 py-1 rounded">
+                                Absenden
+                            </button>
+                        </div>
+                    </form>
+                    {% endif %}
+                </div>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    {# ------------------------------------------------------------------ #}
+    {# Schnellzugriff                                                      #}
+    {# ------------------------------------------------------------------ #}
+    <h2 class="text-xl font-bold text-credo-dark mt-10 mb-4">Schnellzugriff</h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+        <a href="{% url 'timetracking:time_entry_list' %}"
+           class="bg-white rounded-lg shadow p-6 border-l-4 border-credo-dark hover:shadow-md transition-shadow group">
+            <div class="flex items-center">
+                <div class="flex-shrink-0 h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center">
+                    <svg class="h-5 w-5 text-credo-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                </div>
+                <div class="ml-4">
+                    <h3 class="text-lg font-semibold text-credo-dark group-hover:text-gray-600 transition-colors">
+                        Stunden erfassen
+                    </h3>
+                    <p class="text-sm text-gray-500">Arbeitszeiten eintragen</p>
+                </div>
+            </div>
+        </a>
+
+        <a href="{% url 'accounts:profile' %}"
+           class="bg-white rounded-lg shadow p-6 border-l-4 border-schule-gsh hover:shadow-md transition-shadow group">
+            <div class="flex items-center">
+                <div class="flex-shrink-0 h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+                    <svg class="h-5 w-5 text-schule-gsh" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                    </svg>
+                </div>
+                <div class="ml-4">
+                    <h3 class="text-lg font-semibold text-credo-dark group-hover:text-schule-gsh transition-colors">
+                        Mein Profil
+                    </h3>
+                    <p class="text-sm text-gray-500">Persoenliche Daten einsehen</p>
+                </div>
+            </div>
+        </a>
+
+    </div>
+
+</div>
+{% endblock %}

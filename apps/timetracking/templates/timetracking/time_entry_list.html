@@ -1,0 +1,236 @@
+{% extends "base.html" %}
+
+{% block title %}Meine Stunden – {{ month_name }} {{ year }}{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+    <h1 class="text-2xl font-bold text-credo-dark mb-6">Meine Stunden</h1>
+
+    {# ---- Month navigation ---- #}
+    <div class="flex items-center justify-between mb-4">
+        <a href="?month={{ prev_month }}&year={{ prev_year }}{% if school_filter_id %}&school_filter={{ school_filter_id }}{% endif %}"
+           class="text-sm font-medium text-credo-dark hover:text-schule-gsh transition-colors">
+            &larr; Vormonat
+        </a>
+        <h2 class="text-xl font-semibold text-credo-dark">{{ month_name }} {{ year }}</h2>
+        <a href="?month={{ next_month }}&year={{ next_year }}{% if school_filter_id %}&school_filter={{ school_filter_id }}{% endif %}"
+           class="text-sm font-medium text-credo-dark hover:text-schule-gsh transition-colors">
+            Folgemonat &rarr;
+        </a>
+    </div>
+
+    {# ---- School filter ---- #}
+    {% if betreuer_schools %}
+    <div class="mb-6">
+        <form method="get" class="flex items-center gap-3">
+            <input type="hidden" name="month" value="{{ month }}">
+            <input type="hidden" name="year" value="{{ year }}">
+            <label for="school_filter" class="text-sm font-medium text-credo-dark whitespace-nowrap">
+                Schule filtern:
+            </label>
+            <select id="school_filter" name="school_filter"
+                    onchange="this.form.submit()"
+                    class="rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-credo-dark">
+                <option value="">Alle Schulen</option>
+                {% for s in betreuer_schools %}
+                <option value="{{ s.pk }}" {% if school_filter_id == s.pk|stringformat:"s" %}selected{% endif %}>
+                    {{ s.code }} – {{ s.name }}
+                </option>
+                {% endfor %}
+            </select>
+        </form>
+    </div>
+    {% endif %}
+
+    {% if not contract_data %}
+    <div class="bg-white rounded-lg shadow p-8 text-center text-gray-500">
+        Keine aktiven Vertr&auml;ge vorhanden.
+    </div>
+    {% endif %}
+
+    {# ---- Per contract: entries + actions ---- #}
+    {% for cd in contract_data %}
+    <div class="bg-white rounded-lg shadow mb-6">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="text-lg font-semibold text-credo-dark">
+                        {{ cd.contract.school.code }} &ndash; {{ cd.contract.activity_type.name }}
+                        {% if cd.contract.ag_name %}({{ cd.contract.ag_name }}){% endif %}
+                    </h3>
+                    <p class="text-sm text-gray-500">
+                        {{ cd.contract.contract_number }} | {{ cd.contract.effective_rate }} EUR / {{ cd.contract.hour_duration }} min
+                        {% for fp in cd.contract.foerderprogramme.all %}
+                        <span class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-blue-50 text-blue-700">
+                            {{ fp.name }}{% if fp.kostenstelle %} ({{ fp.kostenstelle.code }}){% endif %}
+                        </span>
+                        {% endfor %}
+                    </p>
+                </div>
+                <div>
+                    {% if cd.timesheet %}
+                        {% if cd.timesheet.status == 'submitted' %}
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">Eingereicht</span>
+                        {% elif cd.timesheet.status == 'approved' %}
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">Genehmigt</span>
+                        {% elif cd.timesheet.status == 'rejected' %}
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">Abgelehnt</span>
+                        {% else %}
+                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">Entwurf</span>
+                        {% endif %}
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="px-6 py-4">
+            {% if cd.entries %}
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="text-left text-gray-500 border-b">
+                        <th scope="col" class="py-2 pr-4">Datum</th>
+                        <th scope="col" class="py-2 pr-4">Von</th>
+                        <th scope="col" class="py-2 pr-4">Bis</th>
+                        <th scope="col" class="py-2 pr-4">Pause</th>
+                        <th scope="col" class="py-2 pr-4">Dauer</th>
+                        <th scope="col" class="py-2 pr-4">F&ouml;rderprogramm</th>
+                        <th scope="col" class="py-2 pr-4">Beschreibung</th>
+                        <th scope="col" class="py-2 text-right">Aktionen</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for entry in cd.entries %}
+                    <tr class="border-b border-gray-100 hover:bg-gray-50">
+                        <td class="py-2 pr-4">{{ entry.date|date:"d.m." }}</td>
+                        <td class="py-2 pr-4">{{ entry.start_time|time:"H:i" }}</td>
+                        <td class="py-2 pr-4">{{ entry.end_time|time:"H:i" }}</td>
+                        <td class="py-2 pr-4">{% if entry.break_minutes %}{{ entry.break_minutes }} min{% else %}-{% endif %}</td>
+                        <td class="py-2 pr-4 font-medium">{{ entry.duration_minutes }} min</td>
+                        <td class="py-2 pr-4 text-gray-500">
+                            {% if entry.foerderprogramm %}
+                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-blue-50 text-blue-700">{{ entry.foerderprogramm.name }}</span>
+                            {% else %}
+                            <span class="text-gray-400">-</span>
+                            {% endif %}
+                        </td>
+                        <td class="py-2 pr-4 text-gray-500">{{ entry.description|default:"-" }}</td>
+                        <td class="py-2 text-right">
+                            {% if not cd.timesheet or cd.timesheet.status == 'draft' or cd.timesheet.status == 'rejected' %}
+                            <div class="flex items-center justify-end gap-2">
+                                <a href="{% url 'timetracking:time_entry_update' entry.pk %}"
+                                   class="text-xs text-schule-gsh hover:underline">Bearb.</a>
+                                <form method="post" action="{% url 'timetracking:time_entry_delete' entry.pk %}" class="inline">
+                                    {% csrf_token %}
+                                    <button type="submit" class="text-xs text-red-500 hover:underline"
+                                            onclick="return confirm('Eintrag loeschen?')">L&ouml;schen</button>
+                                </form>
+                            </div>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr class="font-semibold text-credo-dark">
+                        <td colspan="4" class="py-3 pr-4">Summe</td>
+                        <td class="py-3 pr-4">{{ cd.total_minutes }} min ({{ cd.total_hours }} Std.)</td>
+                        <td colspan="3"></td>
+                    </tr>
+                </tfoot>
+            </table>
+            {% else %}
+            <p class="text-sm text-gray-500 py-4">Keine Eintr&auml;ge in diesem Monat.</p>
+            {% endif %}
+        </div>
+
+        {# ---- Actions ---- #}
+        <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center gap-3">
+            {% if not cd.timesheet or cd.timesheet.status == 'draft' or cd.timesheet.status == 'rejected' %}
+            {# Add entry form (inline) #}
+            <div x-data="{ showForm: false }" class="flex-1">
+                <button type="button" @click="showForm = !showForm" :aria-expanded="showForm.toString()"
+                        class="bg-schule-gsh hover:bg-blue-600 text-white text-sm font-medium py-2 px-4 rounded-md transition-colors">
+                    + Stunde eintragen
+                </button>
+
+                <div x-show="showForm" x-transition class="mt-4">
+                    <form method="post" action="{% url 'timetracking:time_entry_create' %}"
+                          class="grid grid-cols-2 md:grid-cols-7 gap-3 items-end">
+                        {% csrf_token %}
+                        <input type="hidden" name="contract" value="{{ cd.contract.pk }}">
+                        <div>
+                            <label for="date_{{ cd.contract.pk }}" class="block text-xs text-gray-500 mb-1">Datum</label>
+                            <input id="date_{{ cd.contract.pk }}" type="date" name="date" required
+                                   min="{{ year }}-{{ month|stringformat:'02d' }}-01"
+                                   max="{{ year }}-{{ month|stringformat:'02d' }}-{{ month_last_day }}"
+                                   class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
+                        </div>
+                        <div>
+                            <label for="start_time_{{ cd.contract.pk }}" class="block text-xs text-gray-500 mb-1">Von</label>
+                            <input id="start_time_{{ cd.contract.pk }}" type="time" name="start_time" required
+                                   class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
+                        </div>
+                        <div>
+                            <label for="end_time_{{ cd.contract.pk }}" class="block text-xs text-gray-500 mb-1">Bis</label>
+                            <input id="end_time_{{ cd.contract.pk }}" type="time" name="end_time" required
+                                   class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
+                        </div>
+                        <div>
+                            <label for="break_minutes_{{ cd.contract.pk }}" class="block text-xs text-gray-500 mb-1">Pause (Min.)</label>
+                            <input id="break_minutes_{{ cd.contract.pk }}" type="number" name="break_minutes" value="0" min="0" max="120"
+                                   class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
+                        </div>
+                        {% if cd.foerderprogramme %}
+                        <div>
+                            <label for="foerderprogramm_{{ cd.contract.pk }}" class="block text-xs text-gray-500 mb-1">F&ouml;rderprogramm</label>
+                            <select id="foerderprogramm_{{ cd.contract.pk }}" name="foerderprogramm"
+                                    class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
+                                <option value="">— Kein Programm —</option>
+                                {% for fp in cd.foerderprogramme %}
+                                <option value="{{ fp.pk }}">{{ fp.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        {% endif %}
+                        <div>
+                            <label for="description_{{ cd.contract.pk }}" class="block text-xs text-gray-500 mb-1">Beschreibung</label>
+                            <input id="description_{{ cd.contract.pk }}" type="text" name="description" placeholder="Optional"
+                                   class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
+                        </div>
+                        <div>
+                            <button type="submit"
+                                    class="w-full bg-credo-dark hover:bg-gray-700 text-white text-sm font-medium py-2 px-4 rounded-md transition-colors">
+                                Speichern
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            {% if cd.entries %}
+            <form method="post" action="{% url 'timetracking:timesheet_submit' %}">
+                {% csrf_token %}
+                <input type="hidden" name="contract" value="{{ cd.contract.pk }}">
+                <input type="hidden" name="month" value="{{ month }}">
+                <input type="hidden" name="year" value="{{ year }}">
+                <button type="submit"
+                        class="bg-green-600 hover:bg-green-700 text-white text-sm font-medium py-2 px-4 rounded-md transition-colors"
+                        onclick="return confirm('Monat einreichen? Eintraege koennen danach nicht mehr geaendert werden.')">
+                    Monat einreichen
+                </button>
+            </form>
+            {% endif %}
+            {% endif %}
+
+            {% if cd.timesheet and cd.timesheet.status == 'rejected' and cd.timesheet.rejection_reason %}
+            <div class="text-sm text-red-600 ml-4">
+                Ablehnungsgrund: {{ cd.timesheet.rejection_reason }}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+
+</div>
+{% endblock %}

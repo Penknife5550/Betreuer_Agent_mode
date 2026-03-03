@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+
+{% block title %}Profil bearbeiten{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+    <div class="flex items-center justify-between mb-6">
+        <h1 class="text-2xl font-bold text-credo-dark">Profil bearbeiten</h1>
+        <a href="{% url 'accounts:profile' %}"
+           class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium py-2 px-4 rounded-md transition-colors">
+            Abbrechen
+        </a>
+    </div>
+
+    <form method="post" novalidate>
+        {% csrf_token %}
+
+        {# ---- Non-field errors ---- #}
+        {% if form.non_field_errors %}
+        <div class="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+            {% for error in form.non_field_errors %}
+            <p>{{ error }}</p>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {# ---- Address ---- #}
+        <div class="bg-white rounded-lg shadow p-6 mb-6">
+            <h2 class="text-lg font-semibold text-credo-dark mb-4">Adresse</h2>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div class="md:col-span-3">
+                    <label for="id_street" class="block text-sm font-medium text-gray-700 mb-1">
+                        {{ form.street.label }}
+                    </label>
+                    {{ form.street }}
+                    {% if form.street.errors %}
+                    <p class="mt-1 text-xs text-red-600">{{ form.street.errors.0 }}</p>
+                    {% endif %}
+                </div>
+                <div>
+                    <label for="id_house_number" class="block text-sm font-medium text-gray-700 mb-1">
+                        {{ form.house_number.label }}
+                    </label>
+                    {{ form.house_number }}
+                    {% if form.house_number.errors %}
+                    <p class="mt-1 text-xs text-red-600">{{ form.house_number.errors.0 }}</p>
+                    {% endif %}
+                </div>
+                <div class="md:col-span-1">
+                    <label for="id_plz" class="block text-sm font-medium text-gray-700 mb-1">
+                        {{ form.plz.label }}
+                    </label>
+                    {{ form.plz }}
+                    {% if form.plz.errors %}
+                    <p class="mt-1 text-xs text-red-600">{{ form.plz.errors.0 }}</p>
+                    {% endif %}
+                </div>
+                <div class="md:col-span-3">
+                    <label for="id_city" class="block text-sm font-medium text-gray-700 mb-1">
+                        {{ form.city.label }}
+                    </label>
+                    {{ form.city }}
+                    {% if form.city.errors %}
+                    <p class="mt-1 text-xs text-red-600">{{ form.city.errors.0 }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        {# ---- Phone ---- #}
+        <div class="bg-white rounded-lg shadow p-6 mb-6">
+            <h2 class="text-lg font-semibold text-credo-dark mb-4">Kontakt</h2>
+            <div class="max-w-sm">
+                <label for="id_phone" class="block text-sm font-medium text-gray-700 mb-1">
+                    {{ form.phone.label }}
+                </label>
+                {{ form.phone }}
+                {% if form.phone.errors %}
+                <p class="mt-1 text-xs text-red-600">{{ form.phone.errors.0 }}</p>
+                {% endif %}
+            </div>
+        </div>
+
+        {# ---- Bank Details ---- #}
+        <div class="bg-white rounded-lg shadow p-6 mb-6">
+            <h2 class="text-lg font-semibold text-credo-dark mb-4">Bankverbindung</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="md:col-span-2">
+                    <label for="id_kontoinhaber" class="block text-sm font-medium text-gray-700 mb-1">
+                        {{ form.kontoinhaber.label }}
+                    </label>
+                    {{ form.kontoinhaber }}
+                    {% if form.kontoinhaber.errors %}
+                    <p class="mt-1 text-xs text-red-600">{{ form.kontoinhaber.errors.0 }}</p>
+                    {% endif %}
+                </div>
+                <div>
+                    <label for="id_iban" class="block text-sm font-medium text-gray-700 mb-1">
+                        {{ form.iban.label }}
+                    </label>
+                    {{ form.iban }}
+                    {% if form.iban.errors %}
+                    <p class="mt-1 text-xs text-red-600">{{ form.iban.errors.0 }}</p>
+                    {% endif %}
+                </div>
+                <div>
+                    <label for="id_bic" class="block text-sm font-medium text-gray-700 mb-1">
+                        {{ form.bic.label }}
+                    </label>
+                    {{ form.bic }}
+                    {% if form.bic.errors %}
+                    <p class="mt-1 text-xs text-red-600">{{ form.bic.errors.0 }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        {# ---- Freibetrag Declaration ---- #}
+        <div class="bg-white rounded-lg shadow p-6 mb-6">
+            <h2 class="text-lg font-semibold text-credo-dark mb-4">Freibetrag-Erkl&auml;rung</h2>
+            <div class="space-y-4">
+                <div class="flex items-center gap-3">
+                    {{ form.freibetrag_used_elsewhere }}
+                    <label for="id_freibetrag_used_elsewhere" class="text-sm text-gray-700">
+                        {{ form.freibetrag_used_elsewhere.label }}
+                    </label>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4"
+                     x-data="{ show: {{ form.freibetrag_used_elsewhere.value|yesno:'true,false' }} }"
+                     x-show="show"
+                     x-transition>
+                    <div>
+                        <label for="id_freibetrag_amount_elsewhere" class="block text-sm font-medium text-gray-700 mb-1">
+                            {{ form.freibetrag_amount_elsewhere.label }}
+                        </label>
+                        {{ form.freibetrag_amount_elsewhere }}
+                        {% if form.freibetrag_amount_elsewhere.errors %}
+                        <p class="mt-1 text-xs text-red-600">{{ form.freibetrag_amount_elsewhere.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                    <div>
+                        <label for="id_freibetrag_verein_name" class="block text-sm font-medium text-gray-700 mb-1">
+                            {{ form.freibetrag_verein_name.label }}
+                        </label>
+                        {{ form.freibetrag_verein_name }}
+                        {% if form.freibetrag_verein_name.errors %}
+                        <p class="mt-1 text-xs text-red-600">{{ form.freibetrag_verein_name.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {# ---- Submit ---- #}
+        <div class="flex items-center gap-3">
+            <button type="submit"
+                    class="bg-credo-dark hover:bg-gray-700 text-white text-sm font-medium py-2 px-6 rounded-md transition-colors">
+                Speichern
+            </button>
+            <a href="{% url 'accounts:profile' %}"
+               class="text-sm text-gray-500 hover:text-gray-700">
+                Abbrechen
+            </a>
+        </div>
+    </form>
+
+</div>
+{% endblock %}

@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+
+{% block title %}Betreuer pruefen: {{ betreuer.user.get_full_name }}{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+    <h1 class="text-2xl font-bold text-credo-dark mb-2">Betreuer-Daten pruefen</h1>
+    <p class="text-sm text-gray-500 mb-6">
+        Pruefen Sie die Daten und bestaetigen Sie den Stundensatz fuer {{ betreuer.user.get_full_name }}.
+    </p>
+
+    {# Personal data summary #}
+    <div class="bg-white shadow rounded-lg p-6 mb-6">
+        <h2 class="text-lg font-semibold text-credo-dark mb-4 border-b border-gray-200 pb-2">Persoenliche Daten</h2>
+        <dl class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+            <dt class="text-gray-500">Name</dt>
+            <dd>{{ betreuer.get_anrede_display }} {{ betreuer.user.get_full_name }}</dd>
+            <dt class="text-gray-500">E-Mail</dt>
+            <dd>{{ betreuer.user.email }}</dd>
+            <dt class="text-gray-500">Geburtsdatum</dt>
+            <dd>{{ betreuer.geburtsdatum|date:"d.m.Y" }}</dd>
+            <dt class="text-gray-500">Adresse</dt>
+            <dd>{{ betreuer.full_address }}</dd>
+            <dt class="text-gray-500">Betreuer-Typ</dt>
+            <dd>
+                {{ betreuer.get_betreuer_type_display }}
+                {% if betreuer.is_external %}
+                <span class="ml-1 inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-orange-100 text-orange-700">Extern</span>
+                {% endif %}
+            </dd>
+        </dl>
+    </div>
+
+    {# Contracts & Rates #}
+    {% for contract in contracts %}
+    <div class="bg-white shadow rounded-lg p-6 mb-6">
+        <h2 class="text-lg font-semibold text-credo-dark mb-4 border-b border-gray-200 pb-2">
+            Vertrag: {{ contract.contract_number }}
+        </h2>
+        <dl class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+            <dt class="text-gray-500">Schule</dt>
+            <dd>{{ contract.school.name }} ({{ contract.school.code }})</dd>
+            {% with fps=contract.foerderprogramme.all %}{% if fps %}
+            <dt class="text-gray-500">Foerderprogramme</dt>
+            <dd>{% for fp in fps %}{{ fp.name }}{% if fp.kostenstelle %} ({{ fp.kostenstelle.code }}){% endif %}{% if not forloop.last %}, {% endif %}{% endfor %}</dd>
+            {% endif %}{% endwith %}
+            <dt class="text-gray-500">Schuljahr</dt>
+            <dd>{{ contract.school_year }}</dd>
+            <dt class="text-gray-500">Taetigkeit</dt>
+            <dd>{{ contract.activity_type }}{% if contract.ag_name %} – {{ contract.ag_name }}{% endif %}</dd>
+            <dt class="text-gray-500">Stundendauer</dt>
+            <dd>{{ contract.hour_duration }} Minuten</dd>
+            <dt class="text-gray-500">Stundensatz</dt>
+            <dd class="font-semibold text-green-700">{{ contract.effective_rate }} EUR</dd>
+            <dt class="text-gray-500">Zeitraum</dt>
+            <dd>{{ contract.start_date|date:"d.m.Y" }} – {{ contract.end_date|date:"d.m.Y" }}</dd>
+        </dl>
+    </div>
+    {% endfor %}
+
+    {# Freibetrag info #}
+    {% if betreuer.freibetrag_used_elsewhere %}
+    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6 text-sm">
+        <strong class="text-yellow-800">Hinweis:</strong>
+        <span class="text-yellow-700">
+            Freibetrag wird auch bei "{{ betreuer.freibetrag_verein_name }}" genutzt
+            ({{ betreuer.freibetrag_amount_elsewhere }} EUR).
+        </span>
+    </div>
+    {% endif %}
+
+    {# Confirm / Back buttons #}
+    <div class="flex justify-between">
+        <a href="{% url 'contracts:betreuer_detail' betreuer.pk %}"
+           class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-md text-sm transition-colors">
+            Zurueck
+        </a>
+        <form method="post">
+            {% csrf_token %}
+            <button type="submit"
+                    class="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-6 rounded-md text-sm transition-colors">
+                Daten bestaetigen & Dokumente freigeben
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,22 @@
+{# HTMX partial: Single time entry row. #}
+<tr class="border-b border-gray-100 hover:bg-gray-50">
+    <td class="py-2 pr-4">{{ entry.date|date:"d.m." }}</td>
+    <td class="py-2 pr-4">{{ entry.start_time|time:"H:i" }}</td>
+    <td class="py-2 pr-4">{{ entry.end_time|time:"H:i" }}</td>
+    <td class="py-2 pr-4">{% if entry.break_minutes %}{{ entry.break_minutes }} min{% else %}-{% endif %}</td>
+    <td class="py-2 pr-4 font-medium">{{ entry.duration_minutes }} min</td>
+    <td class="py-2 pr-4 text-gray-500">{{ entry.description|default:"-" }}</td>
+    <td class="py-2 text-right">
+        {% if editable %}
+        <div class="flex items-center justify-end gap-2">
+            <a href="{% url 'timetracking:time_entry_update' entry.pk %}"
+               class="text-xs text-schule-gsh hover:underline">Bearb.</a>
+            <form method="post" action="{% url 'timetracking:time_entry_delete' entry.pk %}" class="inline">
+                {% csrf_token %}
+                <button type="submit" class="text-xs text-red-500 hover:underline"
+                        onclick="return confirm('Eintrag loeschen?')">L&ouml;schen</button>
+            </form>
+        </div>
+        {% endif %}
+    </td>
+</tr>

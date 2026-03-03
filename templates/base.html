@@ -1,0 +1,334 @@
+{% load static %}<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}BetreuerApp{% endblock %} | CSFV</title>
+
+    <!-- Montserrat von Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Tailwind CSS via CDN (Development) -->
+    <!-- Production: Replace with compiled CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        'sans': ['Montserrat', 'Calibri', 'system-ui', 'sans-serif'],
+                    },
+                    colors: {
+                        'credo': {
+                            'dark': '#575756',
+                            'light': '#DADADA',
+                        },
+                        'schule': {
+                            'gym': '#FBC900',
+                            'ges': '#6BAA24',
+                            'gsm': '#E2001A',
+                            'gsh': '#009AC6',
+                            'gss': '#AD1C28',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="bg-gray-50 font-sans text-credo-dark min-h-screen flex flex-col"
+      hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+
+    {# ------------------------------------------------------------------ #}
+    {# Navigation (nur fuer eingeloggte Benutzer)                         #}
+    {# ------------------------------------------------------------------ #}
+    {% if user.is_authenticated %}
+    <nav class="bg-credo-dark shadow-sm" x-data="{ mobileOpen: false }">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+
+                {# Logo + App-Name #}
+                <div class="flex items-center">
+                    <img src="{% static 'img/logo_foerderverein.svg' %}"
+                         alt="CSFV"
+                         class="h-10 w-auto">
+                    <span class="ml-3 text-white text-lg font-semibold hidden sm:block">BetreuerApp</span>
+                </div>
+
+                {# Desktop Navigation #}
+                <div class="hidden md:flex items-center space-x-4">
+                    {% if user.is_superuser and not user.profile %}
+                    <a href="{% url 'dashboards:admin_dashboard' %}"
+                       class="text-gray-300 hover:text-white px-3 py-2 text-sm font-medium">
+                        Dashboard
+                    </a>
+                    <a href="{% url 'contracts:betreuer_list' %}"
+                       class="text-gray-300 hover:text-white px-3 py-2 text-sm font-medium">
+                        Betreuer
+                    </a>
+                    <a href="{% url 'timetracking:timesheet_list' %}"
+                       class="text-gray-300 hover:text-white px-3 py-2 text-sm font-medium">
+                        Nachweise
+                    </a>
+                    <a href="{% url 'contracts:registration_link_list' %}"
+                       class="text-gray-300 hover:text-white px-3 py-2 text-sm font-medium">
+                        Reg.-Links
+                    </a>
+                    <a href="{% url 'reports:monthly_overview' %}"
+                       class="text-gray-300 hover:text-white px-3 py-2 text-sm font-medium">
+                        Berichte
+                    </a>
+                    <a href="{% url 'admin:index' %}"
+                       class="text-gray-300 hover:text-white px-3 py-2 text-sm font-medium">
+                        Verwaltung
+                    </a>
+                    {% elif user.profile.is_admin %}
+                    <a href="{% url 'dashboards:admin_dashboard' %}"
+                       class="text-gray-300 hover:text-white px-3 py-2 text-sm font-medium">
+                        Dashboard
+                    </a>
+                    <a href="{% url 'contracts:betreuer_list' %}"
+                       class="text-gray-300 hover:text-white px-3 py-2 text-sm font-medium">
+                        Betreuer
+                    </a>
+                    <a href="{% url 'timetracking:timesheet_list' %}"
+                       class="text-gray-300 hover:text-white px-3 py-2 text-sm font-medium">
+                        Nachweise
+                    </a>
+                    <a href="{% url 'contracts:registration_link_list' %}"
+                       class="text-gray-300 hover:text-white px-3 py-2 text-sm font-medium">
+                        Reg.-Links
+                    </a>
+                    <a href="{% url 'reports:monthly_overview' %}"
+                       class="text-gray-300 hover:text-white px-3 py-2 text-sm font-medium">
+                        Berichte
+                    </a>
+                    <a href="{% url 'admin:index' %}"
+                       class="text-gray-300 hover:text-white px-3 py-2 text-sm font-medium">
+                        Verwaltung
+                    </a>
+                    {% elif user.profile.is_koordinator %}
+                    <a href="{% url 'dashboards:koordinator_dashboard' %}"
+                       class="text-gray-300 hover:text-white px-3 py-2 text-sm font-medium">
+                        Dashboard
+                    </a>
+                    <a href="{% url 'contracts:betreuer_list' %}"
+                       class="text-gray-300 hover:text-white px-3 py-2 text-sm font-medium">
+                        Betreuer
+                    </a>
+                    <a href="{% url 'timetracking:timesheet_list' %}"
+                       class="text-gray-300 hover:text-white px-3 py-2 text-sm font-medium">
+                        Nachweise
+                    </a>
+                    <a href="{% url 'contracts:registration_link_list' %}"
+                       class="text-gray-300 hover:text-white px-3 py-2 text-sm font-medium">
+                        Reg.-Links
+                    </a>
+                    <a href="{% url 'reports:monthly_overview' %}"
+                       class="text-gray-300 hover:text-white px-3 py-2 text-sm font-medium">
+                        Berichte
+                    </a>
+                    {% elif user.profile.is_betreuer %}
+                    <a href="{% url 'dashboards:betreuer_dashboard' %}"
+                       class="text-gray-300 hover:text-white px-3 py-2 text-sm font-medium">
+                        Dashboard
+                    </a>
+                    <a href="{% url 'timetracking:time_entry_list' %}"
+                       class="text-gray-300 hover:text-white px-3 py-2 text-sm font-medium">
+                        Stunden
+                    </a>
+                    {% endif %}
+
+                    {# User-Dropdown #}
+                    <div class="relative" x-data="{ open: false }">
+                        <button @click="open = !open"
+                                class="flex items-center text-gray-300 hover:text-white text-sm font-medium">
+                            <span>{{ user.get_full_name|default:user.username }}</span>
+                            <svg class="ml-1 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M19 9l-7 7-7-7"/>
+                            </svg>
+                        </button>
+                        <div x-show="open"
+                             @click.away="open = false"
+                             x-transition
+                             class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50">
+                            <a href="{% url 'accounts:profile' %}"
+                               class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                Mein Profil
+                            </a>
+                            <a href="{% url 'accounts:logout' %}"
+                               class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                Abmelden
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                {# Mobile-Menu-Button #}
+                <button @click="mobileOpen = !mobileOpen"
+                        class="md:hidden text-gray-300 hover:text-white">
+                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path x-show="!mobileOpen"
+                              stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M4 6h16M4 12h16M4 18h16"/>
+                        <path x-show="mobileOpen"
+                              stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        {# Mobile Navigation #}
+        <div x-show="mobileOpen"
+             x-transition
+             class="md:hidden bg-credo-dark border-t border-gray-600">
+            <div class="px-4 pt-2 pb-3 space-y-1">
+                {% if user.is_superuser and not user.profile %}
+                <a href="{% url 'dashboards:admin_dashboard' %}"
+                   class="block text-gray-300 hover:text-white px-3 py-2 text-base font-medium">
+                    Dashboard
+                </a>
+                <a href="{% url 'contracts:betreuer_list' %}"
+                   class="block text-gray-300 hover:text-white px-3 py-2 text-base font-medium">
+                    Betreuer
+                </a>
+                <a href="{% url 'timetracking:timesheet_list' %}"
+                   class="block text-gray-300 hover:text-white px-3 py-2 text-base font-medium">
+                    Stundennachweise
+                </a>
+                <a href="{% url 'contracts:registration_link_list' %}"
+                   class="block text-gray-300 hover:text-white px-3 py-2 text-base font-medium">
+                    Registrierungslinks
+                </a>
+                <a href="{% url 'admin:index' %}"
+                   class="block text-gray-300 hover:text-white px-3 py-2 text-base font-medium">
+                    Verwaltung
+                </a>
+                {% elif user.profile.is_admin %}
+                <a href="{% url 'dashboards:admin_dashboard' %}"
+                   class="block text-gray-300 hover:text-white px-3 py-2 text-base font-medium">
+                    Dashboard
+                </a>
+                <a href="{% url 'contracts:betreuer_list' %}"
+                   class="block text-gray-300 hover:text-white px-3 py-2 text-base font-medium">
+                    Betreuer
+                </a>
+                <a href="{% url 'timetracking:timesheet_list' %}"
+                   class="block text-gray-300 hover:text-white px-3 py-2 text-base font-medium">
+                    Stundennachweise
+                </a>
+                <a href="{% url 'contracts:registration_link_list' %}"
+                   class="block text-gray-300 hover:text-white px-3 py-2 text-base font-medium">
+                    Registrierungslinks
+                </a>
+                <a href="{% url 'admin:index' %}"
+                   class="block text-gray-300 hover:text-white px-3 py-2 text-base font-medium">
+                    Verwaltung
+                </a>
+                {% elif user.profile.is_koordinator %}
+                <a href="{% url 'dashboards:koordinator_dashboard' %}"
+                   class="block text-gray-300 hover:text-white px-3 py-2 text-base font-medium">
+                    Dashboard
+                </a>
+                <a href="{% url 'contracts:betreuer_list' %}"
+                   class="block text-gray-300 hover:text-white px-3 py-2 text-base font-medium">
+                    Betreuer
+                </a>
+                <a href="{% url 'timetracking:timesheet_list' %}"
+                   class="block text-gray-300 hover:text-white px-3 py-2 text-base font-medium">
+                    Stundennachweise
+                </a>
+                <a href="{% url 'contracts:registration_link_list' %}"
+                   class="block text-gray-300 hover:text-white px-3 py-2 text-base font-medium">
+                    Registrierungslinks
+                </a>
+                {% elif user.profile.is_betreuer %}
+                <a href="{% url 'dashboards:betreuer_dashboard' %}"
+                   class="block text-gray-300 hover:text-white px-3 py-2 text-base font-medium">
+                    Dashboard
+                </a>
+                <a href="{% url 'timetracking:time_entry_list' %}"
+                   class="block text-gray-300 hover:text-white px-3 py-2 text-base font-medium">
+                    Stunden
+                </a>
+                {% endif %}
+                <a href="{% url 'accounts:profile' %}"
+                   class="block text-gray-300 hover:text-white px-3 py-2 text-base font-medium">
+                    Mein Profil
+                </a>
+                <a href="{% url 'accounts:logout' %}"
+                   class="block text-gray-300 hover:text-white px-3 py-2 text-base font-medium">
+                    Abmelden
+                </a>
+            </div>
+        </div>
+    </nav>
+    {% endif %}
+
+    {# ------------------------------------------------------------------ #}
+    {# Messages (Django Messages Framework)                                #}
+    {# ------------------------------------------------------------------ #}
+    {% if messages %}
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
+        {% for message in messages %}
+        <div class="mb-2 p-4 rounded-md
+                    {% if message.tags == 'success' %}bg-green-50 text-green-800 border border-green-200
+                    {% elif message.tags == 'error' %}bg-red-50 text-red-800 border border-red-200
+                    {% elif message.tags == 'warning' %}bg-yellow-50 text-yellow-800 border border-yellow-200
+                    {% else %}bg-blue-50 text-blue-800 border border-blue-200{% endif %}"
+             x-data="{ show: true }"
+             x-show="show"
+             x-transition>
+            <div class="flex justify-between items-start">
+                <span>{{ message }}</span>
+                <button @click="show = false"
+                        class="ml-4 text-sm font-medium opacity-70 hover:opacity-100">
+                    &times;
+                </button>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {# ------------------------------------------------------------------ #}
+    {# Main Content                                                        #}
+    {# ------------------------------------------------------------------ #}
+    <main class="flex-1">
+        {% block content %}{% endblock %}
+    </main>
+
+    {# ------------------------------------------------------------------ #}
+    {# Footer mit CREDO-Linie                                              #}
+    {# ------------------------------------------------------------------ #}
+    <footer class="mt-auto">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div class="text-center text-xs text-gray-400 mb-2">
+                &copy; {{ current_year|default:"2026" }} Christlicher Schulf&ouml;rderverein Minden e.V.
+            </div>
+        </div>
+        {# CREDO-Linie: grauer Balken (50%) + Gelb (12.5%) + Gruen (12.5%) + Rot (12.5%) + Blau (12.5%) #}
+        <div class="flex items-stretch h-2">
+            <div style="width: 50%; background-color: #575756;"></div>
+            <div style="width: 12.5%; background-color: #FBC900;"></div>
+            <div style="width: 12.5%; background-color: #6BAA24;"></div>
+            <div style="width: 12.5%; background-color: #E2001A;"></div>
+            <div style="width: 12.5%; background-color: #009AC6;"></div>
+        </div>
+    </footer>
+
+    {# ------------------------------------------------------------------ #}
+    {# Scripts: HTMX zuerst, dann Alpine.js                               #}
+    {# ------------------------------------------------------------------ #}
+    <script src="{% static 'js/htmx.min.js' %}"></script>
+    <script defer src="{% static 'js/alpine.min.js' %}"></script>
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

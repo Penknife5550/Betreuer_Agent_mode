@@ -1,0 +1,5 @@
+{# HTMX partial: <option> elements for foerderprogramm select. #}
+<option value="">— Kein Programm —</option>
+{% for fp in foerderprogramme %}
+<option value="{{ fp.pk }}">{{ fp.name }}</option>
+{% endfor %}

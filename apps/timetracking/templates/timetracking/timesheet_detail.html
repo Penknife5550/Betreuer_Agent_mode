@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+
+{% block title %}Nachweis {{ timesheet.month|stringformat:"02d" }}/{{ timesheet.year }}{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+    {# ---- Header ---- #}
+    <div class="flex items-center justify-between mb-6">
+        <div>
+            <h1 class="text-2xl font-bold text-credo-dark">
+                Stundennachweis {{ timesheet.month|stringformat:"02d" }}/{{ timesheet.year }}
+            </h1>
+            <p class="text-sm text-gray-500 mt-1">
+                {{ timesheet.contract.betreuer.user.get_full_name }}
+                &ndash; {{ timesheet.contract.school.code }}
+                &ndash; {{ timesheet.contract.activity_type.name }}
+                ({{ timesheet.contract.contract_number }})
+            </p>
+        </div>
+        <div>
+            {% if timesheet.status == 'submitted' %}
+            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800">Eingereicht</span>
+            {% elif timesheet.status == 'approved' %}
+            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">Genehmigt</span>
+            {% elif timesheet.status == 'rejected' %}
+            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800">Abgelehnt</span>
+            {% else %}
+            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-600">Entwurf</span>
+            {% endif %}
+        </div>
+    </div>
+
+    {# ---- Summary Card ---- #}
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div class="bg-white rounded-lg shadow p-4 text-center">
+            <p class="text-sm text-gray-500">Eintraege</p>
+            <p class="text-2xl font-bold text-credo-dark">{{ entries|length }}</p>
+        </div>
+        <div class="bg-white rounded-lg shadow p-4 text-center">
+            <p class="text-sm text-gray-500">Stunden</p>
+            <p class="text-2xl font-bold text-credo-dark">{{ timesheet.total_hours }}</p>
+        </div>
+        <div class="bg-white rounded-lg shadow p-4 text-center">
+            <p class="text-sm text-gray-500">Stundensatz</p>
+            <p class="text-2xl font-bold text-credo-dark">{{ timesheet.contract.effective_rate }} &euro;</p>
+        </div>
+        <div class="bg-white rounded-lg shadow p-4 text-center">
+            <p class="text-sm text-gray-500">Betrag</p>
+            <p class="text-2xl font-bold text-credo-dark">{{ timesheet.total_amount }} &euro;</p>
+        </div>
+    </div>
+
+    {# ---- Entries Table ---- #}
+    <div class="bg-white rounded-lg shadow mb-6">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h2 class="text-lg font-semibold text-credo-dark">Einzelne Eintraege</h2>
+        </div>
+        <div class="px-6 py-4">
+            {% if entries %}
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="text-left text-gray-500 border-b">
+                        <th class="py-2 pr-4">Datum</th>
+                        <th class="py-2 pr-4">Von</th>
+                        <th class="py-2 pr-4">Bis</th>
+                        <th class="py-2 pr-4">Pause</th>
+                        <th class="py-2 pr-4">Dauer</th>
+                        <th class="py-2 pr-4">F&ouml;rderprogramm</th>
+                        <th class="py-2 pr-4">Kostenstelle</th>
+                        <th class="py-2 pr-4">Beschreibung</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for entry in entries %}
+                    <tr class="border-b border-gray-100">
+                        <td class="py-2 pr-4">{{ entry.date|date:"d.m.Y" }}</td>
+                        <td class="py-2 pr-4">{{ entry.start_time|time:"H:i" }}</td>
+                        <td class="py-2 pr-4">{{ entry.end_time|time:"H:i" }}</td>
+                        <td class="py-2 pr-4">{% if entry.break_minutes %}{{ entry.break_minutes }} min{% else %}-{% endif %}</td>
+                        <td class="py-2 pr-4 font-medium">{{ entry.duration_minutes }} min</td>
+                        <td class="py-2 pr-4 text-gray-500">
+                            {% if entry.foerderprogramm %}
+                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-blue-50 text-blue-700">{{ entry.foerderprogramm.name }}</span>
+                            {% else %}-{% endif %}
+                        </td>
+                        <td class="py-2 pr-4 text-gray-500">
+                            {% if entry.foerderprogramm and entry.foerderprogramm.kostenstelle %}
+                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-gray-100 text-gray-600">{{ entry.foerderprogramm.kostenstelle.code }}</span>
+                            {% else %}-{% endif %}
+                        </td>
+                        <td class="py-2 pr-4 text-gray-500">{{ entry.description|default:"-" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p class="text-sm text-gray-500 py-4">Keine Eintraege vorhanden.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    {# ---- Rejection Reason (if rejected) ---- #}
+    {% if timesheet.status == 'rejected' and timesheet.rejection_reason %}
+    <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+        <h3 class="text-sm font-semibold text-red-800 mb-1">Ablehnungsgrund</h3>
+        <p class="text-sm text-red-700">{{ timesheet.rejection_reason }}</p>
+    </div>
+    {% endif %}
+
+    {# ---- Actions ---- #}
+    <div class="flex items-center gap-3">
+        {% if timesheet.status == 'submitted' %}
+        <form method="post" action="{% url 'timetracking:timesheet_approve' timesheet.pk %}">
+            {% csrf_token %}
+            <button type="submit"
+                    class="bg-green-600 hover:bg-green-700 text-white text-sm font-medium py-2 px-6 rounded-md transition-colors"
+                    onclick="return confirm('Nachweis genehmigen?')">
+                Genehmigen
+            </button>
+        </form>
+
+        <div x-data="{ showReject: false }">
+            <button @click="showReject = !showReject"
+                    class="bg-red-500 hover:bg-red-600 text-white text-sm font-medium py-2 px-6 rounded-md transition-colors">
+                Ablehnen
+            </button>
+            <div x-show="showReject" x-transition class="mt-3">
+                <form method="post" action="{% url 'timetracking:timesheet_reject' timesheet.pk %}"
+                      class="flex items-end gap-3">
+                    {% csrf_token %}
+                    <div class="flex-1">
+                        <label class="block text-xs text-gray-500 mb-1">Ablehnungsgrund</label>
+                        <input type="text" name="rejection_reason" required
+                               placeholder="Grund der Ablehnung..."
+                               class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
+                    </div>
+                    <button type="submit"
+                            class="bg-red-600 hover:bg-red-700 text-white text-sm font-medium py-2 px-4 rounded-md transition-colors">
+                        Ablehnen best&auml;tigen
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if timesheet.status == 'approved' and timesheet.generated_pdf %}
+        <a href="{% url 'timetracking:timesheet_pdf_download' timesheet.pk %}"
+           class="inline-flex items-center gap-2 bg-credo-dark hover:bg-gray-700 text-white text-sm font-medium py-2 px-6 rounded-md transition-colors">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
+            PDF herunterladen
+        </a>
+        {% endif %}
+
+        <a href="{% url 'timetracking:timesheet_list' %}"
+           class="bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium py-2 px-6 rounded-md transition-colors">
+            Zur&uuml;ck zur Liste
+        </a>
+    </div>
+
+    {# ---- Meta information ---- #}
+    <div class="mt-6 text-xs text-gray-400 space-y-1">
+        {% if timesheet.submitted_at %}
+        <p>Eingereicht: {{ timesheet.submitted_at|date:"d.m.Y H:i" }}</p>
+        {% endif %}
+        {% if timesheet.approved_at and timesheet.status == 'approved' %}
+        <p>Genehmigt: {{ timesheet.approved_at|date:"d.m.Y H:i" }} von {{ timesheet.approved_by.get_full_name }}</p>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}

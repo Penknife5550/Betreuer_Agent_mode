@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>N8N Workflows einrichten – Schritt-für-Schritt</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { 'sans': ['Montserrat', 'Calibri', 'system-ui', 'sans-serif'] },
+                    colors: {
+                        'credo': { 'dark': '#575756', 'light': '#DADADA' },
+                        'n8n': '#EA4B71'
+                    }
+                }
+            }
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        html { scroll-behavior: smooth; }
+        .step-circle {
+            width: 2.2rem; height: 2.2rem;
+            border-radius: 50%;
+            display: inline-flex; align-items: center; justify-content: center;
+            font-weight: 700; font-size: 1rem;
+            flex-shrink: 0;
+        }
+        .screenshot-frame {
+            border: 2px solid #e5e7eb;
+            border-radius: 0.5rem;
+            background: #f9fafb;
+            padding: 0.75rem;
+            margin: 0.75rem 0;
+        }
+        .code-box {
+            background: #1e293b;
+            color: #e2e8f0;
+            border-radius: 0.5rem;
+            padding: 1rem 1.25rem;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            line-height: 1.6;
+            overflow-x: auto;
+            margin: 0.5rem 0;
+        }
+        .code-key  { color: #93c5fd; }
+        .code-val  { color: #86efac; }
+        .code-str  { color: #fde68a; }
+        .callout-info    { background:#eff6ff; border-left:4px solid #3b82f6; }
+        .callout-warn    { background:#fffbeb; border-left:4px solid #f59e0b; }
+        .callout-tip     { background:#f0fdf4; border-left:4px solid #22c55e; }
+        .callout-danger  { background:#fef2f2; border-left:4px solid #ef4444; }
+        nav a:hover { color: #EA4B71; }
+        .workflow-badge {
+            display: inline-block;
+            border-radius: 9999px;
+            padding: 0.15rem 0.75rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .node-box {
+            border: 2px solid #e5e7eb;
+            border-radius: 0.5rem;
+            padding: 0.6rem 1rem;
+            background: white;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+        .arrow { color: #9ca3af; font-size: 1.5rem; margin: 0 0.25rem; }
+        .node-flow {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 0.25rem;
+            padding: 1rem;
+            background: #f8fafc;
+            border-radius: 0.5rem;
+            border: 1px solid #e5e7eb;
+            margin: 0.75rem 0;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans text-credo-dark">
+
+<!-- Sidebar Navigation -->
+<div class="flex min-h-screen">
+    <nav class="w-72 bg-white border-r border-gray-200 fixed top-0 left-0 h-full overflow-y-auto hidden lg:block z-20">
+        <div class="p-5 border-b border-gray-100">
+            <div class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">N8N Einrichtung</div>
+            <div class="text-lg font-bold text-credo-dark">Workflows anlegen</div>
+        </div>
+        <div class="p-4 space-y-1 text-sm">
+            <a href="#vorbereitung" class="block px-3 py-2 rounded-md text-credo-dark hover:bg-gray-50 font-semibold">🔧 Vorbereitung</a>
+            <a href="#verbindung"   class="block px-3 py-2 rounded-md text-credo-dark hover:bg-gray-50 font-semibold">🔗 App verbinden</a>
+
+            <div class="pt-3 pb-1 px-3 text-xs font-bold text-gray-400 uppercase tracking-wider">Workflows</div>
+            <a href="#wf1" class="block px-3 py-2 rounded-md text-credo-dark hover:bg-gray-50">① Betreuer-Registrierung</a>
+            <a href="#wf2" class="block px-3 py-2 rounded-md text-credo-dark hover:bg-gray-50">② Stundennachweis genehmigt</a>
+            <a href="#wf3" class="block px-3 py-2 rounded-md text-credo-dark hover:bg-gray-50">③ Freibetrag-Warnung</a>
+            <a href="#wf4" class="block px-3 py-2 rounded-md text-credo-dark hover:bg-gray-50">④ Dokument läuft ab</a>
+            <a href="#wf5" class="block px-3 py-2 rounded-md text-credo-dark hover:bg-gray-50">⑤ Dokument abgelaufen</a>
+
+            <div class="pt-3 pb-1 px-3 text-xs font-bold text-gray-400 uppercase tracking-wider">Abschluss</div>
+            <a href="#testen"   class="block px-3 py-2 rounded-md text-credo-dark hover:bg-gray-50">✅ Testen</a>
+            <a href="#checkliste" class="block px-3 py-2 rounded-md text-credo-dark hover:bg-gray-50">☑️ Checkliste</a>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="lg:ml-72 flex-1 max-w-4xl mx-auto px-6 py-10">
+
+        <!-- Header -->
+        <div class="mb-10">
+            <div class="text-sm text-gray-400 mb-1">BetreuerApp · CSFV Minden</div>
+            <h1 class="text-3xl font-bold text-credo-dark mb-3">N8N Workflows einrichten</h1>
+            <p class="text-gray-600 text-lg">Schritt-für-Schritt Anleitung für alle E-Mail-Automatisierungen der BetreuerApp.</p>
+            <div class="callout-info rounded-lg p-4 mt-4 text-sm text-blue-800">
+                <strong>Was ist N8N?</strong> N8N ist eine Automatisierungs-Software. Sie empfängt Meldungen von der BetreuerApp
+                (z.B. „neuer Betreuer registriert") und sendet daraufhin automatisch E-Mails. Sie müssen kein Programmierer sein –
+                diese Anleitung führt Sie Schritt für Schritt durch alles.
+            </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <!-- VORBEREITUNG                                                -->
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <section id="vorbereitung" class="mb-12">
+            <h2 class="text-2xl font-bold text-credo-dark mb-6 pb-2 border-b border-gray-200">🔧 Vorbereitung</h2>
+
+            <div class="callout-warn rounded-lg p-4 mb-6 text-sm text-yellow-800">
+                <strong>Voraussetzungen:</strong> N8N muss bereits installiert und erreichbar sein
+                (z.B. unter <code>http://ihr-server:5678</code>). Falls N8N noch nicht installiert ist,
+                wenden Sie sich bitte an Ihren IT-Administrator.
+            </div>
+
+            <div class="space-y-4">
+                <div class="flex gap-4">
+                    <span class="step-circle bg-credo-dark text-white">1</span>
+                    <div>
+                        <div class="font-semibold mb-1">N8N öffnen</div>
+                        <p class="text-sm text-gray-600">Rufen Sie N8N in Ihrem Browser auf, z.B. <code class="bg-gray-100 px-1 rounded">http://ihr-server:5678</code> und melden Sie sich an.</p>
+                    </div>
+                </div>
+                <div class="flex gap-4">
+                    <span class="step-circle bg-credo-dark text-white">2</span>
+                    <div>
+                        <div class="font-semibold mb-1">E-Mail-Konto in N8N hinterlegen</div>
+                        <p class="text-sm text-gray-600 mb-2">Damit N8N E-Mails versenden kann, muss einmalig ein E-Mail-Konto eingerichtet werden:</p>
+                        <ol class="text-sm text-gray-700 list-decimal ml-4 space-y-1">
+                            <li>Klicken Sie oben rechts auf Ihren Namen → <strong>Settings</strong></li>
+                            <li>Links auf <strong>Credentials</strong> → <strong>Add Credential</strong></li>
+                            <li>Suchen Sie nach <strong>SMTP</strong></li>
+                            <li>Tragen Sie die SMTP-Daten Ihres E-Mail-Anbieters ein (Fragen Sie ggf. Ihren IT-Admin)</li>
+                            <li>Klicken Sie auf <strong>Test</strong> → dann <strong>Save</strong></li>
+                        </ol>
+                        <div class="callout-tip rounded-lg p-3 mt-2 text-xs text-green-800">
+                            <strong>Tipp:</strong> Bei Microsoft 365 / Exchange: Host = <code>smtp.office365.com</code>, Port = <code>587</code>, STARTTLS aktivieren.
+                            Bei Google: <code>smtp.gmail.com</code>, Port = <code>465</code>, SSL aktivieren.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <!-- VERBINDUNG                                                  -->
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <section id="verbindung" class="mb-12">
+            <h2 class="text-2xl font-bold text-credo-dark mb-6 pb-2 border-b border-gray-200">🔗 BetreuerApp mit N8N verbinden</h2>
+            <p class="text-gray-600 mb-4">Einmalig muss die N8N-Adresse in der BetreuerApp eingetragen werden, damit die App weiß, wohin sie ihre Meldungen schicken soll.</p>
+
+            <div class="space-y-4">
+                <div class="flex gap-4">
+                    <span class="step-circle bg-credo-dark text-white">1</span>
+                    <div>
+                        <div class="font-semibold mb-1">Auf dem Server: Umgebungsvariable setzen</div>
+                        <p class="text-sm text-gray-600 mb-2">Öffnen Sie die Datei <code class="bg-gray-100 px-1 rounded">.env</code> im Hauptverzeichnis der BetreuerApp und tragen Sie folgendes ein:</p>
+                        <div class="code-box">
+<span class="code-key">N8N_WEBHOOK_BASE_URL</span>=<span class="code-str">http://ihr-n8n-server:5678</span>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1">Ersetzen Sie <code>ihr-n8n-server:5678</code> durch die tatsächliche Adresse Ihres N8N-Servers.</p>
+                    </div>
+                </div>
+                <div class="flex gap-4">
+                    <span class="step-circle bg-credo-dark text-white">2</span>
+                    <div>
+                        <div class="font-semibold mb-1">App neu starten</div>
+                        <p class="text-sm text-gray-600">Nach der Änderung muss die BetreuerApp neu gestartet werden:</p>
+                        <div class="code-box">docker restart betreuer_django</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="callout-info rounded-lg p-4 mt-4 text-sm text-blue-800">
+                <strong>Wie funktioniert das?</strong> Die BetreuerApp sendet bei bestimmten Aktionen automatisch
+                eine Meldung an N8N (an die Adresse <code>/webhook/betreuer-events</code>). N8N empfängt diese
+                Meldung und führt den passenden Workflow aus, z.B. eine E-Mail versenden.
+            </div>
+        </section>
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <!-- WORKFLOW-ERKLÄRUNG                                          -->
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <div class="bg-white rounded-xl border border-gray-200 p-6 mb-10">
+            <h3 class="font-bold text-lg mb-3">📋 Übersicht: Welche Workflows müssen angelegt werden?</h3>
+            <p class="text-sm text-gray-600 mb-4">Es gibt <strong>einen einzigen Webhook</strong> (Empfangspunkt) in N8N. Der erste Schritt jedes Workflows prüft, welcher <code>event_type</code> angekommen ist und reagiert entsprechend. Sie können entweder <strong>einen großen Workflow</strong> mit mehreren Zweigen anlegen oder <strong>5 separate Workflows</strong>. Diese Anleitung zeigt 5 separate Workflows – das ist für Nicht-Techniker übersichtlicher.</p>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="text-left border-b-2 border-gray-200">
+                            <th class="pb-2 pr-4">Workflow</th>
+                            <th class="pb-2 pr-4">Wann wird er ausgelöst?</th>
+                            <th class="pb-2">E-Mail geht an</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        <tr class="py-2">
+                            <td class="py-3 pr-4 font-semibold">① Betreuer-Registrierung</td>
+                            <td class="py-3 pr-4">Wenn sich ein neuer Betreuer registriert</td>
+                            <td class="py-3">Den neuen Betreuer (Passwort-Link)</td>
+                        </tr>
+                        <tr>
+                            <td class="py-3 pr-4 font-semibold">② Stundennachweis genehmigt</td>
+                            <td class="py-3 pr-4">Wenn ein Nachweis genehmigt wird</td>
+                            <td class="py-3">Buchhaltung (mit Betrag + PDF)</td>
+                        </tr>
+                        <tr>
+                            <td class="py-3 pr-4 font-semibold">③ Freibetrag-Warnung</td>
+                            <td class="py-3 pr-4">Wenn ein Betreuer 80/90/100% des Freibetrags erreicht</td>
+                            <td class="py-3">Admin / HR (Warnung)</td>
+                        </tr>
+                        <tr>
+                            <td class="py-3 pr-4 font-semibold">④ Dokument läuft ab</td>
+                            <td class="py-3 pr-4">30 Tage vor Ablauf eines Dokuments (täglich geprüft)</td>
+                            <td class="py-3">Den Betreuer (Erinnerung)</td>
+                        </tr>
+                        <tr>
+                            <td class="py-3 pr-4 font-semibold">⑤ Dokument abgelaufen</td>
+                            <td class="py-3 pr-4">Wenn ein Dokument abgelaufen ist</td>
+                            <td class="py-3">Den Betreuer + Admin</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <!-- WORKFLOW 1                                                  -->
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <section id="wf1" class="mb-14">
+            <div class="flex items-center gap-3 mb-6">
+                <span class="workflow-badge bg-blue-100 text-blue-800 text-base px-4 py-1">Workflow ①</span>
+                <h2 class="text-2xl font-bold text-credo-dark">Betreuer-Registrierung</h2>
+            </div>
+            <p class="text-gray-600 mb-4">Wenn sich ein neuer Betreuer über den Registrierungslink anmeldet, erhält er automatisch eine E-Mail mit einem Link, um sein Passwort festzulegen.</p>
+
+            <div class="node-flow">
+                <div class="node-box bg-blue-50 border-blue-300">🌐 Webhook</div>
+                <span class="arrow">→</span>
+                <div class="node-box bg-yellow-50 border-yellow-300">🔀 IF: event_type = betreuer_registered</div>
+                <span class="arrow">→</span>
+                <div class="node-box bg-green-50 border-green-300">✉️ E-Mail senden</div>
+            </div>
+
+            <div class="space-y-5 mt-6">
+                <!-- Step 1 -->
+                <div class="bg-white rounded-xl border border-gray-200 p-5">
+                    <div class="flex gap-3 items-start">
+                        <span class="step-circle bg-blue-600 text-white text-sm">1</span>
+                        <div class="flex-1">
+                            <div class="font-semibold mb-2">Neuen Workflow erstellen</div>
+                            <ol class="text-sm text-gray-700 list-decimal ml-4 space-y-1">
+                                <li>Klicken Sie in N8N links oben auf <strong>+ New Workflow</strong></li>
+                                <li>Klicken Sie oben auf den Namen <em>„My workflow"</em> und benennen Sie ihn um:
+                                    <code class="bg-gray-100 px-1 rounded">Betreuer Registrierung</code></li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 2 -->
+                <div class="bg-white rounded-xl border border-gray-200 p-5">
+                    <div class="flex gap-3 items-start">
+                        <span class="step-circle bg-blue-600 text-white text-sm">2</span>
+                        <div class="flex-1">
+                            <div class="font-semibold mb-2">Webhook-Node hinzufügen (Empfänger)</div>
+                            <ol class="text-sm text-gray-700 list-decimal ml-4 space-y-1">
+                                <li>Klicken Sie auf <strong>+ Add first step</strong> oder das <strong>+</strong> Symbol</li>
+                                <li>Suchen Sie nach <strong>Webhook</strong> und wählen Sie es aus</li>
+                                <li>Setzen Sie folgende Einstellungen:
+                                    <div class="code-box mt-2">
+<span class="code-key">HTTP Method:</span> <span class="code-str">POST</span>
+<span class="code-key">Path:</span>        <span class="code-str">betreuer-events</span>
+<span class="code-key">Authentication:</span> <span class="code-str">None</span>
+                                    </div>
+                                </li>
+                                <li>Klicken Sie auf <strong>Listen for test event</strong> (für den Test später)</li>
+                            </ol>
+                            <div class="callout-tip rounded p-3 mt-2 text-xs text-green-800">
+                                <strong>Wichtig:</strong> Den gleichen Webhook-Path (<code>betreuer-events</code>) verwenden alle 5 Workflows. N8N unterscheidet sie intern durch einen Filter im nächsten Schritt.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 3 -->
+                <div class="bg-white rounded-xl border border-gray-200 p-5">
+                    <div class="flex gap-3 items-start">
+                        <span class="step-circle bg-blue-600 text-white text-sm">3</span>
+                        <div class="flex-1">
+                            <div class="font-semibold mb-2">Filter-Node hinzufügen (nur den richtigen Event verarbeiten)</div>
+                            <ol class="text-sm text-gray-700 list-decimal ml-4 space-y-1">
+                                <li>Klicken Sie auf das <strong>+</strong> nach dem Webhook-Node</li>
+                                <li>Suchen Sie nach <strong>IF</strong> und wählen Sie es aus</li>
+                                <li>Konfigurieren Sie die Bedingung:
+                                    <div class="code-box mt-2">
+<span class="code-key">Value 1:</span>   <span class="code-str">{{ "{{" }} $json.event_type {{ "}}" }}</span>
+<span class="code-key">Operation:</span> <span class="code-str">Equal</span>
+<span class="code-key">Value 2:</span>   <span class="code-str">betreuer_registered</span>
+                                    </div>
+                                </li>
+                            </ol>
+                            <div class="callout-info rounded p-3 mt-2 text-xs text-blue-800">
+                                <strong>Erklärung:</strong> Der IF-Node schaut auf das Feld <code>event_type</code> in der eingehenden Meldung. Nur wenn es <code>betreuer_registered</code> ist, wird die E-Mail gesendet – sonst passiert nichts.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 4 -->
+                <div class="bg-white rounded-xl border border-gray-200 p-5">
+                    <div class="flex gap-3 items-start">
+                        <span class="step-circle bg-blue-600 text-white text-sm">4</span>
+                        <div class="flex-1">
+                            <div class="font-semibold mb-2">E-Mail-Node hinzufügen (am „True"-Ausgang des IF)</div>
+                            <ol class="text-sm text-gray-700 list-decimal ml-4 space-y-1">
+                                <li>Klicken Sie auf das <strong>+</strong> am grünen Ausgang des IF-Nodes (True)</li>
+                                <li>Suchen Sie nach <strong>Send Email</strong> (SMTP) und wählen Sie es aus</li>
+                                <li>Wählen Sie unter <strong>Credential</strong> Ihr zuvor eingerichtetes E-Mail-Konto</li>
+                                <li>Tragen Sie folgende Felder ein:</li>
+                            </ol>
+                            <div class="code-box mt-3">
+<span class="code-key">From:</span>      <span class="code-str">betreuerapp@csfv-minden.de</span>
+<span class="code-key">To:</span>        <span class="code-str">{{ "{{" }} $json.betreuer_email {{ "}}" }}</span>
+<span class="code-key">Subject:</span>   <span class="code-str">Willkommen bei der BetreuerApp – Bitte Passwort festlegen</span>
+<span class="code-key">Body (HTML):</span>
+                            </div>
+                            <div class="bg-gray-50 border border-gray-200 rounded p-3 mt-1 text-sm font-mono text-gray-700 text-xs leading-relaxed">
+&lt;p&gt;Hallo {{ "{{" }} $json.betreuer_name {{ "}}" }},&lt;/p&gt;<br>
+&lt;p&gt;willkommen bei der BetreuerApp des Christlichen Schulförderverein Minden e.V.&lt;/p&gt;<br>
+&lt;p&gt;Sie wurden als Betreuer/in an der Schule &lt;strong&gt;{{ "{{" }} $json.school_name {{ "}}" }}&lt;/strong&gt; registriert.&lt;/p&gt;<br>
+&lt;p&gt;Bitte klicken Sie auf den folgenden Link, um Ihr Passwort festzulegen:&lt;/p&gt;<br>
+&lt;p&gt;&lt;a href="{{ "{{" }} $json.password_reset_url {{ "}}" }}"&gt;Passwort festlegen&lt;/a&gt;&lt;/p&gt;<br>
+&lt;p&gt;&lt;em&gt;Dieser Link ist 3 Tage gültig.&lt;/em&gt;&lt;/p&gt;<br>
+&lt;p&gt;Mit freundlichen Grüßen&lt;br&gt;CSFV Minden&lt;/p&gt;
+                            </div>
+                            <div class="callout-warn rounded p-3 mt-2 text-xs text-yellow-800">
+                                <strong>Verfügbare Felder aus der App:</strong>
+                                <code>betreuer_name</code>, <code>betreuer_email</code>, <code>school_name</code>,
+                                <code>school_code</code>, <code>contract_number</code>, <code>password_reset_url</code>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 5 -->
+                <div class="bg-white rounded-xl border border-gray-200 p-5">
+                    <div class="flex gap-3 items-start">
+                        <span class="step-circle bg-blue-600 text-white text-sm">5</span>
+                        <div class="flex-1">
+                            <div class="font-semibold mb-2">Workflow aktivieren und speichern</div>
+                            <ol class="text-sm text-gray-700 list-decimal ml-4 space-y-1">
+                                <li>Klicken Sie oben rechts auf <strong>Save</strong></li>
+                                <li>Klicken Sie auf den Schalter <strong>Inactive → Active</strong> oben rechts</li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <!-- WORKFLOW 2                                                  -->
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <section id="wf2" class="mb-14">
+            <div class="flex items-center gap-3 mb-6">
+                <span class="workflow-badge bg-green-100 text-green-800 text-base px-4 py-1">Workflow ②</span>
+                <h2 class="text-2xl font-bold text-credo-dark">Stundennachweis genehmigt</h2>
+            </div>
+            <p class="text-gray-600 mb-4">Wenn ein Koordinator einen Stundennachweis genehmigt, erhält die Buchhaltung automatisch alle abrechnungsrelevanten Daten (Stunden, Betrag, Projektnummer, Kreditorennummer, PDF-Link).</p>
+
+            <div class="node-flow">
+                <div class="node-box bg-blue-50 border-blue-300">🌐 Webhook</div>
+                <span class="arrow">→</span>
+                <div class="node-box bg-yellow-50 border-yellow-300">🔀 IF: timesheet_approved</div>
+                <span class="arrow">→</span>
+                <div class="node-box bg-green-50 border-green-300">✉️ E-Mail an Buchhaltung</div>
+            </div>
+
+            <div class="bg-white rounded-xl border border-gray-200 p-5 mt-4">
+                <div class="font-semibold mb-3">Genauso wie Workflow ①, nur mit diesen Abweichungen:</div>
+                <div class="space-y-3 text-sm">
+                    <div>
+                        <span class="font-medium">Workflow-Name:</span>
+                        <code class="bg-gray-100 px-2 py-0.5 rounded ml-2">Stundennachweis genehmigt</code>
+                    </div>
+                    <div>
+                        <span class="font-medium">IF-Bedingung (Value 2):</span>
+                        <code class="bg-gray-100 px-2 py-0.5 rounded ml-2">timesheet_approved</code>
+                    </div>
+                    <div class="font-medium">E-Mail-Einstellungen:</div>
+                    <div class="code-box">
+<span class="code-key">To:</span>       <span class="code-str">buchhaltung@csfv-minden.de</span>  <span style="color:#64748b">← feste Adresse der Buchhaltung</span>
+<span class="code-key">Subject:</span>  <span class="code-str">Abrechnung {{ "{{" }} $json.betreuer_name {{ "}}" }} – {{ "{{" }} $json.month {{ "}}" }}/{{ "{{" }} $json.year {{ "}}" }}</span>
+                    </div>
+                    <div class="font-medium">E-Mail-Text (HTML):</div>
+                    <div class="bg-gray-50 border border-gray-200 rounded p-3 text-xs font-mono text-gray-700 leading-relaxed">
+&lt;p&gt;Ein Stundennachweis wurde genehmigt und steht zur Auszahlung bereit:&lt;/p&gt;<br>
+&lt;table&gt;<br>
+&nbsp;&nbsp;&lt;tr&gt;&lt;td&gt;&lt;strong&gt;Betreuer/in:&lt;/strong&gt;&lt;/td&gt;&lt;td&gt;{{ "{{" }} $json.betreuer_name {{ "}}" }}&lt;/td&gt;&lt;/tr&gt;<br>
+&nbsp;&nbsp;&lt;tr&gt;&lt;td&gt;&lt;strong&gt;Schule:&lt;/strong&gt;&lt;/td&gt;&lt;td&gt;{{ "{{" }} $json.school_name {{ "}}" }}&lt;/td&gt;&lt;/tr&gt;<br>
+&nbsp;&nbsp;&lt;tr&gt;&lt;td&gt;&lt;strong&gt;Monat:&lt;/strong&gt;&lt;/td&gt;&lt;td&gt;{{ "{{" }} $json.month {{ "}}" }}/{{ "{{" }} $json.year {{ "}}" }}&lt;/td&gt;&lt;/tr&gt;<br>
+&nbsp;&nbsp;&lt;tr&gt;&lt;td&gt;&lt;strong&gt;Stunden:&lt;/strong&gt;&lt;/td&gt;&lt;td&gt;{{ "{{" }} $json.total_hours {{ "}}" }} h&lt;/td&gt;&lt;/tr&gt;<br>
+&nbsp;&nbsp;&lt;tr&gt;&lt;td&gt;&lt;strong&gt;Betrag:&lt;/strong&gt;&lt;/td&gt;&lt;td&gt;{{ "{{" }} $json.total_amount {{ "}}" }} €&lt;/td&gt;&lt;/tr&gt;<br>
+&nbsp;&nbsp;&lt;tr&gt;&lt;td&gt;&lt;strong&gt;Projektnummer:&lt;/strong&gt;&lt;/td&gt;&lt;td&gt;{{ "{{" }} $json.projektnummer {{ "}}" }}&lt;/td&gt;&lt;/tr&gt;<br>
+&nbsp;&nbsp;&lt;tr&gt;&lt;td&gt;&lt;strong&gt;Kreditorennummer:&lt;/strong&gt;&lt;/td&gt;&lt;td&gt;{{ "{{" }} $json.kreditorennummer {{ "}}" }}&lt;/td&gt;&lt;/tr&gt;<br>
+&nbsp;&nbsp;&lt;tr&gt;&lt;td&gt;&lt;strong&gt;Vertragsnummer:&lt;/strong&gt;&lt;/td&gt;&lt;td&gt;{{ "{{" }} $json.contract_number {{ "}}" }}&lt;/td&gt;&lt;/tr&gt;<br>
+&lt;/table&gt;<br>
+&lt;p&gt;PDF: &lt;a href="{{ "{{" }} $json.pdf_url {{ "}}" }}"&gt;Stundennachweis herunterladen&lt;/a&gt;&lt;/p&gt;
+                    </div>
+                    <div class="callout-warn rounded p-3 text-xs text-yellow-800">
+                        <strong>Verfügbare Felder:</strong> <code>betreuer_name</code>, <code>betreuer_email</code>,
+                        <code>contract_number</code>, <code>school_name</code>, <code>school_code</code>,
+                        <code>month</code>, <code>year</code>, <code>total_hours</code>, <code>total_amount</code>,
+                        <code>projektnummer</code>, <code>kreditorennummer</code>, <code>pdf_url</code>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <!-- WORKFLOW 3                                                  -->
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <section id="wf3" class="mb-14">
+            <div class="flex items-center gap-3 mb-6">
+                <span class="workflow-badge bg-orange-100 text-orange-800 text-base px-4 py-1">Workflow ③</span>
+                <h2 class="text-2xl font-bold text-credo-dark">Freibetrag-Warnung</h2>
+            </div>
+            <p class="text-gray-600 mb-4">Wenn ein Betreuer 80%, 90% oder 100% des Freibetrags (3.300 €/Jahr) erreicht, erhält die Verwaltung eine Warnung. So kann frühzeitig reagiert werden.</p>
+
+            <div class="node-flow">
+                <div class="node-box bg-blue-50 border-blue-300">🌐 Webhook</div>
+                <span class="arrow">→</span>
+                <div class="node-box bg-yellow-50 border-yellow-300">🔀 IF: freibetrag_warning</div>
+                <span class="arrow">→</span>
+                <div class="node-box bg-orange-50 border-orange-300">✉️ E-Mail an Admin/HR</div>
+            </div>
+
+            <div class="bg-white rounded-xl border border-gray-200 p-5 mt-4">
+                <div class="font-semibold mb-3">Abweichungen zu Workflow ①:</div>
+                <div class="space-y-3 text-sm">
+                    <div><span class="font-medium">Workflow-Name:</span> <code class="bg-gray-100 px-2 py-0.5 rounded ml-2">Freibetrag Warnung</code></div>
+                    <div><span class="font-medium">IF-Bedingung:</span> <code class="bg-gray-100 px-2 py-0.5 rounded ml-2">freibetrag_warning</code></div>
+                    <div class="code-box">
+<span class="code-key">To:</span>       <span class="code-str">personal@csfv-minden.de</span>  <span style="color:#64748b">← Personalstelle / HR</span>
+<span class="code-key">Subject:</span>  <span class="code-str">⚠️ Freibetrag-Warnung: {{ "{{" }} $json.betreuer_name {{ "}}" }} ({{ "{{" }} $json.warning_level {{ "}}" }})</span>
+                    </div>
+                    <div class="font-medium">E-Mail-Text (HTML):</div>
+                    <div class="bg-gray-50 border border-gray-200 rounded p-3 text-xs font-mono text-gray-700 leading-relaxed">
+&lt;p&gt;Der Freibetrag eines Betreuers hat eine Warnstufe erreicht:&lt;/p&gt;<br>
+&lt;table&gt;<br>
+&nbsp;&nbsp;&lt;tr&gt;&lt;td&gt;&lt;strong&gt;Betreuer/in:&lt;/strong&gt;&lt;/td&gt;&lt;td&gt;{{ "{{" }} $json.betreuer_name {{ "}}" }}&lt;/td&gt;&lt;/tr&gt;<br>
+&nbsp;&nbsp;&lt;tr&gt;&lt;td&gt;&lt;strong&gt;Jahr:&lt;/strong&gt;&lt;/td&gt;&lt;td&gt;{{ "{{" }} $json.year {{ "}}" }}&lt;/td&gt;&lt;/tr&gt;<br>
+&nbsp;&nbsp;&lt;tr&gt;&lt;td&gt;&lt;strong&gt;Verbraucht:&lt;/strong&gt;&lt;/td&gt;&lt;td&gt;{{ "{{" }} $json.total_used {{ "}}" }} € ({{ "{{" }} $json.percentage {{ "}}" }}%)</td>&lt;/tr&gt;<br>
+&nbsp;&nbsp;&lt;tr&gt;&lt;td&gt;&lt;strong&gt;Freibetrag:&lt;/strong&gt;&lt;/td&gt;&lt;td&gt;{{ "{{" }} $json.limit {{ "}}" }} €&lt;/td&gt;&lt;/tr&gt;<br>
+&nbsp;&nbsp;&lt;tr&gt;&lt;td&gt;&lt;strong&gt;Verbleibend:&lt;/strong&gt;&lt;/td&gt;&lt;td&gt;{{ "{{" }} $json.remaining {{ "}}" }} €&lt;/td&gt;&lt;/tr&gt;<br>
+&nbsp;&nbsp;&lt;tr&gt;&lt;td&gt;&lt;strong&gt;Warnstufe:&lt;/strong&gt;&lt;/td&gt;&lt;td&gt;{{ "{{" }} $json.warning_level {{ "}}" }}&lt;/td&gt;&lt;/tr&gt;<br>
+&lt;/table&gt;<br>
+&lt;p&gt;Bitte prüfen Sie die Stundenplanung für diesen Betreuer.&lt;/p&gt;
+                    </div>
+                    <div class="callout-info rounded p-3 text-xs text-blue-800">
+                        <strong>Warnstufen:</strong> <code>yellow</code> = 80% erreicht · <code>orange</code> = 90% erreicht · <code>red</code> = 100% überschritten
+                    </div>
+                    <div class="callout-warn rounded p-3 text-xs text-yellow-800">
+                        <strong>Verfügbare Felder:</strong> <code>betreuer_name</code>, <code>betreuer_email</code>,
+                        <code>year</code>, <code>percentage</code>, <code>total_used</code>,
+                        <code>remaining</code>, <code>limit</code>, <code>warning_level</code>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <!-- WORKFLOW 4                                                  -->
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <section id="wf4" class="mb-14">
+            <div class="flex items-center gap-3 mb-6">
+                <span class="workflow-badge bg-yellow-100 text-yellow-800 text-base px-4 py-1">Workflow ④</span>
+                <h2 class="text-2xl font-bold text-credo-dark">Dokument läuft ab</h2>
+            </div>
+            <p class="text-gray-600 mb-4">30 Tage vor Ablauf eines Pflichtdokuments (z.B. Führungszeugnis) erhält der Betreuer eine Erinnerungs-E-Mail. Diese Prüfung läuft automatisch jeden Tag.</p>
+
+            <div class="node-flow">
+                <div class="node-box bg-blue-50 border-blue-300">🌐 Webhook</div>
+                <span class="arrow">→</span>
+                <div class="node-box bg-yellow-50 border-yellow-300">🔀 IF: document_expiring</div>
+                <span class="arrow">→</span>
+                <div class="node-box bg-yellow-50 border-yellow-300">✉️ E-Mail an Betreuer</div>
+            </div>
+
+            <div class="bg-white rounded-xl border border-gray-200 p-5 mt-4">
+                <div class="font-semibold mb-3">Abweichungen zu Workflow ①:</div>
+                <div class="space-y-3 text-sm">
+                    <div><span class="font-medium">Workflow-Name:</span> <code class="bg-gray-100 px-2 py-0.5 rounded ml-2">Dokument läuft ab</code></div>
+                    <div><span class="font-medium">IF-Bedingung:</span> <code class="bg-gray-100 px-2 py-0.5 rounded ml-2">document_expiring</code></div>
+                    <div class="code-box">
+<span class="code-key">To:</span>       <span class="code-str">{{ "{{" }} $json.betreuer_email {{ "}}" }}</span>
+<span class="code-key">Subject:</span>  <span class="code-str">⏰ Erinnerung: Ihr {{ "{{" }} $json.document_type {{ "}}" }} läuft in {{ "{{" }} $json.days_remaining {{ "}}" }} Tagen ab</span>
+                    </div>
+                    <div class="font-medium">E-Mail-Text (HTML):</div>
+                    <div class="bg-gray-50 border border-gray-200 rounded p-3 text-xs font-mono text-gray-700 leading-relaxed">
+&lt;p&gt;Hallo {{ "{{" }} $json.betreuer_name {{ "}}" }},&lt;/p&gt;<br>
+&lt;p&gt;Ihr Dokument &lt;strong&gt;{{ "{{" }} $json.document_type {{ "}}" }}&lt;/strong&gt; läuft in<br>
+&lt;strong&gt;{{ "{{" }} $json.days_remaining {{ "}}" }} Tagen&lt;/strong&gt; ({{ "{{" }} $json.expires_at {{ "}}" }}) ab.&lt;/p&gt;<br>
+&lt;p&gt;Bitte erneuern Sie das Dokument rechtzeitig und laden Sie es in der BetreuerApp hoch.&lt;/p&gt;<br>
+&lt;p&gt;Falls Sie Fragen haben, wenden Sie sich an Ihren Koordinator.&lt;/p&gt;<br>
+&lt;p&gt;Mit freundlichen Grüßen&lt;br&gt;CSFV Minden&lt;/p&gt;
+                    </div>
+                    <div class="callout-warn rounded p-3 text-xs text-yellow-800">
+                        <strong>Verfügbare Felder:</strong> <code>betreuer_name</code>, <code>betreuer_email</code>,
+                        <code>document_type</code>, <code>expires_at</code>, <code>days_remaining</code>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <!-- WORKFLOW 5                                                  -->
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <section id="wf5" class="mb-14">
+            <div class="flex items-center gap-3 mb-6">
+                <span class="workflow-badge bg-red-100 text-red-800 text-base px-4 py-1">Workflow ⑤</span>
+                <h2 class="text-2xl font-bold text-credo-dark">Dokument abgelaufen</h2>
+            </div>
+            <p class="text-gray-600 mb-4">Wenn ein Pflichtdokument abgelaufen ist, werden sowohl der Betreuer als auch die Verwaltung benachrichtigt.</p>
+
+            <div class="node-flow">
+                <div class="node-box bg-blue-50 border-blue-300">🌐 Webhook</div>
+                <span class="arrow">→</span>
+                <div class="node-box bg-yellow-50 border-yellow-300">🔀 IF: document_expired</div>
+                <span class="arrow">→</span>
+                <div class="node-box bg-red-50 border-red-300">✉️ E-Mail an Betreuer</div>
+                <span class="arrow">+</span>
+                <div class="node-box bg-red-50 border-red-300">✉️ E-Mail an Admin</div>
+            </div>
+
+            <div class="bg-white rounded-xl border border-gray-200 p-5 mt-4">
+                <div class="font-semibold mb-3">Abweichungen zu Workflow ①:</div>
+                <div class="space-y-3 text-sm">
+                    <div><span class="font-medium">Workflow-Name:</span> <code class="bg-gray-100 px-2 py-0.5 rounded ml-2">Dokument abgelaufen</code></div>
+                    <div><span class="font-medium">IF-Bedingung:</span> <code class="bg-gray-100 px-2 py-0.5 rounded ml-2">document_expired</code></div>
+                    <div class="callout-info rounded p-3 text-xs text-blue-800">
+                        <strong>Zwei E-Mails:</strong> Nach dem IF-Node fügen Sie <em>zwei</em> E-Mail-Nodes parallel ein: einen für den Betreuer und einen für die Verwaltung.
+                        Verbinden Sie dazu den IF-True-Ausgang mit beiden E-Mail-Nodes.
+                    </div>
+                    <div class="font-medium">E-Mail 1 – An Betreuer:</div>
+                    <div class="code-box">
+<span class="code-key">To:</span>       <span class="code-str">{{ "{{" }} $json.betreuer_email {{ "}}" }}</span>
+<span class="code-key">Subject:</span>  <span class="code-str">❌ Ihr {{ "{{" }} $json.document_type {{ "}}" }} ist abgelaufen</span>
+                    </div>
+                    <div class="bg-gray-50 border border-gray-200 rounded p-3 text-xs font-mono text-gray-700 leading-relaxed">
+&lt;p&gt;Hallo {{ "{{" }} $json.betreuer_name {{ "}}" }},&lt;/p&gt;<br>
+&lt;p&gt;Ihr Dokument &lt;strong&gt;{{ "{{" }} $json.document_type {{ "}}" }}&lt;/strong&gt; ist am {{ "{{" }} $json.expired_at {{ "}}" }} abgelaufen.&lt;/p&gt;<br>
+&lt;p&gt;Bitte erneuern Sie das Dokument umgehend und laden Sie es in der BetreuerApp hoch.&lt;/p&gt;<br>
+&lt;p&gt;Ohne gültige Dokumente können Sie leider nicht weiter eingesetzt werden.&lt;/p&gt;
+                    </div>
+                    <div class="font-medium mt-3">E-Mail 2 – An Verwaltung:</div>
+                    <div class="code-box">
+<span class="code-key">To:</span>       <span class="code-str">personal@csfv-minden.de</span>
+<span class="code-key">Subject:</span>  <span class="code-str">❌ Abgelaufenes Dokument: {{ "{{" }} $json.betreuer_name {{ "}}" }}</span>
+                    </div>
+                    <div class="bg-gray-50 border border-gray-200 rounded p-3 text-xs font-mono text-gray-700 leading-relaxed">
+&lt;p&gt;Das folgende Dokument ist abgelaufen:&lt;/p&gt;<br>
+&lt;ul&gt;<br>
+&nbsp;&nbsp;&lt;li&gt;&lt;strong&gt;Betreuer/in:&lt;/strong&gt; {{ "{{" }} $json.betreuer_name {{ "}}" }} ({{ "{{" }} $json.betreuer_email {{ "}}" }})&lt;/li&gt;<br>
+&nbsp;&nbsp;&lt;li&gt;&lt;strong&gt;Dokument:&lt;/strong&gt; {{ "{{" }} $json.document_type {{ "}}" }}&lt;/li&gt;<br>
+&nbsp;&nbsp;&lt;li&gt;&lt;strong&gt;Abgelaufen am:&lt;/strong&gt; {{ "{{" }} $json.expired_at {{ "}}" }}&lt;/li&gt;<br>
+&lt;/ul&gt;<br>
+&lt;p&gt;Bitte kontaktieren Sie den Betreuer und stellen Sie sicher, dass das Dokument erneuert wird.&lt;/p&gt;
+                    </div>
+                    <div class="callout-warn rounded p-3 text-xs text-yellow-800">
+                        <strong>Verfügbare Felder:</strong> <code>betreuer_name</code>, <code>betreuer_email</code>,
+                        <code>document_type</code>, <code>expired_at</code>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <!-- TESTEN                                                      -->
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <section id="testen" class="mb-14">
+            <h2 class="text-2xl font-bold text-credo-dark mb-6 pb-2 border-b border-gray-200">✅ Workflows testen</h2>
+            <p class="text-gray-600 mb-4">So testen Sie, ob alles funktioniert, ohne echte Daten zu verändern:</p>
+
+            <div class="space-y-5">
+                <div class="bg-white rounded-xl border border-gray-200 p-5">
+                    <div class="font-semibold mb-3">Test: Betreuer-Registrierung (Workflow ①)</div>
+                    <ol class="text-sm text-gray-700 list-decimal ml-4 space-y-2">
+                        <li>Öffnen Sie in N8N den Workflow „Betreuer Registrierung"</li>
+                        <li>Klicken Sie auf den Webhook-Node → <strong>Listen for test event</strong></li>
+                        <li>Öffnen Sie ein Terminal und geben Sie folgenden Befehl ein:</li>
+                    </ol>
+                    <div class="code-box mt-3">
+curl -X POST http://ihr-n8n-server:5678/webhook-test/betreuer-events \<br>
+&nbsp;&nbsp;-H "Content-Type: application/json" \<br>
+&nbsp;&nbsp;-d '{<br>
+&nbsp;&nbsp;&nbsp;&nbsp;"event_type": "betreuer_registered",<br>
+&nbsp;&nbsp;&nbsp;&nbsp;"betreuer_name": "Erika Testperson",<br>
+&nbsp;&nbsp;&nbsp;&nbsp;"betreuer_email": "ihre-email@beispiel.de",<br>
+&nbsp;&nbsp;&nbsp;&nbsp;"school_name": "Grundschule Testschule",<br>
+&nbsp;&nbsp;&nbsp;&nbsp;"school_code": "GST",<br>
+&nbsp;&nbsp;&nbsp;&nbsp;"contract_number": "VN-2026-001",<br>
+&nbsp;&nbsp;&nbsp;&nbsp;"password_reset_url": "http://betreuer-app.de/accounts/passwort-setzen/test/test/"<br>
+&nbsp;&nbsp;}'
+                    </div>
+                    <div class="callout-tip rounded p-3 mt-2 text-sm text-green-800">
+                        <strong>Tipp:</strong> Ersetzen Sie <code>ihre-email@beispiel.de</code> mit Ihrer eigenen E-Mail-Adresse.
+                        So sehen Sie die Test-E-Mail direkt in Ihrem Postfach.
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl border border-gray-200 p-5">
+                    <div class="font-semibold mb-3">Einfacherer Test: Direkt aus der BetreuerApp</div>
+                    <ol class="text-sm text-gray-700 list-decimal ml-4 space-y-1">
+                        <li>Melden Sie sich als Admin in der BetreuerApp an</li>
+                        <li>Erstellen Sie einen Registrierungslink für eine Testschule</li>
+                        <li>Öffnen Sie den Registrierungslink und registrieren Sie sich mit einer Test-E-Mail-Adresse</li>
+                        <li>Prüfen Sie das E-Mail-Postfach – die Willkommens-E-Mail sollte ankommen</li>
+                    </ol>
+                </div>
+
+                <div class="bg-white rounded-xl border border-gray-200 p-5">
+                    <div class="font-semibold mb-3">Test: Stundennachweis genehmigt (Workflow ②)</div>
+                    <ol class="text-sm text-gray-700 list-decimal ml-4 space-y-1">
+                        <li>Melden Sie sich als Betreuer an und erfassen Sie einen Stundeneintrag</li>
+                        <li>Reichen Sie den Stundennachweis ein (Button „Einreichen")</li>
+                        <li>Melden Sie sich als Koordinator an und genehmigen Sie den Nachweis</li>
+                        <li>Prüfen Sie das E-Mail-Postfach der Buchhaltung</li>
+                    </ol>
+                </div>
+            </div>
+        </section>
+
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <!-- CHECKLISTE                                                  -->
+        <!-- ═══════════════════════════════════════════════════════════ -->
+        <section id="checkliste" class="mb-14">
+            <h2 class="text-2xl font-bold text-credo-dark mb-6 pb-2 border-b border-gray-200">☑️ Abschluss-Checkliste</h2>
+            <p class="text-gray-600 mb-4">Haken Sie ab, sobald ein Punkt erledigt ist:</p>
+
+            <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                <table class="w-full text-sm">
+                    <tbody class="divide-y divide-gray-100">
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-5 py-3 w-8"><input type="checkbox" class="w-4 h-4"></td>
+                            <td class="px-2 py-3">N8N läuft und ist erreichbar</td>
+                        </tr>
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-5 py-3"><input type="checkbox" class="w-4 h-4"></td>
+                            <td class="px-2 py-3">E-Mail-Konto (SMTP) in N8N eingerichtet und getestet</td>
+                        </tr>
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-5 py-3"><input type="checkbox" class="w-4 h-4"></td>
+                            <td class="px-2 py-3"><code>N8N_WEBHOOK_BASE_URL</code> in der BetreuerApp <code>.env</code> eingetragen</td>
+                        </tr>
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-5 py-3"><input type="checkbox" class="w-4 h-4"></td>
+                            <td class="px-2 py-3">BetreuerApp nach <code>.env</code>-Änderung neu gestartet</td>
+                        </tr>
+                        <tr class="hover:bg-gray-50 font-medium bg-blue-50">
+                            <td class="px-5 py-3"><input type="checkbox" class="w-4 h-4"></td>
+                            <td class="px-2 py-3">Workflow ① „Betreuer Registrierung" angelegt und aktiviert</td>
+                        </tr>
+                        <tr class="hover:bg-gray-50 font-medium bg-green-50">
+                            <td class="px-5 py-3"><input type="checkbox" class="w-4 h-4"></td>
+                            <td class="px-2 py-3">Workflow ② „Stundennachweis genehmigt" angelegt und aktiviert</td>
+                        </tr>
+                        <tr class="hover:bg-gray-50 font-medium bg-orange-50">
+                            <td class="px-5 py-3"><input type="checkbox" class="w-4 h-4"></td>
+                            <td class="px-2 py-3">Workflow ③ „Freibetrag Warnung" angelegt und aktiviert</td>
+                        </tr>
+                        <tr class="hover:bg-gray-50 font-medium bg-yellow-50">
+                            <td class="px-5 py-3"><input type="checkbox" class="w-4 h-4"></td>
+                            <td class="px-2 py-3">Workflow ④ „Dokument läuft ab" angelegt und aktiviert</td>
+                        </tr>
+                        <tr class="hover:bg-gray-50 font-medium bg-red-50">
+                            <td class="px-5 py-3"><input type="checkbox" class="w-4 h-4"></td>
+                            <td class="px-2 py-3">Workflow ⑤ „Dokument abgelaufen" angelegt und aktiviert</td>
+                        </tr>
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-5 py-3"><input type="checkbox" class="w-4 h-4"></td>
+                            <td class="px-2 py-3">Test-Registrierung durchgeführt → E-Mail angekommen ✉️</td>
+                        </tr>
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-5 py-3"><input type="checkbox" class="w-4 h-4"></td>
+                            <td class="px-2 py-3">Test-Stundennachweis genehmigt → E-Mail Buchhaltung angekommen ✉️</td>
+                        </tr>
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-5 py-3"><input type="checkbox" class="w-4 h-4"></td>
+                            <td class="px-2 py-3">E-Mail-Absender-Adresse in allen Workflows korrekt eingetragen</td>
+                        </tr>
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-5 py-3"><input type="checkbox" class="w-4 h-4"></td>
+                            <td class="px-2 py-3">Buchhaltungs-Adresse in Workflow ② eingetragen (<code>buchhaltung@...</code>)</td>
+                        </tr>
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-5 py-3"><input type="checkbox" class="w-4 h-4"></td>
+                            <td class="px-2 py-3">HR/Personalstelle-Adresse in Workflow ③ und ⑤ eingetragen</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Häufige Probleme -->
+        <section class="mb-12">
+            <h2 class="text-2xl font-bold text-credo-dark mb-6 pb-2 border-b border-gray-200">❓ Häufige Probleme</h2>
+            <div class="space-y-4">
+                <div class="bg-white rounded-xl border border-gray-200 p-5">
+                    <div class="font-semibold text-red-700 mb-2">N8N empfängt keine Meldungen von der App</div>
+                    <ul class="text-sm text-gray-700 list-disc ml-4 space-y-1">
+                        <li>Ist <code>N8N_WEBHOOK_BASE_URL</code> korrekt in der <code>.env</code>-Datei gesetzt?</li>
+                        <li>Wurde die BetreuerApp nach der Änderung neu gestartet? (<code>docker restart betreuer_django</code>)</li>
+                        <li>Ist der N8N-Server vom BetreuerApp-Server aus erreichbar? (Firewall prüfen)</li>
+                        <li>Ist der Workflow in N8N auf <strong>Active</strong> gestellt?</li>
+                    </ul>
+                </div>
+                <div class="bg-white rounded-xl border border-gray-200 p-5">
+                    <div class="font-semibold text-red-700 mb-2">E-Mail kommt nicht an</div>
+                    <ul class="text-sm text-gray-700 list-disc ml-4 space-y-1">
+                        <li>Prüfen Sie den Spam-Ordner</li>
+                        <li>Testen Sie das SMTP-Konto in N8N (Settings → Credentials → Test)</li>
+                        <li>Schauen Sie in den N8N-Ausführungsprotokollen nach (Klick auf <strong>Executions</strong>)</li>
+                    </ul>
+                </div>
+                <div class="bg-white rounded-xl border border-gray-200 p-5">
+                    <div class="font-semibold text-red-700 mb-2">Falsche E-Mail-Adresse als Empfänger</div>
+                    <ul class="text-sm text-gray-700 list-disc ml-4 space-y-1">
+                        <li>Prüfen Sie im E-Mail-Node das „To:"-Feld</li>
+                        <li>Für Betreuer-E-Mails: <code class="bg-gray-100 px-1">{{ "{{" }} $json.betreuer_email {{ "}}" }}</code> (kommt aus der App)</li>
+                        <li>Für feste Empfänger (Buchhaltung, HR): direkte E-Mail-Adresse eintragen</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="mt-10">
+            <div class="text-center text-xs text-gray-400 py-4">
+                &copy; 2026 Christlicher Schulförderverein Minden e.V. · BetreuerApp N8N Anleitung
+            </div>
+            <div class="flex items-stretch h-2 rounded-full overflow-hidden">
+                <div style="width: 50%; background-color: #575756;"></div>
+                <div style="width: 12.5%; background-color: #FBC900;"></div>
+                <div style="width: 12.5%; background-color: #6BAA24;"></div>
+                <div style="width: 12.5%; background-color: #E2001A;"></div>
+                <div style="width: 12.5%; background-color: #009AC6;"></div>
+            </div>
+        </footer>
+
+    </main>
+</div>
+
+</body>
+</html>

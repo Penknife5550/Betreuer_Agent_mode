@@ -1,0 +1,12 @@
+{# HTMX partial: Month/Year navigation. #}
+<div class="flex items-center justify-between">
+    <a href="?month={{ prev_month }}&year={{ prev_year }}"
+       class="text-sm font-medium text-credo-dark hover:text-schule-gsh transition-colors">
+        &larr; Vormonat
+    </a>
+    <h2 class="text-xl font-semibold text-credo-dark">{{ month_name }} {{ year }}</h2>
+    <a href="?month={{ next_month }}&year={{ next_year }}"
+       class="text-sm font-medium text-credo-dark hover:text-schule-gsh transition-colors">
+        Folgemonat &rarr;
+    </a>
+</div>

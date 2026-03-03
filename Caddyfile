@@ -1,0 +1,27 @@
+# Caddyfile für betreuer.fes-minden.de
+# Caddy besorgt automatisch ein HTTPS-Zertifikat (Let's Encrypt)
+# Voraussetzung: DNS-Eintrag für betreuer.fes-minden.de zeigt auf Server-IP
+
+betreuer.fes-minden.de {
+
+    # Statische Dateien direkt durch Caddy ausliefern (kein Django-Overhead)
+    handle_path /static/* {
+        root * /srv/static
+        file_server
+    }
+
+    # Mediadateien (Uploads, PDFs) durch Django ausliefern (Auth-geschuetzt).
+    # Django prueft ob der Benutzer eingeloggt ist und Zugriff haben darf.
+    handle /media/* {
+        reverse_proxy django:8000
+    }
+
+    # Alles andere → Django (Waitress)
+    reverse_proxy django:8000
+
+    # Logging
+    log {
+        output stdout
+        format json
+    }
+}

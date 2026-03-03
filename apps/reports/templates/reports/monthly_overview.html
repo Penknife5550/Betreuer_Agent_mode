@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block title %}Monats&uuml;bersicht{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+    <div class="flex items-center justify-between mb-6">
+        <h1 class="text-2xl font-bold text-credo-dark">Monats&uuml;bersicht</h1>
+        <a href="?month={{ month }}&year={{ year }}{% if school_filter %}&school={{ school_filter }}{% endif %}&format=csv"
+           class="bg-credo-dark hover:bg-gray-700 text-white text-sm font-medium py-2 px-4 rounded-md transition-colors">
+            CSV Export
+        </a>
+    </div>
+
+    {# ---- Filters ---- #}
+    <form method="get" class="mb-6 flex items-end gap-4 flex-wrap">
+        <div>
+            <label class="block text-xs text-gray-500 mb-1">Monat</label>
+            <select name="month" class="rounded-md border border-gray-300 px-3 py-2 text-sm">
+                {% for m in "123456789" %}
+                <option value="{{ forloop.counter }}" {% if forloop.counter == month %}selected{% endif %}>
+                    {{ forloop.counter }}
+                </option>
+                {% endfor %}
+                <option value="10" {% if month == 10 %}selected{% endif %}>10</option>
+                <option value="11" {% if month == 11 %}selected{% endif %}>11</option>
+                <option value="12" {% if month == 12 %}selected{% endif %}>12</option>
+            </select>
+        </div>
+        <div>
+            <label class="block text-xs text-gray-500 mb-1">Jahr</label>
+            <input type="number" name="year" value="{{ year }}" min="2024" max="2030"
+                   class="rounded-md border border-gray-300 px-3 py-2 text-sm w-24">
+        </div>
+        {% if available_schools %}
+        <div>
+            <label class="block text-xs text-gray-500 mb-1">Schule</label>
+            <select name="school" class="rounded-md border border-gray-300 px-3 py-2 text-sm">
+                <option value="">Alle</option>
+                {% for s in available_schools %}
+                <option value="{{ s.code }}" {% if school_filter == s.code %}selected{% endif %}>{{ s.code }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        {% endif %}
+        <button type="submit"
+                class="bg-schule-gsh hover:bg-blue-600 text-white text-sm font-medium py-2 px-4 rounded-md transition-colors">
+            Filtern
+        </button>
+    </form>
+
+    {# ---- Report Data ---- #}
+    {% if data %}
+
+    {% for code, school in schools_data.items %}
+    <div class="bg-white rounded-lg shadow mb-6">
+        <div class="px-6 py-3 bg-gray-50 border-b border-gray-200">
+            <h2 class="text-sm font-semibold text-credo-dark">{{ school.school_code }} &ndash; {{ school.school_name }}</h2>
+        </div>
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="text-left text-gray-500 border-b">
+                    <th class="py-2 px-6">Betreuer</th>
+                    <th class="py-2 px-4">Vertrag</th>
+                    <th class="py-2 px-4">T&auml;tigkeit</th>
+                    <th class="py-2 px-4 text-right">Stunden</th>
+                    <th class="py-2 px-4 text-right">Betrag</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in school.rows %}
+                <tr class="border-b border-gray-100">
+                    <td class="py-2 px-6">{{ row.betreuer_name }}</td>
+                    <td class="py-2 px-4 text-gray-500">{{ row.contract_number }}</td>
+                    <td class="py-2 px-4 text-gray-500">{{ row.activity_type }}</td>
+                    <td class="py-2 px-4 text-right font-medium">{{ row.total_hours }}</td>
+                    <td class="py-2 px-4 text-right font-medium">{{ row.total_amount }} &euro;</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr class="bg-gray-50 font-semibold">
+                    <td colspan="3" class="py-2 px-6 text-gray-600">Zwischensumme</td>
+                    <td class="py-2 px-4 text-right">{{ school.subtotal_hours }}</td>
+                    <td class="py-2 px-4 text-right">{{ school.subtotal_amount }} &euro;</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+    {% endfor %}
+
+    {# Total #}
+    <div class="bg-credo-dark text-white rounded-lg shadow p-4 flex items-center justify-between">
+        <span class="font-semibold">Gesamt {{ month_name }} {{ year }}</span>
+        <div class="flex items-center gap-8">
+            <span>{{ total_hours }} Std.</span>
+            <span class="text-lg font-bold">{{ total_amount }} &euro;</span>
+        </div>
+    </div>
+
+    {% else %}
+    <div class="bg-white rounded-lg shadow p-8 text-center text-gray-500">
+        Keine genehmigten Stundennachweise f&uuml;r {{ month_name }} {{ year }}.
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}
