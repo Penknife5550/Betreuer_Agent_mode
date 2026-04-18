@@ -20,10 +20,17 @@ TEST_TOKEN = "test-secret-token-12345"
 
 
 @pytest.fixture
-def api_settings(settings):
-    """Configure N8N_API_TOKEN for tests."""
-    settings.N8N_API_TOKEN = TEST_TOKEN
-    return settings
+def api_settings(db):
+    """
+    Legt einen aktiven InboundToken mit dem Test-Token an (statt des
+    alten settings.N8N_API_TOKEN). Gibt das Token zurueck.
+    """
+    from apps.notifications.models import InboundToken
+    InboundToken.objects.update_or_create(
+        pk=1,
+        defaults={"token": TEST_TOKEN, "is_active": True},
+    )
+    return TEST_TOKEN
 
 
 # ---------------------------------------------------------------------------
@@ -267,11 +274,12 @@ class TestDocumentReceivedConfirmation:
 
 @pytest.mark.django_db
 class TestWebhookNotConfigured:
-    """Test webhook behavior when N8N_API_TOKEN is not set."""
+    """InboundToken nicht konfiguriert (oder inaktiv)."""
 
-    def test_returns_503_when_not_configured(self, settings):
-        """Returns 503 when N8N_API_TOKEN is empty."""
-        settings.N8N_API_TOKEN = ""
+    def test_returns_503_when_not_configured(self, db):
+        """Ohne aktiven InboundToken antwortet der Webhook mit 503."""
+        from apps.notifications.models import InboundToken
+        InboundToken.objects.all().delete()
         client = Client()
         response = client.post(
             WEBHOOK_URL,

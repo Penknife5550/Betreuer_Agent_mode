@@ -192,16 +192,13 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 FERNET_KEY = os.environ.get("FERNET_KEY", "")
 
 # ---------------------------------------------------------------------------
-# N8N webhook integration
+# Webhook-Integration
 # ---------------------------------------------------------------------------
-
-N8N_WEBHOOK_BASE_URL = os.environ.get(
-    "N8N_WEBHOOK_BASE_URL",
-    "http://localhost:5678",
-)
-
-# Token for authenticating incoming N8N webhook callbacks
-N8N_API_TOKEN = os.environ.get("N8N_API_TOKEN", "")
+# Webhook-URLs + Bearer-Token werden NICHT ueber Env-Vars konfiguriert,
+# sondern im Django-Admin unter /django-admin/notifications/webhookendpoint/
+# und /django-admin/notifications/inboundtoken/ gepflegt. So kann der
+# Admin URLs zur Laufzeit aendern, ohne Re-Deploy.
+# Siehe apps/notifications/{models,services}.py + apps/api/views.py.
 
 # ---------------------------------------------------------------------------
 # Django Axes configuration (brute-force protection)

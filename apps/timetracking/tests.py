@@ -739,7 +739,16 @@ class TestNotifyTimesheetApproved:
         ts.submit()
         ts.approve(koordinator_user)
 
-        settings.N8N_WEBHOOK_BASE_URL = "http://test-n8n:5678"
+        # WebhookEndpoint fuer diesen Event anlegen -- services.py liest
+        # die URL aus der DB, nicht mehr aus .env.
+        from apps.notifications.models import WebhookEndpoint
+        from apps.notifications.services import invalidate_webhook_cache
+        WebhookEndpoint.objects.create(
+            event_type="timesheet_approved",
+            url="http://test-n8n:5678/webhook/betreuer-events",
+            is_active=True,
+        )
+        invalidate_webhook_cache()
 
         with patch("apps.notifications.services.requests.post") as mock_post:
             mock_post.return_value.status_code = 200

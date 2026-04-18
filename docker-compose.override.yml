@@ -1,0 +1,27 @@
+# =====================================================================
+# Dev-Overrides fuer docker-compose.yml
+# =====================================================================
+# Wird automatisch von "docker compose up" zusaetzlich zu
+# docker-compose.yml geladen. In Prod NICHT verwenden:
+#   docker compose -f docker-compose.yml up -d
+# -- ohne -f laed docker-compose.override.yml automatisch dazu.
+# =====================================================================
+
+services:
+  django:
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - .:/app
+      - static_files:/app/staticfiles
+      - media_files:/app/media
+    ports:
+      - "127.0.0.1:8000:8000"
+
+  postgres:
+    ports:
+      - "127.0.0.1:5432:5432"
+
+  django_q:
+    volumes:
+      - .:/app
+      - media_files:/app/media

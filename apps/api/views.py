@@ -1,16 +1,17 @@
 """
-API views for incoming webhooks.
+API-Views fuer eingehende Webhooks.
 
-N8NWebhookView: Accepts callback events from N8N (e.g. email sent
-confirmation, document received confirmation).  Authenticates via
-Bearer token (N8N_API_TOKEN setting).
+N8NWebhookView: Nimmt Callback-Events von n8n an (z.B. email_sent_
+confirmation, document_received_confirmation). Authentifiziert via
+Bearer-Token. Das Token wird NICHT aus settings gelesen, sondern aus
+dem Singleton-Model ``apps.notifications.models.InboundToken``
+(editierbar im Django-Admin).
 """
 
 import hmac
 import json
 import logging
 
-from django.conf import settings
 from django.http import JsonResponse
 from django.utils import timezone
 from django.utils.decorators import method_decorator
@@ -38,12 +39,17 @@ class N8NWebhookView(View):
     http_method_names = ["post"]
 
     def dispatch(self, request, *args, **kwargs):
-        """Authenticate via Bearer token before processing."""
-        token = settings.N8N_API_TOKEN
+        """Bearer-Token-Auth gegen InboundToken aus der DB."""
+        from apps.notifications.models import InboundToken
+
+        token = InboundToken.get_active_token()
         if not token:
-            logger.error("N8N_API_TOKEN not configured.")
+            logger.error(
+                "Kein aktiver InboundToken im Admin konfiguriert "
+                "-- eingehende Webhooks abgelehnt."
+            )
             return JsonResponse(
-                {"error": "Webhook not configured."},
+                {"error": "Webhook nicht konfiguriert."},
                 status=503,
             )
 
@@ -51,7 +57,7 @@ class N8NWebhookView(View):
         if not auth_header.startswith("Bearer "):
             return JsonResponse({"error": "Unauthorized."}, status=401)
 
-        provided_token = auth_header[7:]  # Strip "Bearer "
+        provided_token = auth_header[7:]
         if not hmac.compare_digest(provided_token, token):
             return JsonResponse({"error": "Unauthorized."}, status=401)
 

@@ -37,7 +37,8 @@ media/
 Thumbs.db
 
 # Docker
-docker-compose.override.yml
+# docker-compose.override.yml ist Teil des Repos (liefert dev-Overrides).
+# Nicht ignorieren.
 
 # Coverage
 htmlcov/

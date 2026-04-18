@@ -1,74 +1,127 @@
 """
-N8N webhook notification service.
+Webhook-Notification-Service.
 
-Sends event notifications to an external N8N instance via HTTP POST.
-All calls are fire-and-forget: errors are logged but never block the
-main application flow.
+Konfiguration ausschliesslich ueber das Django-Admin (Modell
+``WebhookEndpoint``). Pro Event-Typ wird der aktive Endpoint gelesen
+(gecached, 60s TTL); wenn nichts Spezifisches konfiguriert ist, faellt
+der Service auf einen Wildcard-Eintrag ``event_type="*"`` zurueck.
+Fehlt auch der, wird der Event lautlos verworfen (nur Debug-Log).
+
+Alle Calls sind fire-and-forget -- Fehler werden geloggt, blockieren
+aber nie den aufrufenden Flow.
 """
 
 import logging
 
 import requests
-from django.conf import settings
+from django.core.cache import cache
 from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
-WEBHOOK_PATH = "/webhook/betreuer-events"
+_CACHE_TTL_SECONDS = 60
+
+
+def _cache_key(event_type):
+    return f"webhook_endpoint:{event_type}"
+
+
+def _load_endpoint(event_type):
+    """
+    Laedt (gecached) den aktiven WebhookEndpoint fuer einen Event-Typ.
+    Faellt auf den Wildcard-Eintrag "*" zurueck. Gibt None zurueck,
+    wenn nichts konfiguriert bzw. nichts aktiv ist.
+    """
+    from apps.notifications.models import WebhookEndpoint
+
+    cached = cache.get(_cache_key(event_type))
+    if cached is not None:
+        return cached or None
+
+    endpoint = (
+        WebhookEndpoint.objects
+        .filter(event_type=event_type, is_active=True)
+        .first()
+    )
+    if endpoint is None and event_type != "*":
+        endpoint = (
+            WebhookEndpoint.objects
+            .filter(event_type="*", is_active=True)
+            .first()
+        )
+
+    if endpoint is None:
+        cache.set(_cache_key(event_type), {}, _CACHE_TTL_SECONDS)
+        return None
+
+    data = {
+        "url": endpoint.url,
+        "auth_header_name": endpoint.auth_header_name,
+        "auth_header_value": endpoint.auth_header_value,
+        "timeout_seconds": endpoint.timeout_seconds,
+    }
+    cache.set(_cache_key(event_type), data, _CACHE_TTL_SECONDS)
+    return data
+
+
+def invalidate_webhook_cache(event_type=None):
+    """
+    Invalidiert den Webhook-Cache fuer einen Event-Typ oder komplett.
+    Wird aus den post_save/post_delete-Signalen von WebhookEndpoint
+    aufgerufen.
+    """
+    from apps.notifications.models import EVENT_CHOICES
+    if event_type and event_type != "*":
+        cache.delete(_cache_key(event_type))
+        return
+    # Wildcard oder None: alle bekannten Event-Keys loeschen
+    for choice, _label in EVENT_CHOICES:
+        cache.delete(_cache_key(choice))
 
 
 def send_notification(event_type, **kwargs):
     """
-    POST an event to the N8N webhook endpoint.
+    POST eines Events an den konfigurierten Webhook-Endpoint.
 
     Args:
-        event_type: One of the following 19 event types:
-            - betreuer_registered
-            - documents_generated
-            - documents_sent
-            - document_rejected
-            - betreuer_activated
-            - document_expiring
-            - document_expired
-            - freibetrag_warning
-            - pending_approval
-            - betreuer_approved
-            - duplicate_detected
-            - email_mismatch
-            - contract_created
-            - documents_complete
-            - timesheet_submitted
-            - timesheet_rejected
-            - kostenbuchung_created
-            - fuehrungszeugnis_required
-            - password_set
-        **kwargs:   Additional payload fields (betreuer_name, betreuer_email,
-                    school_name, coordinator_name, contract_number, etc.)
+        event_type: Siehe EVENT_CHOICES in models.py.
+        **kwargs:   Payload-Felder (betreuer_name, school_name, ...).
 
     Returns:
-        True if the webhook responded with 2xx, False otherwise.
+        True bei 2xx-Response, False sonst (inkl. "nicht konfiguriert").
     """
-    base_url = getattr(settings, "N8N_WEBHOOK_BASE_URL", "").rstrip("/")
-    if not base_url:
-        logger.debug("N8N_WEBHOOK_BASE_URL not configured, skipping notification.")
+    endpoint = _load_endpoint(event_type)
+    if endpoint is None:
+        logger.debug(
+            "Kein aktiver Webhook fuer '%s' konfiguriert -- Event verworfen.",
+            event_type,
+        )
         return False
 
-    url = f"{base_url}{WEBHOOK_PATH}"
     payload = {
         "event_type": event_type,
         "timestamp": timezone.now().isoformat(),
         **kwargs,
     }
+    headers = {}
+    if endpoint["auth_header_name"] and endpoint["auth_header_value"]:
+        headers[endpoint["auth_header_name"]] = endpoint["auth_header_value"]
 
     try:
-        response = requests.post(url, json=payload, timeout=10)
+        response = requests.post(
+            endpoint["url"],
+            json=payload,
+            timeout=endpoint["timeout_seconds"],
+            headers=headers or None,
+        )
         response.raise_for_status()
-        logger.info("N8N notification sent: %s → %s", event_type, url)
+        logger.info("Webhook gesendet: %s -> %s", event_type, endpoint["url"])
         return True
     except requests.RequestException as exc:
         logger.warning(
-            "N8N notification failed for '%s': %s",
+            "Webhook fehlgeschlagen fuer '%s' (%s): %s",
             event_type,
+            endpoint["url"],
             exc,
         )
         return False
