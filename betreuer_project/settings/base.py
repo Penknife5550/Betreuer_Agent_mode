@@ -110,6 +110,9 @@ DATABASES = {
         "PASSWORD": os.environ.get("DB_PASSWORD", "betreuer_pass"),
         "HOST": os.environ.get("DB_HOST", "postgres"),
         "PORT": os.environ.get("DB_PORT", "5432"),
+        # Persistente Connections sparen ~20-50ms pro Request.
+        "CONN_MAX_AGE": int(os.environ.get("DB_CONN_MAX_AGE", "60")),
+        "CONN_HEALTH_CHECKS": True,
     }
 }
 
@@ -128,6 +131,7 @@ AUTH_PASSWORD_VALIDATORS = [
     },
     {
         "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
+        "OPTIONS": {"min_length": 12},
     },
     {
         "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
@@ -205,8 +209,13 @@ N8N_API_TOKEN = os.environ.get("N8N_API_TOKEN", "")
 
 AXES_FAILURE_LIMIT = 5
 AXES_COOLOFF_TIME = 0.25  # 15 minutes (in hours)
-AXES_LOCKOUT_PARAMETERS = ["username"]
+# Username UND IP zusammen sperren -> verhindert sowohl gezielte Angriffe
+# auf einen User als auch Distributed-Brute-Force ueber viele Usernames.
+AXES_LOCKOUT_PARAMETERS = [["username", "ip_address"]]
 AXES_RESET_ON_SUCCESS = True
+# Damit axes hinter Caddy die echte Client-IP bekommt:
+AXES_IPWARE_PROXY_COUNT = 1
+AXES_IPWARE_META_PRECEDENCE_ORDER = ["HTTP_X_FORWARDED_FOR", "REMOTE_ADDR"]
 
 # ---------------------------------------------------------------------------
 # Django-Q2 configuration (background tasks)
@@ -224,4 +233,33 @@ Q_CLUSTER = {
     "cpu_affinity": 1,
     "label": "Django Q2",
     "orm": "default",
+    # Fehlgeschlagene Tasks mehrfach erneut versuchen, bevor sie als
+    # Failure archiviert werden. django-q2 nutzt exponential backoff.
+    "max_attempts": 3,
+}
+
+# ---------------------------------------------------------------------------
+# Default Logging (wird in production.py und development.py ueberschrieben)
+# ---------------------------------------------------------------------------
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "verbose": {
+            "format": "{levelname} {asctime} {module} {process:d} {thread:d} {message}",
+            "style": "{",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "verbose",
+        },
+    },
+    "root": {"handlers": ["console"], "level": "INFO"},
+    "loggers": {
+        "django": {"handlers": ["console"], "level": "INFO", "propagate": False},
+        "apps": {"handlers": ["console"], "level": "INFO", "propagate": False},
+    },
 }

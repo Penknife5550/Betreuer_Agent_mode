@@ -4,6 +4,8 @@ Forms for the documents app.
 
 from django import forms
 
+from apps.core.validators import validate_upload_file
+
 
 class DocumentUploadForm(forms.Form):
     """Form for betreuer to upload a signed document scan."""
@@ -15,11 +17,7 @@ class DocumentUploadForm(forms.Form):
 
     def clean_file(self):
         f = self.cleaned_data["file"]
-        # Max 10 MB
-        if f.size > 10 * 1024 * 1024:
-            raise forms.ValidationError("Datei darf maximal 10 MB gross sein.")
-        # Allowed MIME types
-        allowed = ["application/pdf", "image/jpeg", "image/png"]
-        if f.content_type not in allowed:
-            raise forms.ValidationError("Nur PDF, JPG oder PNG erlaubt.")
+        # Magic-Bytes-Validierung (content_type vom Browser ist faelschbar).
+        # Prueft zusaetzlich Groesse und Dateiendung.
+        validate_upload_file(f)
         return f

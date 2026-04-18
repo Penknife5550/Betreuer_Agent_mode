@@ -248,8 +248,25 @@ class DocumentDownloadView(LoginRequiredMixin, View):
             messages.error(request, "Kein generiertes PDF vorhanden.")
             return redirect("contracts:betreuer_detail", pk=document.betreuer.pk)
 
+        # FileNotFoundError abfangen: Datei kann auf Disk weg sein (NFS,
+        # manuelles Loeschen, Storage-Cleanup). User sieht dann einen
+        # verstaendlichen Fehler statt 500.
+        try:
+            file_handle = document.generated_file.open("rb")
+        except (FileNotFoundError, OSError) as exc:
+            logger.error(
+                "Document %s: generated_file konnte nicht geoeffnet werden: %s",
+                document.pk, exc,
+            )
+            messages.error(
+                request,
+                "Die PDF-Datei ist aktuell nicht verfuegbar. "
+                "Bitte erneut generieren lassen.",
+            )
+            return redirect("contracts:betreuer_detail", pk=document.betreuer.pk)
+
         return FileResponse(
-            document.generated_file.open("rb"),
+            file_handle,
             as_attachment=True,
             filename=f"{document.requirement.code}_{document.contract.contract_number}.pdf",
         )

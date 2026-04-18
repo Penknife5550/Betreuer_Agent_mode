@@ -232,8 +232,10 @@
                             {% endif %}
                             {% endif %}
 
-                            {# Koordinator actions for uploaded documents #}
-                            {% if doc.status == 'uploaded' and request.user.is_superuser or doc.status == 'uploaded' and request.user.profile.is_koordinator or doc.status == 'uploaded' and request.user.profile.is_admin %}
+                            {# Koordinator/Admin/Superuser duerfen aktionen nur auf 'uploaded' durchfuehren. #}
+                            {% if doc.status == 'uploaded' %}
+                            {% with up=request.user.profile %}
+                            {% if request.user.is_superuser or up.is_admin or up.is_koordinator %}
                             <div class="mt-2 flex gap-2">
                                 <form method="post" action="{% url 'documents:document_verify' doc.pk %}" class="inline">
                                     {% csrf_token %}
@@ -259,7 +261,9 @@
                                     </div>
                                 </form>
                             </div>
-                            {% endif %}
+                            {% endif %}{# role check #}
+                            {% endwith %}
+                            {% endif %}{# doc.status == uploaded #}
                         </div>
                     </li>
                     {% endfor %}

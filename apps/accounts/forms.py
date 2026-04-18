@@ -8,12 +8,8 @@ from decimal import Decimal, InvalidOperation
 
 from django import forms
 
-# Tailwind CSS classes (same as contracts/forms.py)
-INPUT_CSS = (
-    "w-full rounded-md border border-gray-300 px-3 py-2 text-sm "
-    "focus:border-schule-gsh focus:ring-1 focus:ring-schule-gsh"
-)
-CHECKBOX_CSS = "h-4 w-4 rounded border-gray-300 text-schule-gsh focus:ring-schule-gsh"
+# Widget-CSS aus zentraler Konstanten-Quelle, um Drift zwischen Apps zu vermeiden.
+from apps.core.constants import CHECKBOX_CSS, INPUT_CSS  # noqa: F401
 
 
 class BetreuerProfileEditForm(forms.Form):

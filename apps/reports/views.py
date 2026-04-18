@@ -10,12 +10,10 @@ import logging
 from datetime import date
 from decimal import Decimal
 
-from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.views import View
 from django.shortcuts import render
 
-logger = logging.getLogger(__name__)
-
+from apps.core.permissions import KoordinatorOrAdminMixin
 from apps.reports.services import (
     export_csv,
     get_freibetrag_overview,
@@ -24,19 +22,7 @@ from apps.reports.services import (
 from apps.schools.models import Foerderprogramm, School
 from apps.timetracking.models import TimeEntry
 
-
-class KoordinatorOrAdminMixin(LoginRequiredMixin, UserPassesTestMixin):
-    """Only allow Koordinator or Admin users."""
-
-    raise_exception = True
-
-    def test_func(self):
-        user = self.request.user
-        if user.is_superuser:
-            return True
-        if not hasattr(user, "profile"):
-            return False
-        return user.profile.is_koordinator or user.profile.is_admin
+logger = logging.getLogger(__name__)
 
 
 class MonthlyOverviewView(KoordinatorOrAdminMixin, View):
@@ -103,11 +89,8 @@ class MonthlyOverviewView(KoordinatorOrAdminMixin, View):
             schools_data[code]["subtotal_hours"] += row["total_hours"]
             schools_data[code]["subtotal_amount"] += row["total_amount"]
 
-        # Month name
-        month_names = [
-            "", "Januar", "Februar", "Maerz", "April", "Mai", "Juni",
-            "Juli", "August", "September", "Oktober", "November", "Dezember",
-        ]
+        # Monatsname ueber zentrale Konstante (1-basiert)
+        from apps.core.constants import MONTH_NAMES_DE
 
         # Available schools for filter (admin only)
         available_schools = None
@@ -117,7 +100,7 @@ class MonthlyOverviewView(KoordinatorOrAdminMixin, View):
         context = {
             "month": month,
             "year": year,
-            "month_name": month_names[month],
+            "month_name": MONTH_NAMES_DE[month - 1],
             "school_filter": school_filter,
             "available_schools": available_schools,
             "schools_data": schools_data,
@@ -274,18 +257,16 @@ class ZentraleAuswertungView(KoordinatorOrAdminMixin, View):
                 contracts__school_id__in=allowed_school_ids
             ).distinct()
 
-        month_names = [
-            "", "Januar", "Februar", "Maerz", "April", "Mai", "Juni",
-            "Juli", "August", "September", "Oktober", "November", "Dezember",
-        ]
-        month_choices = [(i, month_names[i]) for i in range(1, 13)]
+        from apps.core.constants import MONTH_NAMES_DE
+
+        month_choices = [(i + 1, name) for i, name in enumerate(MONTH_NAMES_DE)]
 
         context = {
             "year": year,
             "month_from": month_from,
             "month_to": month_to,
-            "month_from_name": month_names[month_from],
-            "month_to_name": month_names[month_to],
+            "month_from_name": MONTH_NAMES_DE[month_from - 1],
+            "month_to_name": MONTH_NAMES_DE[month_to - 1],
             "month_choices": month_choices,
             "school_filter_id": school_filter_id,
             "fp_filter_id": fp_filter_id,

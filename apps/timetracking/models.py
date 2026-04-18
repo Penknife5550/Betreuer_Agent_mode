@@ -79,6 +79,11 @@ class TimeEntry(TimeStampedModel, AuditLogMixin):
         ordering = ["-date", "-start_time"]
         indexes = [
             models.Index(fields=["contract", "date"]),
+            # "date" alleine: fuer Reports-Views (date__gte, date__lte)
+            # ohne contract-Filter.
+            models.Index(fields=["date"]),
+            # foerderprogramm + timesheet: Budget-Aggregate
+            models.Index(fields=["foerderprogramm", "timesheet"]),
         ]
 
     def __str__(self):
@@ -219,6 +224,11 @@ class MonthlyTimesheet(TimeStampedModel, AuditLogMixin):
                 fields=["contract", "month", "year"],
                 name="unique_timesheet_per_contract_month",
             )
+        ]
+        indexes = [
+            models.Index(fields=["status"]),
+            models.Index(fields=["year", "month"]),
+            models.Index(fields=["status", "year", "month"]),
         ]
 
     def __str__(self):

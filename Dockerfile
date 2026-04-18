@@ -1,8 +1,9 @@
 FROM python:3.12-slim
 
 # Prevent Python from writing .pyc files and enable unbuffered output
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
 
 # Install system dependencies for WeasyPrint and general build tools
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -14,23 +15,68 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libglib2.0-0 \
     shared-mime-info \
     fonts-liberation \
+    curl \
+    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
+
+# Download Tailwind CLI (standalone, kein Node erforderlich) fuer CSS-Build.
+# TAILWIND_VERSION kann ueber Build-Arg ueberschrieben werden.
+ARG TAILWIND_VERSION=v3.4.13
+ARG TARGETARCH=x64
+RUN curl -fsSL -o /usr/local/bin/tailwindcss \
+    "https://github.com/tailwindlabs/tailwindcss/releases/download/${TAILWIND_VERSION}/tailwindcss-linux-${TARGETARCH}" \
+    && chmod +x /usr/local/bin/tailwindcss
+
+# Non-root-User fuer die App. UID 1000 damit gemountete Volumes
+# auf gaengigen Linux-Hosts nicht root-owned sind.
+RUN groupadd --system --gid 1000 app \
+    && useradd --system --uid 1000 --gid app --create-home --shell /sbin/nologin app
 
 # Set working directory
 WORKDIR /app
 
-# Install Python dependencies
+# Install Python dependencies first (besserer Docker-Cache)
 COPY requirements.txt /app/
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application code
+# Copy application code (spaeter als deps, um Cache besser zu nutzen)
 COPY . /app/
 
-# Collect static files
-RUN python manage.py collectstatic --noinput --settings=betreuer_project.settings.production || true
+# Ensure staticfiles + media dirs exist and belong to the non-root user
+RUN mkdir -p /app/staticfiles /app/media \
+    && chown -R app:app /app
 
-# Expose port
+# Tailwind-CSS bauen (ersetzt das bisherige CDN-Einbinden im Template).
+# Gescheiterter Build darf den Image-Build nicht blocken, daher || true --
+# in der Prod-Pipeline sollte ein gruener Build dennoch sichergestellt sein.
+RUN tailwindcss \
+    -c /app/tailwind.config.js \
+    -i /app/static/css/tailwind.input.css \
+    -o /app/static/css/tailwind.css \
+    --minify || true
+
+# Collect static files (faellt waehrend Build ggf. leise fehl, weil .env
+# nicht verfuegbar ist -- kein Blocker).
+USER app
+RUN DATABASE_URL=sqlite:///tmp/build.db \
+    SECRET_KEY=build-time-only \
+    ALLOWED_HOSTS=localhost \
+    FERNET_KEY=build-time \
+    DJANGO_SETTINGS_MODULE=betreuer_project.settings.development \
+    python manage.py collectstatic --noinput || true
+
+# Healthcheck (nutzt den Django-View, der auch die DB prueft)
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -fsS http://localhost:8000/health/ || exit 1
+
 EXPOSE 8000
 
-# Run with Waitress WSGI server
-CMD ["waitress-serve", "--port=8000", "--host=0.0.0.0", "betreuer_project.wsgi:application"]
+# Run with Waitress WSGI server. Threads & Connections bewusst gesetzt,
+# damit gelegentliche PDF-/n8n-Wartezeiten nicht alle Worker blocken.
+CMD ["waitress-serve", \
+     "--port=8000", \
+     "--host=0.0.0.0", \
+     "--threads=8", \
+     "--connection-limit=200", \
+     "--channel-timeout=120", \
+     "betreuer_project.wsgi:application"]

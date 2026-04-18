@@ -5,43 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}BetreuerApp{% endblock %} | CSFV</title>
 
-    <!-- Montserrat von Google Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
-
-    <!-- Tailwind CSS via CDN (Development) -->
-    <!-- Production: Replace with compiled CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        'sans': ['Montserrat', 'Calibri', 'system-ui', 'sans-serif'],
-                    },
-                    colors: {
-                        'credo': {
-                            'dark': '#575756',
-                            'light': '#DADADA',
-                        },
-                        'schule': {
-                            'gym': '#FBC900',
-                            'ges': '#6BAA24',
-                            'gsm': '#E2001A',
-                            'gsh': '#009AC6',
-                            'gss': '#AD1C28',
-                        }
-                    }
-                }
-            }
-        }
-    </script>
+    <!-- Montserrat: lokal gehostet, kein Google-CDN-Tracking -->
+    <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
 
     {% block extra_head %}{% endblock %}
 </head>
 <body class="bg-gray-50 font-sans text-credo-dark min-h-screen flex flex-col"
       hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+    <a href="#main-content" class="skip-link">Zum Inhalt springen</a>
 
     {# ------------------------------------------------------------------ #}
     {# Navigation (nur fuer eingeloggte Benutzer)                         #}
@@ -300,7 +271,7 @@
     {# ------------------------------------------------------------------ #}
     {# Main Content                                                        #}
     {# ------------------------------------------------------------------ #}
-    <main class="flex-1">
+    <main id="main-content" class="flex-1">
         {% block content %}{% endblock %}
     </main>
 
@@ -313,13 +284,13 @@
                 &copy; {{ current_year|default:"2026" }} Christlicher Schulf&ouml;rderverein Minden e.V.
             </div>
         </div>
-        {# CREDO-Linie: grauer Balken (50%) + Gelb (12.5%) + Gruen (12.5%) + Rot (12.5%) + Blau (12.5%) #}
-        <div class="flex items-stretch h-2">
-            <div style="width: 50%; background-color: #575756;"></div>
-            <div style="width: 12.5%; background-color: #FBC900;"></div>
-            <div style="width: 12.5%; background-color: #6BAA24;"></div>
-            <div style="width: 12.5%; background-color: #E2001A;"></div>
-            <div style="width: 12.5%; background-color: #009AC6;"></div>
+        {# CREDO-Linie via wiederverwendbarer Klasse #}
+        <div class="credo-linie" role="presentation" aria-hidden="true">
+            <span class="c-grau" style="flex:4;"></span>
+            <span class="c-gelb"></span>
+            <span class="c-gruen"></span>
+            <span class="c-rot"></span>
+            <span class="c-blau"></span>
         </div>
     </footer>
 

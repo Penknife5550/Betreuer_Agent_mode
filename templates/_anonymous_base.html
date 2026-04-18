@@ -1,0 +1,66 @@
+{% load static %}<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}CSFV{% endblock %}</title>
+
+    {# Lokales Tailwind-Build (kein externes CDN). #}
+    <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
+
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="bg-gray-50 font-sans text-credo-dark min-h-screen flex flex-col">
+
+    <a href="#main-content" class="skip-link">Zum Inhalt springen</a>
+
+    {# Header #}
+    <header class="bg-white shadow-sm" role="banner">
+        <div class="max-w-3xl mx-auto px-4 py-4 flex items-center">
+            <img src="{% static 'img/logo_foerderverein_credo.svg' %}"
+                 alt="CSFV Logo"
+                 class="h-12 w-auto">
+            <h1 class="ml-4 text-lg font-semibold text-credo-dark">
+                {% block header_title %}Christlicher Schulfoerderverein Minden{% endblock %}
+            </h1>
+        </div>
+    </header>
+
+    {# Flash-Messages #}
+    {% if messages %}
+    <div class="max-w-3xl mx-auto px-4 mt-4" aria-live="polite">
+        {% for message in messages %}
+        <div class="mb-2 p-4 rounded-md
+            {% if message.tags == 'success' %}bg-green-50 text-green-800 border border-green-200
+            {% elif message.tags == 'error' %}bg-red-50 text-red-800 border border-red-200
+            {% else %}bg-blue-50 text-blue-800 border border-blue-200{% endif %}"
+            role="{% if message.tags == 'error' %}alert{% else %}status{% endif %}">
+            {{ message }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <main id="main-content" class="flex-1">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="mt-auto" role="contentinfo">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div class="text-center text-xs text-gray-400 mb-2">
+                &copy; {{ current_year|default:"2026" }} Christlicher Schulfoerderverein Minden e.V.
+            </div>
+        </div>
+        <div class="credo-linie" role="presentation" aria-hidden="true">
+            <span class="c-grau" style="flex:4;"></span>
+            <span class="c-gelb"></span>
+            <span class="c-gruen"></span>
+            <span class="c-rot"></span>
+            <span class="c-blau"></span>
+        </div>
+    </footer>
+
+    {# HTMX nur wenn das Template es via extra_js einbindet. #}
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

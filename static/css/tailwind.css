@@ -1,0 +1,69 @@
+/* ==========================================================================
+ * Tailwind-Build Platzhalter
+ * --------------------------------------------------------------------------
+ * Diese Datei wird im Docker-Build ueberschrieben durch:
+ *   tailwindcss -c tailwind.config.js \
+ *               -i static/css/tailwind.input.css \
+ *               -o static/css/tailwind.css \
+ *               --minify
+ *
+ * Fuer lokale Entwicklung ohne Docker:
+ *   1) Tailwind standalone CLI installieren: https://github.com/tailwindlabs/tailwindcss/releases
+ *   2) Watch-Mode:  ./tailwindcss -c tailwind.config.js -i static/css/tailwind.input.css -o static/css/tailwind.css --watch
+ *
+ * Dieser Platzhalter enthaelt Minimum-Styles, damit Login/Registrierung
+ * ohne Build nicht voellig unstyled erscheinen. Einmal gebaut, wird er
+ * durch den vollwertigen Tailwind-Output ersetzt.
+ * ==========================================================================*/
+
+:root {
+  --credo-dark: #575756;
+  --credo-light: #DADADA;
+  --schule-gym: #FBC900;
+  --schule-ges: #6BAA24;
+  --schule-gsm: #E2001A;
+  --schule-gsh: #0077A8;
+  --schule-gss: #AD1C28;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+
+body {
+  font-family: 'Montserrat', Calibri, system-ui, sans-serif;
+  color: var(--credo-dark);
+  background-color: #f9fafb;
+  line-height: 1.5;
+}
+
+h1, h2, h3, h4 { margin-top: 0; }
+a { color: var(--credo-dark); }
+button { cursor: pointer; font-family: inherit; }
+
+/* CREDO-Linie */
+.credo-linie { display: flex; width: 100%; height: 6px; }
+.credo-linie > span { flex: 1; }
+.credo-linie > .c-grau { background-color: var(--credo-dark); }
+.credo-linie > .c-gelb { background-color: var(--schule-gym); }
+.credo-linie > .c-gruen { background-color: var(--schule-ges); }
+.credo-linie > .c-rot { background-color: var(--schule-gsm); }
+.credo-linie > .c-blau { background-color: #009AC6; }
+
+/* Fokus-Ring, WCAG 2.4.7 */
+:focus-visible {
+  outline: 2px solid var(--credo-dark);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  background: var(--credo-dark);
+  color: white;
+  padding: 8px 16px;
+  z-index: 9999;
+  text-decoration: none;
+}
+.skip-link:focus { top: 0; }

@@ -11,7 +11,7 @@ import logging
 from datetime import date
 
 from django.contrib import messages
-from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import FileResponse, Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
@@ -20,36 +20,14 @@ from django.views import View
 from django.views.generic import ListView, TemplateView
 
 from apps.contracts.models import Contract
+from apps.core.constants import MONTH_NAMES_DE
+from apps.core.permissions import BetreuerOnlyMixin as BetreuerRequiredMixin
+from apps.core.permissions import KoordinatorOrAdminMixin
 from apps.schools.models import Foerderprogramm, School
 from apps.timetracking.forms import TimeEntryForm
 from apps.timetracking.models import MonthlyTimesheet, TimeEntry
 
 logger = logging.getLogger(__name__)
-
-
-# ------------------------------------------------------------------
-# Mixins
-# ------------------------------------------------------------------
-
-
-class BetreuerRequiredMixin(LoginRequiredMixin, UserPassesTestMixin):
-    raise_exception = True
-
-    def test_func(self):
-        user = self.request.user
-        return hasattr(user, "profile") and user.profile.is_betreuer
-
-
-class KoordinatorOrAdminMixin(LoginRequiredMixin, UserPassesTestMixin):
-    raise_exception = True
-
-    def test_func(self):
-        user = self.request.user
-        if user.is_superuser:
-            return True
-        if not hasattr(user, "profile"):
-            return False
-        return user.profile.is_koordinator or user.profile.is_admin
 
 
 # ------------------------------------------------------------------
@@ -147,18 +125,13 @@ class TimeEntryListView(BetreuerRequiredMixin, TemplateView):
             else School.objects.none()
         )
 
-        # Month name for display
-        month_names = [
-            "", "Januar", "Februar", "Maerz", "April", "Mai", "Juni",
-            "Juli", "August", "September", "Oktober", "November", "Dezember",
-        ]
-
+        # Monatsname via zentrale Konstante (1-basiert -> -1 Offset)
         month_last_day = calendar.monthrange(year, month)[1]
 
         context.update({
             "month": month,
             "year": year,
-            "month_name": month_names[month],
+            "month_name": MONTH_NAMES_DE[month - 1],
             "month_last_day": month_last_day,
             "prev_month": prev_month,
             "prev_year": prev_year,
@@ -469,68 +442,51 @@ class TimesheetDetailView(KoordinatorOrAdminMixin, TemplateView):
 
 
 class TimesheetApproveView(KoordinatorOrAdminMixin, View):
-    """Approve a submitted timesheet, generate PDF, and notify accounting."""
+    """
+    Genehmigt einen eingereichten Stundennachweis. PDF-Erstellung und
+    n8n-Notifications werden per ``on_commit`` an django-q2 uebergeben,
+    damit der Koordinator-Request nicht durch WeasyPrint / HTTP-Timeouts
+    blockiert wird.
+    """
 
     def post(self, request, pk):
+        from django.db import transaction
+
         qs = MonthlyTimesheet.objects.all()
         # Koordinator may only approve timesheets for their schools
         if hasattr(request.user, "profile") and request.user.profile.is_koordinator:
             school_ids = request.user.profile.schools.values_list("pk", flat=True)
             qs = qs.filter(contract__school_id__in=school_ids)
         timesheet = get_object_or_404(qs, pk=pk)
+
         try:
-            timesheet.approve(request.user)
+            with transaction.atomic():
+                timesheet.approve(request.user)
+                timesheet_pk = timesheet.pk
 
-            # Generate accounting PDF
-            try:
-                from apps.timetracking.services import generate_timesheet_pdf
-                generate_timesheet_pdf(timesheet)
-            except Exception as exc:
-                logger.error(
-                    "Failed to generate PDF for timesheet %s: %s",
-                    timesheet.pk,
-                    exc,
-                )
-                messages.warning(
-                    request,
-                    "Nachweis genehmigt, aber PDF-Generierung fehlgeschlagen. "
-                    "Bitte Admin kontaktieren.",
-                )
+                def _schedule_followup():
+                    try:
+                        from django_q.tasks import async_task
+                        async_task(
+                            "apps.timetracking.services.generate_timesheet_pdf_and_notify",
+                            timesheet_pk,
+                        )
+                    except Exception:
+                        logger.exception(
+                            "Could not schedule follow-up for timesheet %s",
+                            timesheet_pk,
+                        )
 
-            # Send N8N notification to accounting
-            try:
-                from apps.notifications.services import notify_timesheet_approved
-                notify_timesheet_approved(timesheet)
-            except Exception as exc:
-                logger.error(
-                    "Failed to send notification for timesheet %s: %s",
-                    timesheet.pk,
-                    exc,
-                )
-
-            # Check Freibetrag and send warning if threshold reached
-            try:
-                from apps.freibetrag.services import get_freibetrag_status
-                from apps.notifications.services import notify_freibetrag_warning
-
-                betreuer = timesheet.contract.betreuer
-                freibetrag_status = get_freibetrag_status(betreuer, year=timesheet.year)
-                if freibetrag_status["warning_level"]:
-                    notify_freibetrag_warning(betreuer, freibetrag_status)
-            except Exception as exc:
-                logger.error(
-                    "Freibetrag warning check failed for timesheet %s: %s",
-                    timesheet.pk,
-                    exc,
-                )
-
-            messages.success(
-                request,
-                f"Nachweis {timesheet.month:02d}/{timesheet.year} genehmigt "
-                f"und Abrechnungs-PDF erstellt.",
-            )
+                transaction.on_commit(_schedule_followup)
         except ValueError as exc:
             messages.error(request, str(exc))
+            return redirect("timetracking:timesheet_detail", pk=timesheet.pk)
+
+        messages.success(
+            request,
+            f"Nachweis {timesheet.month:02d}/{timesheet.year} genehmigt. "
+            f"Das Abrechnungs-PDF wird im Hintergrund erstellt.",
+        )
         return redirect("timetracking:timesheet_detail", pk=timesheet.pk)
 
 
@@ -605,9 +561,22 @@ class TimesheetPDFDownloadView(LoginRequiredMixin, View):
             messages.error(request, "Kein PDF vorhanden fuer diesen Nachweis.")
             return redirect("timetracking:timesheet_detail", pk=timesheet.pk)
 
-        # Serve the file
+        try:
+            file_handle = timesheet.generated_pdf.open("rb")
+        except (FileNotFoundError, OSError) as exc:
+            logger.error(
+                "Timesheet %s PDF konnte nicht geoeffnet werden: %s",
+                timesheet.pk, exc,
+            )
+            messages.error(
+                request,
+                "Die PDF-Datei ist aktuell nicht verfuegbar. "
+                "Bitte erneut generieren lassen.",
+            )
+            return redirect("timetracking:timesheet_detail", pk=timesheet.pk)
+
         response = FileResponse(
-            timesheet.generated_pdf.open("rb"),
+            file_handle,
             content_type="application/pdf",
         )
         filename = (

@@ -5,24 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Betreuer Registrierung | CSFV</title>
 
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&display=swap" rel="stylesheet">
-
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: { 'sans': ['Montserrat', 'Calibri', 'system-ui', 'sans-serif'] },
-                    colors: {
-                        'credo': { 'dark': '#575756', 'light': '#DADADA' },
-                        'schule': { 'gym': '#FBC900', 'ges': '#6BAA24', 'gsm': '#E2001A', 'gsh': '#009AC6', 'gss': '#AD1C28' }
-                    }
-                }
-            }
-        }
-    </script>
+    <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
 </head>
 <body class="bg-gray-50 font-sans text-credo-dark min-h-screen flex flex-col">
 
@@ -218,7 +201,9 @@
             </div>
 
             {# ---- Section 5: Freibetrag ---- #}
-            <div class="bg-white shadow rounded-lg p-6" x-data="{ usedElsewhere: false }">
+            <div class="bg-white shadow rounded-lg p-6"
+                 x-data="{ usedElsewhere: {{ form.freibetrag_used_elsewhere.value|yesno:'true,false' }} }"
+                 @change="usedElsewhere = $event.target.name === '{{ form.freibetrag_used_elsewhere.html_name }}' ? $event.target.checked : usedElsewhere">
                 <h2 class="text-lg font-semibold text-credo-dark mb-4 border-b border-gray-200 pb-2">
                     Freibetrag-Erklaerung
                 </h2>

@@ -226,19 +226,30 @@ class EncryptedCharField(models.CharField):
         return f.encrypt(value.encode()).decode()
 
     def from_db_value(self, value, expression, connection):
-        """Decrypt after reading from the database."""
+        """
+        Decrypt after reading from the database.
+
+        Bei Decrypt-Fehler wird ein ValueError geworfen statt ``None`` zu
+        liefern -- sonst koennte ein Nutzer unwissentlich einen neuen Wert
+        in ein leeres Feld schreiben und den alten ueberschreiben
+        (leise Data-Loss-Bombe).
+        """
         if value is None:
             return value
+        from cryptography.fernet import InvalidToken
         f = self._get_fernet()
         try:
             return f.decrypt(value.encode()).decode()
-        except Exception:
+        except InvalidToken as exc:
             logger.error(
-                "Failed to decrypt EncryptedCharField value. "
-                "Returning None to prevent ciphertext leakage. "
-                "Check that FERNET_KEY matches the key used for encryption."
+                "Failed to decrypt EncryptedCharField value: %s. "
+                "FERNET_KEY stimmt nicht mit dem Verschluesselungs-Key ueberein.",
+                exc,
             )
-            return None
+            raise ValueError(
+                "EncryptedCharField konnte nicht entschluesselt werden. "
+                "Bitte Admin kontaktieren."
+            ) from exc
 
     def deconstruct(self):
         name, path, args, kwargs = super().deconstruct()

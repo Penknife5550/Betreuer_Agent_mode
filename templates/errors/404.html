@@ -1,0 +1,24 @@
+{% extends "_anonymous_base.html" %}
+
+{% block title %}Seite nicht gefunden | CSFV{% endblock %}
+{% block header_title %}BetreuerApp{% endblock %}
+
+{% block content %}
+<div class="flex-1 flex items-center justify-center px-4 py-12">
+    <div class="max-w-md w-full text-center">
+        <div class="bg-white rounded-lg shadow-md p-8">
+            <p class="text-6xl font-bold text-credo-dark mb-4">404</p>
+            <h2 class="text-xl font-semibold text-credo-dark mb-2">
+                Seite nicht gefunden
+            </h2>
+            <p class="text-sm text-gray-600 mb-6">
+                Die angeforderte Seite existiert nicht oder wurde verschoben.
+                Bitte pruefen Sie die Adresse oder kehren Sie zur Startseite zurueck.
+            </p>
+            <a href="/" class="inline-block px-5 py-2.5 rounded-md bg-credo-dark text-white font-medium hover:bg-gray-700">
+                Zur Startseite
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

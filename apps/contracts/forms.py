@@ -12,17 +12,15 @@ from django.contrib.auth.models import User
 from django.urls import reverse_lazy
 
 from apps.contracts.models import BetreuerProfile
+from apps.core.constants import (  # noqa: F401 - re-exports fuer Alt-Imports
+    CHECKBOX_CSS,
+    INPUT_CSS,
+    SELECT_CSS,
+    TEXTAREA_CSS,
+)
+from apps.core.validators import validate_iban
 from apps.rates.models import ActivityType
 from apps.schools.models import Foerderprogramm, School
-
-# Tailwind CSS classes for form inputs
-INPUT_CSS = (
-    "w-full rounded-md border border-gray-300 px-3 py-2 text-sm "
-    "focus:border-schule-gsh focus:ring-1 focus:ring-schule-gsh"
-)
-SELECT_CSS = INPUT_CSS
-CHECKBOX_CSS = "h-4 w-4 rounded border-gray-300 text-schule-gsh focus:ring-schule-gsh"
-TEXTAREA_CSS = INPUT_CSS + " resize-none"
 
 
 class BetreuerRegistrationForm(forms.Form):
@@ -302,25 +300,11 @@ class BetreuerRegistrationForm(forms.Form):
 
     def clean_iban(self):
         iban = self.cleaned_data["iban"].replace(" ", "").upper()
-        if len(iban) < 15 or len(iban) > 34:
-            raise forms.ValidationError("Bitte geben Sie eine gueltige IBAN ein.")
-        # Validate characters: only alphanumeric
-        if not re.match(r"^[A-Z]{2}[0-9]{2}[A-Z0-9]+$", iban):
-            raise forms.ValidationError(
-                "IBAN muss mit einem Laendercode beginnen, gefolgt von einer Pruefziffer und der Kontonummer."
-            )
-        # ISO 13616 mod-97 checksum validation
-        rearranged = iban[4:] + iban[:4]
-        numeric = ""
-        for char in rearranged:
-            if char.isdigit():
-                numeric += char
-            else:
-                numeric += str(ord(char) - ord("A") + 10)
-        if int(numeric) % 97 != 1:
-            raise forms.ValidationError(
-                "Die IBAN-Pruefziffer ist ungueltig. Bitte ueberpruefen Sie Ihre Eingabe."
-            )
+        from django.core.exceptions import ValidationError as CoreValidationError
+        try:
+            validate_iban(iban)
+        except CoreValidationError as exc:
+            raise forms.ValidationError(list(exc.messages)[0])
         return iban
 
     def clean(self):

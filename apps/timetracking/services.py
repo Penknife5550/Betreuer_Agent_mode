@@ -14,6 +14,7 @@ from django.template.loader import render_to_string
 
 import weasyprint
 
+from apps.core.constants import MONTH_NAMES_DE
 from apps.documents.services import (
     generate_qr_code_data_uri,
     get_logo_path,
@@ -23,10 +24,8 @@ from apps.freibetrag.services import get_freibetrag_status
 
 logger = logging.getLogger(__name__)
 
-MONTH_NAMES = [
-    "", "Januar", "Februar", "Maerz", "April", "Mai", "Juni",
-    "Juli", "August", "September", "Oktober", "November", "Dezember",
-]
+# Index 0 leer -- damit month (1..12) direkt mappt.
+MONTH_NAMES = ["", *MONTH_NAMES_DE]
 
 
 def generate_timesheet_pdf(timesheet):
@@ -120,3 +119,53 @@ def generate_timesheet_pdf(timesheet):
         timesheet.year,
     )
     return timesheet
+
+
+def generate_timesheet_pdf_and_notify(timesheet_pk):
+    """
+    Async-Worker (django-q2): PDF generieren, dann n8n-Notifications
+    ausloesen (Accounting + Freibetrag-Warnung). Gedacht fuer den Aufruf
+    aus einem transaction.on_commit-Callback nach TimesheetApproveView.
+
+    Einzelne Fehler werden geloggt, brechen den Task aber nicht ab --
+    wir wollen z.B. die Freibetrag-Warnung nicht verschlucken, nur weil
+    die PDF-Generierung scheiterte.
+    """
+    from apps.freibetrag.services import get_freibetrag_status as _freibetrag
+    from apps.notifications.services import (
+        notify_freibetrag_warning,
+        notify_timesheet_approved,
+    )
+    from apps.timetracking.models import MonthlyTimesheet
+
+    try:
+        timesheet = MonthlyTimesheet.objects.select_related(
+            "contract__betreuer__user", "contract__school"
+        ).get(pk=timesheet_pk)
+    except MonthlyTimesheet.DoesNotExist:
+        logger.error("generate_timesheet_pdf_and_notify: timesheet %s not found", timesheet_pk)
+        return
+
+    try:
+        generate_timesheet_pdf(timesheet)
+    except Exception:
+        logger.exception(
+            "PDF generation failed for timesheet %s", timesheet_pk
+        )
+
+    try:
+        notify_timesheet_approved(timesheet)
+    except Exception:
+        logger.exception(
+            "N8N notify_timesheet_approved failed for timesheet %s", timesheet_pk
+        )
+
+    try:
+        betreuer = timesheet.contract.betreuer
+        status = _freibetrag(betreuer, year=timesheet.year)
+        if status["warning_level"]:
+            notify_freibetrag_warning(betreuer, status)
+    except Exception:
+        logger.exception(
+            "Freibetrag warning check failed for timesheet %s", timesheet_pk
+        )

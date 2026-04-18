@@ -2,14 +2,16 @@
 Views for the contracts app.
 
 Covers: Betreuer registration (token + public), registration link management,
-betreuer list/detail/review/activate, Koordinator approval, and HTMX endpoints.
+betreuer list/detail/review/activate, Koordinator approval, HTMX endpoints.
 
-V2 Changes:
-- Hash-based duplicate detection during registration.
-- Betreuer sets own password during registration.
-- New Koordinator approval step (pending_approval -> approved).
-- start_date left null until Koordinator approval.
-- HTMX hash-check endpoint for live duplicate detection.
+Sicherheits-Invarianten:
+- Koordinator-Aktionen haben immer einen Scope-Check ueber
+  ``require_scope_access`` (Betreuer muss Vertrag an einer Schule des
+  Koordinators haben).
+- Registrierung laeuft atomar im Service-Layer; n8n-Notifications werden
+  erst nach Commit asynchron via django-q2 ausgeloest.
+- Rate-Limit nutzt die echte Client-IP aus dem AuditLogMiddleware
+  (X-Forwarded-For-aware), nicht REMOTE_ADDR (= Caddy-IP).
 """
 
 import logging
@@ -17,22 +19,30 @@ from datetime import timedelta
 
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
-from django.contrib.auth.models import User
-from django.contrib.auth.tokens import default_token_generator
+from django.core.cache import cache
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
 from django.utils import timezone
-from django.utils.encoding import force_bytes
-from django.utils.http import urlsafe_base64_encode
 from django.views import View
 from django.views.generic import DetailView, FormView, ListView, TemplateView
 
-from apps.accounts.models import UserProfile
 from apps.contracts.forms import BetreuerRegistrationForm, RegistrationLinkForm
-from apps.contracts.models import BetreuerProfile, Contract, RegistrationLink
-from apps.documents.models import Document, DocumentRequirement
-from apps.notifications.services import notify_betreuer_registered
+from apps.contracts.models import BetreuerProfile, RegistrationLink
+from apps.contracts.services import (
+    _create_pending_documents,  # re-export fuer bestehende Tests
+    check_duplicate_registration,
+    generate_unique_hash,
+    register_betreuer_from_form,
+)
+from apps.core.middleware import get_current_ip
+from apps.core.permissions import (
+    AdminOnlyMixin,
+    KoordinatorOrAdminMixin,
+    has_admin_role,
+    require_scope_access,
+)
+from apps.documents.models import Document
 from apps.rates.models import ActivityType, HourlyRate
 from apps.schools.models import Foerderprogramm, School, SchoolYear
 
@@ -40,34 +50,33 @@ logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
-# Mixins
+# Konstanten
 # ---------------------------------------------------------------------------
 
+REG_RATE_LIMIT_PER_HOUR = 5
+REG_RATE_LIMIT_WINDOW_S = 3600
+HASH_CHECK_LIMIT_PER_HOUR = 20  # weniger als Registrierungen, da billiger
 
-class KoordinatorOrAdminMixin(LoginRequiredMixin, UserPassesTestMixin):
-    """Mixin that restricts access to Koordinator and Admin users."""
 
-    raise_exception = True
-
-    def test_func(self):
-        user = self.request.user
-        # Django superusers always have full access
-        if user.is_superuser:
-            return True
-        if not hasattr(user, "profile"):
-            return False
-        return user.profile.is_koordinator or user.profile.is_admin
+def _client_ip_for_rate_limit(request):
+    """
+    Liefert die echte Client-IP fuer Rate-Limiting.
+    Bevorzugt X-Forwarded-For (ueber AuditLogMiddleware in thread-local),
+    faellt auf REMOTE_ADDR zurueck. Der Wert "unknown" wird bewusst
+    beibehalten, falls beide Quellen fehlen.
+    """
+    return get_current_ip() or request.META.get("REMOTE_ADDR") or "unknown"
 
 
 # ---------------------------------------------------------------------------
-# Registration Views (public — no login required)
+# Registrierung (oeffentlich, ohne Login)
 # ---------------------------------------------------------------------------
 
 
 class RegistrationView(FormView):
     """
-    Token-based registration. Koordinator sends this link to the betreuer.
-    No login required. Creates User + UserProfile + BetreuerProfile + Contract(draft).
+    Token-basierte Registrierung. Koordinator verschickt den Link an den
+    Betreuer. Kein Login noetig.
     """
 
     template_name = "contracts/registration_form.html"
@@ -95,7 +104,7 @@ class RegistrationView(FormView):
         return ctx
 
     def form_valid(self, form):
-        user, betreuer_profile, contract, is_duplicate = _create_betreuer_from_form(form)
+        user, betreuer_profile, contract, is_duplicate = register_betreuer_from_form(form)
         self.reg_link.mark_used(user)
         if is_duplicate:
             messages.info(
@@ -108,10 +117,12 @@ class RegistrationView(FormView):
 
 class PublicRegistrationView(FormView):
     """
-    Public self-service registration (no token required).
-    Betreuer selects school themselves. School field is not locked.
+    Oeffentliche Self-Service-Registrierung (ohne Token).
 
-    Security: rate-limited to 5 registrations per IP per hour via session.
+    Rate-Limit: REG_RATE_LIMIT_PER_HOUR POSTs pro echter Client-IP und
+    Stunde. Der Cache-Key nutzt ``get_current_ip()`` aus der
+    AuditLogMiddleware, damit Caddy als Reverse-Proxy nicht zur
+    geteilten Source-IP wird (sonst globaler DoS moeglich).
     """
 
     template_name = "contracts/registration_form.html"
@@ -119,27 +130,22 @@ class PublicRegistrationView(FormView):
     success_url = reverse_lazy("contracts:registration_success")
 
     def dispatch(self, request, *args, **kwargs):
-        # Simple IP-based rate limiting via Django cache
-        from django.core.cache import cache
-
-        ip = request.META.get("REMOTE_ADDR", "unknown")
-        cache_key = f"reg_rate_{ip}"
-        attempts = cache.get(cache_key, 0)
-
-        if request.method == "POST" and attempts >= 5:
-            messages.error(
-                request,
-                "Zu viele Registrierungsversuche. Bitte versuchen Sie es spaeter erneut.",
-            )
-            return redirect("contracts:public_registration")
-
         if request.method == "POST":
-            cache.set(cache_key, attempts + 1, timeout=3600)  # 1 hour
-
+            ip = _client_ip_for_rate_limit(request)
+            cache_key = f"reg_rate:{ip}"
+            attempts = cache.get(cache_key, 0)
+            if attempts >= REG_RATE_LIMIT_PER_HOUR:
+                messages.error(
+                    request,
+                    "Zu viele Registrierungsversuche. "
+                    "Bitte versuchen Sie es spaeter erneut.",
+                )
+                return redirect("contracts:public_registration")
+            cache.set(cache_key, attempts + 1, timeout=REG_RATE_LIMIT_WINDOW_S)
         return super().dispatch(request, *args, **kwargs)
 
     def form_valid(self, form):
-        user, betreuer_profile, contract, is_duplicate = _create_betreuer_from_form(form)
+        user, betreuer_profile, contract, is_duplicate = register_betreuer_from_form(form)
         if is_duplicate:
             messages.info(
                 self.request,
@@ -150,26 +156,24 @@ class PublicRegistrationView(FormView):
 
 
 class RegistrationSuccessView(TemplateView):
-    """Confirmation page after successful registration."""
+    """Bestaetigungsseite nach erfolgreicher Registrierung."""
 
     template_name = "contracts/registration_success.html"
 
 
 # ---------------------------------------------------------------------------
-# Registration Link Management (Koordinator / Admin)
+# Registration-Link-Verwaltung (Koordinator / Admin)
 # ---------------------------------------------------------------------------
 
 
 class CreateRegistrationLinkView(KoordinatorOrAdminMixin, FormView):
-    """Koordinator/Admin creates a registration link for a specific school."""
-
     template_name = "contracts/create_registration_link.html"
     form_class = RegistrationLinkForm
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
         profile = self.request.user.profile
-        if profile.is_koordinator:
+        if profile.is_koordinator and not profile.is_admin:
             kwargs["koordinator_schools"] = profile.schools.filter(is_active=True)
         return kwargs
 
@@ -182,24 +186,23 @@ class CreateRegistrationLinkView(KoordinatorOrAdminMixin, FormView):
             expires_at=timezone.now() + timedelta(days=cd["expires_in_days"]),
             notes=cd.get("notes", ""),
         )
-        reg_url = self.request.build_absolute_uri(f"/registrierung/{link.token}/")
         messages.success(
             self.request,
-            f"Registrierungslink erstellt: {reg_url}",
+            "Registrierungslink wurde erstellt. "
+            "Den Link finden Sie in der Uebersicht.",
         )
+        # Absichtlich KEIN Token in der Flash-Message -- landet sonst
+        # im Session-Cookie / Shoulder-Surfing-Risiko.
         return redirect("contracts:registration_link_list")
 
 
 class RegistrationLinkListView(KoordinatorOrAdminMixin, ListView):
-    """List registration links for the Koordinator's schools."""
-
     template_name = "contracts/registration_link_list.html"
     context_object_name = "links"
 
     def get_queryset(self):
         user = self.request.user
-        # Superusers and admins see all links
-        if user.is_superuser or (hasattr(user, "profile") and user.profile.is_admin):
+        if has_admin_role(user):
             return RegistrationLink.objects.select_related(
                 "school", "created_by"
             ).all()
@@ -210,23 +213,25 @@ class RegistrationLinkListView(KoordinatorOrAdminMixin, ListView):
 
 
 # ---------------------------------------------------------------------------
-# Betreuer Management (Koordinator / Admin)
+# Betreuer-Verwaltung (Koordinator / Admin)
 # ---------------------------------------------------------------------------
 
 
 class BetreuerListView(KoordinatorOrAdminMixin, ListView):
-    """List betreuer profiles, scoped to Koordinator's schools or all for Admin."""
+    """Liste aller Betreuer, scoped auf die Schulen des Koordinators."""
 
     template_name = "contracts/betreuer_list.html"
     context_object_name = "betreuer_list"
+    paginate_by = 50
 
     def get_queryset(self):
         user = self.request.user
-        qs = BetreuerProfile.objects.select_related("user").prefetch_related(
-            "contracts__school"
+        qs = (
+            BetreuerProfile.objects
+            .select_related("user")
+            .prefetch_related("contracts__school")
         )
-        # Superusers and admins see all betreuer profiles
-        if user.is_superuser or (hasattr(user, "profile") and user.profile.is_admin):
+        if has_admin_role(user):
             return qs
         profile = user.profile
         if profile.is_koordinator:
@@ -236,11 +241,25 @@ class BetreuerListView(KoordinatorOrAdminMixin, ListView):
 
 
 class BetreuerDetailView(KoordinatorOrAdminMixin, DetailView):
-    """Detail view for a single betreuer, including onboarding checklist."""
+    """
+    Detail-Ansicht fuer einen Betreuer. Nicht-Admin-Koordinatoren
+    sehen nur Betreuer mit Vertraegen an ihren Schulen (IDOR-Schutz).
+    """
 
     model = BetreuerProfile
     template_name = "contracts/betreuer_detail.html"
     context_object_name = "betreuer"
+
+    def get_queryset(self):
+        user = self.request.user
+        qs = BetreuerProfile.objects.select_related("user")
+        if has_admin_role(user):
+            return qs
+        profile = getattr(user, "profile", None)
+        if profile and profile.is_koordinator:
+            school_ids = profile.schools.values_list("id", flat=True)
+            return qs.filter(contracts__school_id__in=school_ids).distinct()
+        return qs.none()
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -257,13 +276,15 @@ class BetreuerDetailView(KoordinatorOrAdminMixin, DetailView):
 
 
 class BetreuerReviewView(KoordinatorOrAdminMixin, View):
-    """
-    Koordinator reviews betreuer data and confirms the hourly rate.
-    On POST: transitions BetreuerProfile to 'documents_pending'.
-    """
+    """Koordinator prueft Betreuer-Daten und bestaetigt den Stundensatz."""
+
+    def _get_betreuer(self, request, pk):
+        betreuer = get_object_or_404(BetreuerProfile, pk=pk)
+        require_scope_access(request.user, betreuer)
+        return betreuer
 
     def get(self, request, pk):
-        betreuer = get_object_or_404(BetreuerProfile, pk=pk)
+        betreuer = self._get_betreuer(request, pk)
         contracts = betreuer.contracts.select_related(
             "school", "activity_type", "hourly_rate", "school_year",
         ).prefetch_related("foerderprogramme")
@@ -274,18 +295,20 @@ class BetreuerReviewView(KoordinatorOrAdminMixin, View):
         )
 
     def post(self, request, pk):
-        betreuer = get_object_or_404(BetreuerProfile, pk=pk)
+        betreuer = self._get_betreuer(request, pk)
         if betreuer.can_transition_to("approved"):
             betreuer.transition_to("approved")
             messages.success(
                 request,
-                "Betreuer wurde genehmigt. Dokumente koennen nach der Freigabe generiert werden.",
+                "Betreuer wurde genehmigt. "
+                "Dokumente koennen nach der Freigabe generiert werden.",
             )
         elif betreuer.can_transition_to("documents_pending"):
             betreuer.transition_to("documents_pending")
             messages.success(
                 request,
-                "Betreuer-Daten bestaetigt. Dokumente koennen nun generiert werden.",
+                "Betreuer-Daten bestaetigt. "
+                "Dokumente koennen nun generiert werden.",
             )
         else:
             messages.error(
@@ -297,10 +320,11 @@ class BetreuerReviewView(KoordinatorOrAdminMixin, View):
 
 
 class BetreuerActivateView(KoordinatorOrAdminMixin, View):
-    """Koordinator activates a betreuer after all documents are verified."""
+    """Koordinator aktiviert einen Betreuer nach Dokumenten-Verifikation."""
 
     def post(self, request, pk):
         betreuer = get_object_or_404(BetreuerProfile, pk=pk)
+        require_scope_access(request.user, betreuer)
         if betreuer.can_transition_to("active"):
             betreuer.transition_to("active")
             messages.success(
@@ -316,21 +340,11 @@ class BetreuerActivateView(KoordinatorOrAdminMixin, View):
         return redirect("contracts:betreuer_detail", pk=pk)
 
 
-class BetreuerUpdateAccountingView(LoginRequiredMixin, UserPassesTestMixin, View):
+class BetreuerUpdateAccountingView(AdminOnlyMixin, View):
     """
-    Admin-only: set or update Projektnummer and Kreditorennummer
-    for a BetreuerProfile. Triggers no status transition.
+    Admin-only: setzt oder aktualisiert Projektnummer und Kreditorennummer
+    eines BetreuerProfiles. Kein Status-Uebergang.
     """
-
-    raise_exception = True
-
-    def test_func(self):
-        user = self.request.user
-        if user.is_superuser:
-            return True
-        if not hasattr(user, "profile"):
-            return False
-        return user.profile.is_admin
 
     def post(self, request, pk):
         betreuer = get_object_or_404(BetreuerProfile, pk=pk)
@@ -338,12 +352,8 @@ class BetreuerUpdateAccountingView(LoginRequiredMixin, UserPassesTestMixin, View
         kreditorennummer = request.POST.get("kreditorennummer", "").strip()
 
         errors = []
-
-        # Validate projektnummer (8 digits or blank)
         if projektnummer and (not projektnummer.isdigit() or len(projektnummer) != 8):
             errors.append("Projektnummer muss genau 8 Ziffern enthalten.")
-
-        # Validate kreditorennummer (5 digits or blank)
         if kreditorennummer and (not kreditorennummer.isdigit() or len(kreditorennummer) != 5):
             errors.append("Kreditorennummer muss genau 5 Ziffern enthalten.")
 
@@ -359,25 +369,85 @@ class BetreuerUpdateAccountingView(LoginRequiredMixin, UserPassesTestMixin, View
         if projektnummer and kreditorennummer:
             messages.success(
                 request,
-                f"Buchhaltungsdaten gespeichert. "
-                f"QR-Code wird ab dem naechsten PDF-Ausdruck sichtbar.",
+                "Buchhaltungsdaten gespeichert. "
+                "QR-Code wird ab dem naechsten PDF-Ausdruck sichtbar.",
             )
         else:
-            messages.info(request, "Buchhaltungsdaten gespeichert (QR-Code deaktiviert).")
+            messages.info(
+                request,
+                "Buchhaltungsdaten gespeichert (QR-Code deaktiviert).",
+            )
 
         return redirect("contracts:betreuer_detail", pk=pk)
 
 
 # ---------------------------------------------------------------------------
-# HTMX Rate Lookup
+# Koordinator-Approval (V2)
+# ---------------------------------------------------------------------------
+
+
+class ApprovalView(KoordinatorOrAdminMixin, View):
+    """Koordinator genehmigt eine pending_approval-Registrierung."""
+
+    def _get_betreuer(self, request, pk):
+        betreuer = get_object_or_404(BetreuerProfile, pk=pk)
+        require_scope_access(request.user, betreuer)
+        return betreuer
+
+    def get(self, request, pk):
+        betreuer = self._get_betreuer(request, pk)
+        contracts = betreuer.contracts.select_related(
+            "school", "activity_type", "hourly_rate", "school_year",
+        ).prefetch_related("foerderprogramme")
+
+        from apps.contracts.forms import ApprovalForm
+        form = ApprovalForm(betreuer_profile=betreuer)
+
+        return render(
+            request,
+            "contracts/approval_form.html",
+            {"betreuer": betreuer, "contracts": contracts, "form": form},
+        )
+
+    def post(self, request, pk):
+        betreuer = self._get_betreuer(request, pk)
+
+        from apps.contracts.forms import ApprovalForm
+        from apps.contracts.services import approve_betreuer
+
+        form = ApprovalForm(request.POST, betreuer_profile=betreuer)
+        if not form.is_valid():
+            contracts = betreuer.contracts.select_related(
+                "school", "activity_type", "hourly_rate", "school_year",
+            ).prefetch_related("foerderprogramme")
+            return render(
+                request,
+                "contracts/approval_form.html",
+                {"betreuer": betreuer, "contracts": contracts, "form": form},
+            )
+
+        success = approve_betreuer(betreuer, form.cleaned_data)
+        if success:
+            messages.success(
+                request,
+                f"{betreuer.user.get_full_name()} wurde genehmigt.",
+            )
+        else:
+            messages.error(
+                request,
+                f"Genehmigung nicht moeglich. "
+                f"Aktueller Status: {betreuer.get_onboarding_status_display()}",
+            )
+        return redirect("contracts:betreuer_detail", pk=pk)
+
+
+# ---------------------------------------------------------------------------
+# HTMX: Rate / Foerderprogramm / ActivityType / Hash-Check (oeffentlich)
 # ---------------------------------------------------------------------------
 
 
 class RateLookupView(View):
-    """
-    HTMX endpoint: returns the hourly rate for a given
-    activity_type + betreuer_type + hour_duration combination.
-    """
+    """HTMX: Stundensatz fuer activity_type + betreuer_type + hour_duration."""
 
     def get(self, request):
         activity_type_id = request.GET.get("activity_type")
@@ -393,7 +463,7 @@ class RateLookupView(View):
 
         try:
             activity_type = ActivityType.objects.get(pk=activity_type_id)
-        except ActivityType.DoesNotExist:
+        except (ActivityType.DoesNotExist, ValueError):
             return render(request, "contracts/partials/_rate_display.html", {"rate": None})
 
         rate = HourlyRate.get_current_rate(activity_type, betreuer_type, school_year)
@@ -403,7 +473,6 @@ class RateLookupView(View):
                 "contracts/partials/_rate_display.html",
                 {"rate": None, "message": "Kein Satz gefunden."},
             )
-
         effective = rate.rate_45min if hour_duration == "45" else rate.rate_60min
         return render(
             request,
@@ -416,16 +485,8 @@ class RateLookupView(View):
         )
 
 
-# ---------------------------------------------------------------------------
-# HTMX Cascading Lookups (Foerderprogramm -> ActivityType)
-# ---------------------------------------------------------------------------
-
-
 class FoerderprogrammLookupView(View):
-    """
-    HTMX endpoint: returns Foerderprogramm options for a given school.
-    Filters programmes by school category (grundschule vs. weiterfuehrend).
-    """
+    """HTMX: Foerderprogramme fuer eine Schule."""
 
     def get(self, request):
         school_id = request.GET.get("school")
@@ -443,7 +504,6 @@ class FoerderprogrammLookupView(View):
                 "contracts/partials/_foerderprogramm_select.html",
                 {"programmes": []},
             )
-
         school_year = SchoolYear.objects.filter(is_current=True).first()
         programmes = Foerderprogramm.get_for_school(school, school_year)
         return render(
@@ -454,9 +514,7 @@ class FoerderprogrammLookupView(View):
 
 
 class ActivityTypeLookupView(View):
-    """
-    HTMX endpoint: returns ActivityType options for a given Foerderprogramm.
-    """
+    """HTMX: ActivityTypes fuer ein Foerderprogramm."""
 
     def get(self, request):
         programm_id = request.GET.get("foerderprogramm")
@@ -474,7 +532,6 @@ class ActivityTypeLookupView(View):
                 "contracts/partials/_activity_type_select.html",
                 {"activity_types": []},
             )
-
         activity_types = programm.activity_types.filter(is_active=True)
         return render(
             request,
@@ -483,284 +540,31 @@ class ActivityTypeLookupView(View):
         )
 
 
-# ---------------------------------------------------------------------------
-# Helper functions (shared by RegistrationView and PublicRegistrationView)
-# ---------------------------------------------------------------------------
-
-
-def _create_betreuer_from_form(form):
-    """
-    Create User + UserProfile + BetreuerProfile + Contract from a
-    validated BetreuerRegistrationForm.
-
-    V2 Changes:
-    - Betreuer sets own password during registration.
-    - Hash-based duplicate detection: if a Betreuer is already known,
-      a new contract is created for the existing profile.
-    - Status transitions to pending_approval after creation.
-    - start_date is left null (set later by Koordinator).
-
-    Returns (user, betreuer_profile, contract, is_duplicate).
-    """
-    from apps.contracts.services import (
-        check_duplicate_registration,
-        check_email_mismatch,
-        generate_unique_hash,
-    )
-    from apps.notifications.services import (
-        notify_contract_created,
-        notify_duplicate_detected,
-        notify_email_mismatch,
-        notify_pending_approval,
-    )
-
-    cd = form.cleaned_data
-
-    # --- Check for duplicate via hash ---
-    hash_value = generate_unique_hash(
-        cd["first_name"], cd["last_name"], cd["geburtsdatum"]
-    )
-    is_duplicate, existing_profile = check_duplicate_registration(hash_value)
-
-    if is_duplicate and existing_profile:
-        # Returning Betreuer: create a new contract for the existing profile
-        user = existing_profile.user
-        betreuer_profile = existing_profile
-    else:
-        # New Betreuer: create User + profiles
-        username = cd["email"].split("@")[0].lower()
-        base_username = username
-        counter = 1
-        while User.objects.filter(username=username).exists():
-            username = f"{base_username}{counter}"
-            counter += 1
-
-        user = User.objects.create_user(
-            username=username,
-            email=cd["email"],
-            first_name=cd["first_name"],
-            last_name=cd["last_name"],
-            password=cd.get("password", None),
-        )
-        if not cd.get("password"):
-            user.set_unusable_password()
-        user.save()
-
-        UserProfile.objects.create(user=user, role="betreuer")
-
-        is_external = cd["betreuer_type"] == "extern"
-
-        betreuer_profile = BetreuerProfile.objects.create(
-            user=user,
-            anrede=cd["anrede"],
-            geburtsdatum=cd["geburtsdatum"],
-            geschlecht=cd["geschlecht"],
-            staatsangehoerigkeit=cd["staatsangehoerigkeit"],
-            street=cd["street"],
-            house_number=cd["house_number"],
-            plz=cd["plz"],
-            city=cd["city"],
-            kontoinhaber=cd["kontoinhaber"],
-            iban=cd["iban"],
-            bic=cd.get("bic", ""),
-            betreuer_type=cd["betreuer_type"],
-            is_external=is_external,
-            freibetrag_used_elsewhere=cd.get("freibetrag_used_elsewhere", False),
-            freibetrag_amount_elsewhere=cd.get("freibetrag_amount_elsewhere") or 0,
-            freibetrag_verein_name=cd.get("freibetrag_verein_name", ""),
-            unique_hash=hash_value,
-            onboarding_status="registered",
-        )
-
-    # --- Look up hourly rate ---
-    school_year = SchoolYear.objects.filter(is_current=True).first()
-    hourly_rate = HourlyRate.get_current_rate(
-        activity_type=cd["activity_type"],
-        betreuer_type=cd["betreuer_type"],
-        school_year=school_year,
-    )
-
-    # --- Create Contract (draft) — start_date is null until Koordinator approval ---
-    contract_number = Contract.generate_contract_number(
-        school_code=cd["school"].code,
-        school_year=school_year,
-    )
-    contract = Contract.objects.create(
-        contract_number=contract_number,
-        betreuer=betreuer_profile,
-        school=cd["school"],
-        school_year=school_year,
-        activity_type=cd["activity_type"],
-        hourly_rate=hourly_rate,
-        hour_duration=int(cd["hour_duration"]),
-        ag_name=cd.get("ag_name", ""),
-        start_date=None,
-        end_date=school_year.end_date,
-        status="draft",
-    )
-    if cd.get("foerderprogramm"):
-        contract.foerderprogramme.add(cd["foerderprogramm"])
-
-    # --- Create pending documents ---
-    _create_pending_documents(contract, betreuer_profile)
-
-    # --- Transition to pending_approval ---
-    if betreuer_profile.onboarding_status == "registered":
-        betreuer_profile.transition_to("pending_approval")
-
-    # --- Email mismatch check ---
-    email_mismatch = False
-    try:
-        has_mismatch, stored_email = check_email_mismatch(hash_value, cd["email"])
-        if has_mismatch:
-            email_mismatch = True
-            logger.info(
-                "Email mismatch for %s: form=%s, stored=%s",
-                user.get_full_name(), cd["email"], stored_email,
-            )
-    except Exception:
-        logger.warning("Email mismatch check failed for %s", user.email)
-
-    # --- N8N notifications ---
-    try:
-        notify_pending_approval(betreuer_profile, contract)
-        notify_contract_created(contract)
-        if is_duplicate and existing_profile:
-            notify_duplicate_detected(betreuer_profile, existing_profile)
-        if email_mismatch:
-            notify_email_mismatch(user.get_full_name(), cd["email"], stored_email)
-    except Exception:
-        logger.warning(
-            "N8N notification failed for registration of %s",
-            user.email,
-        )
-
-    return user, betreuer_profile, contract, is_duplicate
-
-
-def _create_pending_documents(contract, betreuer_profile):
-    """
-    Create Document entries in 'pending' status for all applicable
-    DocumentRequirements based on the betreuer's classification.
-    """
-    requirements = DocumentRequirement.objects.all()
-    for req in requirements:
-        if req.is_required_for(betreuer_profile):
-            Document.objects.get_or_create(
-                contract=contract,
-                requirement=req,
-                defaults={
-                    "betreuer": betreuer_profile,
-                    "status": "pending",
-                },
-            )
-
-
-# ---------------------------------------------------------------------------
-# Koordinator Approval (V2)
-# ---------------------------------------------------------------------------
-
-
-class ApprovalView(KoordinatorOrAdminMixin, View):
-    """
-    Koordinator approves a pending betreuer registration.
-
-    Sets: Foerderprogramm, Vertragsbeginn, Betreuer-Typ, AG-Name.
-    Transitions BetreuerProfile from pending_approval -> approved.
-    """
-
-    def get(self, request, pk):
-        betreuer = get_object_or_404(BetreuerProfile, pk=pk)
-        contracts = betreuer.contracts.select_related(
-            "school", "activity_type", "hourly_rate", "school_year",
-        ).prefetch_related("foerderprogramme")
-
-        from apps.contracts.forms import ApprovalForm
-        form = ApprovalForm(betreuer_profile=betreuer)
-
-        return render(
-            request,
-            "contracts/approval_form.html",
-            {"betreuer": betreuer, "contracts": contracts, "form": form},
-        )
-
-    def post(self, request, pk):
-        betreuer = get_object_or_404(BetreuerProfile, pk=pk)
-
-        from apps.contracts.forms import ApprovalForm
-        form = ApprovalForm(request.POST, betreuer_profile=betreuer)
-
-        if not form.is_valid():
-            contracts = betreuer.contracts.select_related(
-                "school", "activity_type", "hourly_rate", "school_year",
-            ).prefetch_related("foerderprogramme")
-            return render(
-                request,
-                "contracts/approval_form.html",
-                {"betreuer": betreuer, "contracts": contracts, "form": form},
-            )
-
-        cd = form.cleaned_data
-        contract = betreuer.contracts.order_by("-created_at").first()
-
-        if contract:
-            # Update contract fields set by Koordinator
-            contract.start_date = cd["start_date"]
-            if cd.get("ag_name"):
-                contract.ag_name = cd["ag_name"]
-            contract.save(update_fields=["start_date", "ag_name", "updated_at"])
-
-            if cd.get("foerderprogramm"):
-                contract.foerderprogramme.clear()
-                contract.foerderprogramme.add(cd["foerderprogramm"])
-
-        # Update betreuer type if changed
-        if cd.get("betreuer_type"):
-            betreuer.betreuer_type = cd["betreuer_type"]
-            betreuer.save(update_fields=["betreuer_type", "updated_at"])
-
-        # Transition status
-        if betreuer.can_transition_to("approved"):
-            betreuer.transition_to("approved")
-
-            from apps.notifications.services import notify_betreuer_approved
-            try:
-                notify_betreuer_approved(betreuer, contract)
-            except Exception:
-                logger.warning(
-                    "N8N notification failed for approval of betreuer %s",
-                    betreuer.pk,
-                )
-
-            messages.success(
-                request,
-                f"{betreuer.user.get_full_name()} wurde genehmigt.",
-            )
-        else:
-            messages.error(
-                request,
-                f"Genehmigung nicht moeglich. "
-                f"Aktueller Status: {betreuer.get_onboarding_status_display()}",
-            )
-
-        return redirect("contracts:betreuer_detail", pk=pk)
-
-
-# ---------------------------------------------------------------------------
-# HTMX Hash Check (V2)
-# ---------------------------------------------------------------------------
-
-
 class HashCheckView(View):
     """
-    HTMX endpoint: checks if a betreuer with the given name + birthdate
-    already exists. Returns a partial with duplicate info or empty.
+    HTMX: prueft ob ein Betreuer mit Name + Geburtsdatum bereits existiert.
+
+    Rate-Limit: HASH_CHECK_LIMIT_PER_HOUR pro echter Client-IP, um
+    Personenenumeration durch externe Aufrufer einzudaemmen. Antwort ist
+    zusaetzlich bewusst generisch (keine E-Mail, keine Schule).
     """
 
     def get(self, request):
-        first_name = request.GET.get("first_name", "")
-        last_name = request.GET.get("last_name", "")
-        geburtsdatum_str = request.GET.get("geburtsdatum", "")
+        ip = _client_ip_for_rate_limit(request)
+        cache_key = f"hash_check:{ip}"
+        attempts = cache.get(cache_key, 0)
+        if attempts >= HASH_CHECK_LIMIT_PER_HOUR:
+            # Generisches Leerpartial -- keine Preisgabe dass Throttling aktiv
+            return render(
+                request,
+                "contracts/partials/_hash_check.html",
+                {"duplicate": None},
+            )
+        cache.set(cache_key, attempts + 1, timeout=3600)
+
+        first_name = request.GET.get("first_name", "").strip()
+        last_name = request.GET.get("last_name", "").strip()
+        geburtsdatum_str = request.GET.get("geburtsdatum", "").strip()
 
         if not (first_name and last_name and geburtsdatum_str):
             return render(request, "contracts/partials/_hash_check.html", {"duplicate": None})
@@ -771,13 +575,8 @@ class HashCheckView(View):
         except (ValueError, TypeError):
             return render(request, "contracts/partials/_hash_check.html", {"duplicate": None})
 
-        from apps.contracts.services import (
-            check_duplicate_registration,
-            generate_unique_hash,
-        )
         hash_value = generate_unique_hash(first_name, last_name, geburtsdatum)
         is_duplicate, existing_profile = check_duplicate_registration(hash_value)
-
         return render(
             request,
             "contracts/partials/_hash_check.html",

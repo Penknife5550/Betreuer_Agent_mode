@@ -32,6 +32,30 @@ urlpatterns = [
         RegistrationSuccessView.as_view(),
         name="registration_success",
     ),
+    # Oeffentliche HTMX-Endpoints fuer das Registrierungsformular.
+    # Bewusst unter /registrierung/htmx/ gemountet, damit die
+    # LoginRequiredMiddleware-EXEMPT_URLS praezise passt und keine
+    # versteckten /api/-Endpoints auto-exempt werden.
+    path(
+        "registrierung/htmx/rate-lookup/",
+        RateLookupView.as_view(),
+        name="rate_lookup",
+    ),
+    path(
+        "registrierung/htmx/foerderprogramm-lookup/",
+        FoerderprogrammLookupView.as_view(),
+        name="foerderprogramm_lookup",
+    ),
+    path(
+        "registrierung/htmx/activity-type-lookup/",
+        ActivityTypeLookupView.as_view(),
+        name="activity_type_lookup",
+    ),
+    path(
+        "registrierung/htmx/hash-check/",
+        HashCheckView.as_view(),
+        name="hash_check",
+    ),
     path(
         "registrierung/<uuid:token>/",
         RegistrationView.as_view(),
@@ -79,27 +103,5 @@ urlpatterns = [
         "betreuer/<int:pk>/genehmigen/",
         ApprovalView.as_view(),
         name="betreuer_approve",
-    ),
-    # --- HTMX API ---
-    path(
-        "api/rate-lookup/",
-        RateLookupView.as_view(),
-        name="rate_lookup",
-    ),
-    path(
-        "api/foerderprogramm-lookup/",
-        FoerderprogrammLookupView.as_view(),
-        name="foerderprogramm_lookup",
-    ),
-    path(
-        "api/activity-type-lookup/",
-        ActivityTypeLookupView.as_view(),
-        name="activity_type_lookup",
-    ),
-    # --- HTMX hash check (V2) ---
-    path(
-        "api/hash-check/",
-        HashCheckView.as_view(),
-        name="hash_check",
     ),
 ]

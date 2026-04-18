@@ -155,6 +155,11 @@ class BetreuerProfile(TimeStampedModel, AuditLogMixin):
         verbose_name = "Betreuer-Profil"
         verbose_name_plural = "Betreuer-Profile"
         ordering = ["user__last_name", "user__first_name"]
+        indexes = [
+            # Haeufige Filter: active/pending_approval im Dashboard + List-View
+            models.Index(fields=["onboarding_status"]),
+            models.Index(fields=["unique_hash"]),
+        ]
 
     def __str__(self):
         return f"{self.user.get_full_name()} ({self.get_betreuer_type_display()})"
@@ -549,20 +554,31 @@ class Contract(TimeStampedModel, AuditLogMixin):
         Example: CSFV-GSH-2526-042
 
         The SchoolYear name "2025/2026" becomes "2526".
+
+        Race-Schutz: Zwei parallele Registrierungen koennten sonst die
+        gleiche Nummer ziehen -> IntegrityError beim Save. Daher sperren
+        wir in einer atomar laufenden Transaktion mit ``select_for_update``.
         """
+        from django.db import transaction
+
         year_parts = school_year.name.replace("/", "")
         year_short = year_parts[2:4] + year_parts[6:8]  # "2526"
-
         prefix = f"CSFV-{school_code}-{year_short}-"
-        last_contract = (
-            cls.objects.filter(contract_number__startswith=prefix)
-            .order_by("-contract_number")
-            .first()
-        )
-        if last_contract:
-            last_number = int(last_contract.contract_number.split("-")[-1])
-            next_number = last_number + 1
-        else:
-            next_number = 1
 
+        with transaction.atomic():
+            last_contract = (
+                cls.objects
+                .select_for_update()
+                .filter(contract_number__startswith=prefix)
+                .order_by("-contract_number")
+                .first()
+            )
+            if last_contract:
+                try:
+                    last_number = int(last_contract.contract_number.split("-")[-1])
+                except (ValueError, IndexError):
+                    last_number = 0
+                next_number = last_number + 1
+            else:
+                next_number = 1
         return f"{prefix}{next_number:03d}"

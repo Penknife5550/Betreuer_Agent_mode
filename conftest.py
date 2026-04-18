@@ -21,6 +21,71 @@ def _clear_audit_thread_local():
     _thread_locals.ip_address = None
 
 
+@pytest.fixture(autouse=True)
+def _block_external_http(monkeypatch, settings):
+    """
+    Fail-safe gegen versehentliche Live-HTTP-Calls:
+    - stubbt requests.post/get/put/delete/patch auf eine In-Memory-Antwort
+    - setzt N8N_WEBHOOK_BASE_URL leer, sodass send_notification ohnehin
+      sofort mit "not configured" zurueckkehrt
+    Tests, die n8n-Payloads verifizieren wollen, koennen requests.post
+    gezielt per mocker.patch erneut umbiegen.
+    """
+    import requests
+
+    settings.N8N_WEBHOOK_BASE_URL = ""
+
+    class _StubResponse:
+        status_code = 200
+        text = "stub"
+
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {}
+
+    def _stub(*args, **kwargs):
+        return _StubResponse()
+
+    for method in ("post", "get", "put", "delete", "patch"):
+        monkeypatch.setattr(requests, method, _stub)
+
+
+@pytest.fixture(autouse=True)
+def _sync_on_commit_and_queue(monkeypatch):
+    """
+    In Tests:
+    - transaction.on_commit-Callbacks synchron ausfuehren (sonst werden
+      scheduled Notifications in Tests uebersehen)
+    - django_q.tasks.async_task durch einen Sync-Aufruf ersetzen
+    """
+    from django.db import transaction
+
+    def _run_immediately(func, *args, **kwargs):
+        func()
+
+    monkeypatch.setattr(transaction, "on_commit", _run_immediately)
+
+    try:
+        from django_q import tasks as dq_tasks
+
+        def _sync_async(func_path, *args, **kwargs):
+            # django_q.async_task akzeptiert als erstes Argument einen
+            # Import-Pfad ("module.func") ODER ein Callable.
+            if callable(func_path):
+                return func_path(*args, **kwargs)
+            module_path, func_name = func_path.rsplit(".", 1)
+            import importlib
+            module = importlib.import_module(module_path)
+            func = getattr(module, func_name)
+            return func(*args, **kwargs)
+
+        monkeypatch.setattr(dq_tasks, "async_task", _sync_async)
+    except ImportError:
+        pass
+
+
 @pytest.fixture
 def school_year(db):
     return SchoolYear.objects.create(

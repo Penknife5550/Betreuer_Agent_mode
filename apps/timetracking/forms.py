@@ -5,13 +5,9 @@ Forms for the timetracking app.
 from django import forms
 from django.urls import reverse_lazy
 
+from apps.core.constants import INPUT_CSS, month_choices
 from apps.schools.models import Foerderprogramm
 from apps.timetracking.models import TimeEntry
-
-INPUT_CSS = (
-    "w-full rounded-md border border-gray-300 px-3 py-2 text-sm "
-    "focus:outline-none focus:ring-2 focus:ring-credo-dark focus:border-transparent"
-)
 
 
 class TimeEntryForm(forms.ModelForm):
@@ -87,11 +83,7 @@ class TimeEntryForm(forms.ModelForm):
             )
 
 
-MONTH_CHOICES = [
-    (1, "Januar"), (2, "Februar"), (3, "Maerz"), (4, "April"),
-    (5, "Mai"), (6, "Juni"), (7, "Juli"), (8, "August"),
-    (9, "September"), (10, "Oktober"), (11, "November"), (12, "Dezember"),
-]
+MONTH_CHOICES = month_choices()
 
 
 class TimesheetFilterForm(forms.Form):

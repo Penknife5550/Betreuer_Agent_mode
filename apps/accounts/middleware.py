@@ -19,15 +19,25 @@ class LoginRequiredMiddleware:
     the prefixes listed in ``EXEMPT_URLS``.
     """
 
+    # Nur exakte Pfade bzw. eng gefasste Prefixes. "startswith" darf nicht
+    # versehentlich interne HTMX-Endpunkte (/htmx/...) oder Webhook-Endpoints
+    # (/api/webhook/...) mit oeffentlichen Routes vermischen.
     EXEMPT_URLS = [
         "/login/",
+        "/logout/",
+        # Password-Reset-Confirm erfolgt ueber /accounts/passwort-setzen/<uidb64>/<token>/
+        # und muss ohne Login erreichbar sein.
+        "/accounts/passwort-setzen/",
+        "/accounts/passwort-gesetzt/",
         "/health/",
-        "/django-admin/",
+        "/django-admin/",  # hat eigene Auth
         "/static/",
-        # /media/ is intentionally NOT exempt – documents require authentication.
-        # Caddy proxies /media/ requests to Django so the login check applies.
+        # /media/ ist absichtlich NICHT exempt -- Dokumente sind auth-geschuetzt.
+        # /registrierung/ inkl. /registrierung/htmx/* (oeffentliche Lookups fuer
+        # das Registrierungsformular) und /registrierung/erfolg/.
         "/registrierung/",
-        "/api/",  # Webhook-Endpunkte (Token-Auth statt Session)
+        # Nur der n8n-Webhook ist exempt (Token-Auth statt Session).
+        "/api/webhook/",
     ]
 
     def __init__(self, get_response):
