@@ -218,6 +218,26 @@ AXES_IPWARE_META_PRECEDENCE_ORDER = ["HTTP_X_FORWARDED_FOR", "REMOTE_ADDR"]
 # Django-Q2 configuration (background tasks)
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# Cache
+# ---------------------------------------------------------------------------
+# DatabaseCache statt Django-Default-LocMemCache: der per-Prozess-Locmem
+# wuerde zwischen django-Web-Prozess und django_q-Worker nicht geteilt,
+# sodass Admin-Aenderungen an WebhookEndpoints bis zum TTL-Ablauf (60s)
+# unsichtbar fuer den Worker bleiben. DatabaseCache teilt sich den
+# Cache ueber eine Tabelle -- damit wirkt das post_save-Signal sofort
+# fuer alle Prozesse.
+# Einmalig auf dem Server:
+#   docker compose exec django python manage.py createcachetable
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.db.DatabaseCache",
+        "LOCATION": "django_cache",
+        "TIMEOUT": 300,
+    }
+}
+
+
 Q_CLUSTER = {
     "name": "betreuer_q",
     "workers": 2,

@@ -10,6 +10,7 @@ import logging
 from datetime import date
 from decimal import Decimal
 
+from django.db.models import Sum
 from django.views import View
 from django.shortcuts import render
 
@@ -149,34 +150,68 @@ class ZentraleAuswertungView(KoordinatorOrAdminMixin, View):
         if profile and profile.is_koordinator:
             allowed_school_ids = list(profile.schools.values_list("pk", flat=True))
 
-        # Query: entries from approved timesheets in the selected period
-        qs = TimeEntry.objects.filter(
+        # Basis-Queryset (approved TimeEntries im Zeitraum)
+        base_qs = TimeEntry.objects.filter(
             date__year=year,
             date__month__gte=month_from,
             date__month__lte=month_to,
             timesheet__status="approved",
-        ).select_related(
-            "contract__betreuer__user",
-            "contract__school",
-            "contract__hourly_rate",
-            "foerderprogramm__kostenstelle",
-            "school",
-        ).order_by(
-            "contract__betreuer__user__last_name",
-            "contract__school__code",
-            "foerderprogramm__name",
         )
 
         if allowed_school_ids is not None:
-            qs = qs.filter(school_id__in=allowed_school_ids)
+            base_qs = base_qs.filter(school_id__in=allowed_school_ids)
 
         if school_filter_id:
-            qs = qs.filter(school_id=school_filter_id)
+            base_qs = base_qs.filter(school_id=school_filter_id)
 
         if fp_filter_id:
-            qs = qs.filter(foerderprogramm_id=fp_filter_id)
+            base_qs = base_qs.filter(foerderprogramm_id=fp_filter_id)
 
-        # Aggregate by (betreuer, school, foerderprogramm)
+        # DB-seitige Aggregation pro (contract, school, foerderprogramm).
+        # Wir gruppieren nach contract, weil die Rate am Contract haengt
+        # (effective_rate = custom_rate_X oder hourly_rate.rate_Xmin).
+        # school/foerderprogramm liegen pro TimeEntry -> zusaetzliches Grouping.
+        aggregated = (
+            base_qs
+            .values(
+                "contract_id",
+                "school_id",
+                "foerderprogramm_id",
+            )
+            .annotate(total_minutes=Sum("duration_minutes"))
+            .order_by()
+        )
+
+        # Lookup-Maps fuer Contract/School/Foerderprogramm in einem Schlag
+        # nachladen, statt pro Row ein SELECT zu triggern (N+1-Schutz).
+        from apps.contracts.models import Contract
+
+        contract_ids = {row["contract_id"] for row in aggregated}
+        school_ids = {
+            row["school_id"] for row in aggregated if row["school_id"]
+        }
+        fp_ids = {
+            row["foerderprogramm_id"]
+            for row in aggregated
+            if row["foerderprogramm_id"]
+        }
+
+        contracts_by_id = {
+            c.pk: c
+            for c in Contract.objects.filter(pk__in=contract_ids).select_related(
+                "betreuer__user", "school", "hourly_rate"
+            )
+        }
+        schools_by_id = {
+            s.pk: s for s in School.objects.filter(pk__in=school_ids)
+        }
+        fps_by_id = {
+            fp.pk: fp
+            for fp in Foerderprogramm.objects.filter(pk__in=fp_ids).select_related(
+                "kostenstelle"
+            )
+        }
+
         from collections import defaultdict
 
         groups = defaultdict(lambda: {
@@ -189,11 +224,13 @@ class ZentraleAuswertungView(KoordinatorOrAdminMixin, View):
             "total_amount": Decimal("0.00"),
         })
 
-        for entry in qs:
-            contract = entry.contract
+        for row in aggregated:
+            contract = contracts_by_id.get(row["contract_id"])
+            if not contract:
+                continue
             betreuer_user = contract.betreuer.user
-            school = entry.school or contract.school
-            fp = entry.foerderprogramm
+            school = schools_by_id.get(row["school_id"]) or contract.school
+            fp = fps_by_id.get(row["foerderprogramm_id"])
             kst = fp.kostenstelle if fp else None
 
             key = (
@@ -202,31 +239,42 @@ class ZentraleAuswertungView(KoordinatorOrAdminMixin, View):
                 fp.pk if fp else None,
             )
 
-            row = groups[key]
-            row["betreuer_name"] = betreuer_user.get_full_name()
-            row["school_code"] = school.code if school else ""
-            row["school_name"] = school.name if school else ""
-            row["foerderprogramm_name"] = fp.name if fp else "—"
-            row["kostenstelle_code"] = kst.code if kst else "—"
-            row["total_minutes"] += entry.duration_minutes
+            g = groups[key]
+            g["betreuer_name"] = betreuer_user.get_full_name()
+            g["school_code"] = school.code if school else ""
+            g["school_name"] = school.name if school else ""
+            g["foerderprogramm_name"] = fp.name if fp else "—"
+            g["kostenstelle_code"] = kst.code if kst else "—"
+            g["total_minutes"] += row["total_minutes"] or 0
 
-            # Amount: duration_hours × effective_rate
-            hours = Decimal(entry.duration_minutes) / Decimal(60)
+            # Amount: duration_hours × effective_rate (pro Gruppe).
+            # Da effective_rate pro Contract konstant ist, reicht Multi-
+            # plikation mit der aggregierten Minutenzahl.
             try:
-                row["total_amount"] += (hours * contract.effective_rate).quantize(
+                hours = Decimal(row["total_minutes"] or 0) / Decimal(60)
+                g["total_amount"] += (hours * contract.effective_rate).quantize(
                     Decimal("0.01")
                 )
             except Exception as exc:
                 logger.warning(
-                    "Could not compute amount for TimeEntry %s (contract %s): %s",
-                    entry.pk,
+                    "Could not compute amount for contract %s: %s",
                     contract.pk,
                     exc,
                 )
 
+        # Sortierung auf Anzeige-Ebene (Betreuer-Nachname / Schule / FP)
+        sorted_groups = sorted(
+            groups.values(),
+            key=lambda r: (
+                r["betreuer_name"].split(" ")[-1] if r["betreuer_name"] else "",
+                r["school_code"],
+                r["foerderprogramm_name"],
+            ),
+        )
+
         # Build display list with rounded hours
         data = []
-        for row in groups.values():
+        for row in sorted_groups:
             hours = Decimal(row["total_minutes"]) / Decimal(60)
             data.append({
                 **row,

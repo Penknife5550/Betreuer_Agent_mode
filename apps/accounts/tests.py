@@ -386,3 +386,100 @@ def test_password_change_all_roles(admin_user, koordinator_user, betreuer_user):
         client.force_login(user)
         response = client.get('/profil/passwort-aendern/')
         assert response.status_code == 200, f"Role {user.username} got {response.status_code}"
+
+
+# ---------------------------------------------------------------------------
+# IBAN Decrypt/Legacy-Value Recovery
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_profile_edit_iban_decrypt_error_recovery(betreuer_user, betreuer_profile):
+    """
+    Regression-Schutz: Profil-Edit darf NICHT crashen, wenn in der DB ein
+    korruptes/legacy-Fernet-verschluesseltes IBAN-Feld steht.
+
+    Szenario: V2 hat IBAN von EncryptedCharField auf CharField migriert.
+    Die Data-Migration 0006 dekryptiert legacy Fernet-Tokens. Falls sie
+    NICHT lief (FERNET_KEY war leer) oder der Key gedreht wurde, koennen
+    Legacy-Ciphertexts wie
+        ``gAAAAABh...xyz`` (Fernet-Format) in der DB stehen.
+
+    Erwartung:
+    - GET /profil/bearbeiten/ liefert 200 (Form wird gerendert).
+    - POST mit neuer, gueltiger IBAN speichert erfolgreich (alter
+      korrupter Wert wird ueberschrieben).
+    - Keine 500er, kein ValueError, der den Request abreisst.
+    """
+    # Korrupter/Legacy-Wert wird direkt in die DB geschrieben, damit
+    # kein Model-Level-Clean greift. Max. 34 Zeichen (Feld-Length).
+    from django.db import connection
+
+    # Fernet-Token-Style (gAAAAABxxx...) abgeschnitten auf max_length=34.
+    corrupt_legacy = "gAAAAABh1234KORRUPT_LEGACY_VAL_XX"
+    assert len(corrupt_legacy) <= 34
+    with connection.cursor() as cursor:
+        cursor.execute(
+            "UPDATE contracts_betreuerprofile SET iban = %s WHERE id = %s",
+            [corrupt_legacy, betreuer_profile.pk],
+        )
+
+    client = Client()
+    client.force_login(betreuer_user)
+
+    # 1. GET /profil/bearbeiten/ darf nicht crashen (Form rendern).
+    response = client.get('/profil/bearbeiten/')
+    assert response.status_code == 200, (
+        f"Profil-Edit GET sollte 200 liefern, bekam {response.status_code}. "
+        f"Korrupte IBAN-Werte in der DB duerfen keinen Crash ausloesen."
+    )
+
+    # 2. POST mit gueltiger neuer IBAN muss erfolgreich speichern und
+    #    den korrupten Legacy-Wert ueberschreiben.
+    response = client.post('/profil/bearbeiten/', {
+        'street': betreuer_profile.street,
+        'house_number': betreuer_profile.house_number,
+        'plz': betreuer_profile.plz,
+        'city': betreuer_profile.city,
+        'phone': '',
+        'kontoinhaber': betreuer_profile.kontoinhaber,
+        'iban': 'DE89370400440532013000',  # frische, gueltige IBAN
+        'bic': '',
+        'freibetrag_amount_elsewhere': '0',
+        'freibetrag_verein_name': '',
+    })
+    assert response.status_code == 302, (
+        "POST mit gueltiger IBAN sollte erfolgreich redirecten (Recovery).  "
+        f"Bekam Status {response.status_code}."
+    )
+    assert response.url == '/profil/'
+
+    # DB-Seite: Neuer Wert ist im Feld (als Klartext).
+    betreuer_profile.refresh_from_db()
+    assert betreuer_profile.iban == 'DE89370400440532013000'
+
+
+@pytest.mark.django_db
+def test_profile_view_iban_legacy_value_no_crash(betreuer_user, betreuer_profile):
+    """
+    Profil-Ansicht (/profil/) darf bei einem Legacy-Fernet-Ciphertext
+    in iban nicht crashen -- mask_iban() muss defensiv bleiben.
+    """
+    from django.db import connection
+
+    corrupt_legacy = "gAAAAABLegacyFernetCipherTokXYZ=="  # <= 34 chars
+    assert len(corrupt_legacy) <= 34
+    with connection.cursor() as cursor:
+        cursor.execute(
+            "UPDATE contracts_betreuerprofile SET iban = %s WHERE id = %s",
+            [corrupt_legacy, betreuer_profile.pk],
+        )
+
+    client = Client()
+    client.force_login(betreuer_user)
+    response = client.get('/profil/')
+    assert response.status_code == 200, (
+        "Profilansicht mit korruptem IBAN-Wert muss stabil bleiben."
+    )
+    # iban_masked sollte im Context existieren (kein Crash bei Rendern).
+    assert "iban_masked" in response.context

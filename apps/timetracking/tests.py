@@ -23,6 +23,7 @@ from django.core.exceptions import ValidationError
 from django.test import Client
 from django.urls import reverse
 
+from apps.schools.models import School
 from apps.timetracking.models import MonthlyTimesheet, TimeEntry
 
 
@@ -750,7 +751,8 @@ class TestNotifyTimesheetApproved:
         )
         invalidate_webhook_cache()
 
-        with patch("apps.notifications.services.requests.post") as mock_post:
+        from apps.notifications import services as notif_services
+        with patch.object(notif_services._session, "post") as mock_post:
             mock_post.return_value.status_code = 200
             mock_post.return_value.raise_for_status = lambda: None
             result = notify_timesheet_approved(ts)
@@ -761,3 +763,289 @@ class TestNotifyTimesheetApproved:
             assert payload["contract_number"] == "CSFV-GSH-2526-001"
             assert payload["total_hours"] == str(ts.total_hours)
             assert payload["total_amount"] == str(ts.total_amount)
+
+
+# ---------------------------------------------------------------------------
+# IDOR: Timesheet-Views mit PK-Parameter
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+class TestTimesheetIDOR:
+    """IDOR-Schutz fuer Timesheet-Views. Betreuer A darf keine Timesheets
+    von Betreuer B einsehen/bearbeiten; Koordinator Schule X darf keine
+    Timesheets von Schule Y genehmigen."""
+
+    def _make_other_betreuer_at_school(
+        self, school, school_year, activity_type, hourly_rate,
+        username="bx_idor", contract_number="CSFV-IDOR-TS-1",
+    ):
+        """Helper: zweiter Betreuer mit Contract an derselben oder anderer Schule."""
+        from django.contrib.auth.models import User
+        from apps.accounts.models import UserProfile
+        from apps.contracts.models import BetreuerProfile, Contract
+
+        user = User.objects.create_user(
+            username=username, password="testpass123!",
+            first_name="Other", last_name="Betreuer",
+        )
+        UserProfile.objects.create(user=user, role="betreuer")
+        profile = BetreuerProfile.objects.create(
+            user=user,
+            anrede="frau",
+            geburtsdatum=date(1990, 1, 1),
+            geschlecht="weiblich",
+            staatsangehoerigkeit="deutsch",
+            street="Andere",
+            house_number="2",
+            plz="32425",
+            city="Minden",
+            kontoinhaber="Other Betreuer",
+            iban="DE89370400440532013001",
+            betreuer_type="schueler",
+        )
+        contract = Contract.objects.create(
+            contract_number=contract_number,
+            betreuer=profile,
+            school=school,
+            school_year=school_year,
+            activity_type=activity_type,
+            hourly_rate=hourly_rate,
+            hour_duration=60,
+            start_date=date(2025, 9, 1),
+            end_date=date(2026, 7, 31),
+            status="draft",
+        )
+        return user, profile, contract
+
+    def test_timesheet_detail_other_betreuer_forbidden(
+        self, betreuer_user, betreuer_profile, contract, time_entry,
+        school, school_year, activity_type, hourly_rate, koordinator_user,
+    ):
+        """Betreuer A ruft TimesheetDetailView einer fremden Timesheet von
+        Betreuer B auf -> 403 (KoordinatorOrAdminMixin verweigert Betreuer-Rolle
+        schon vor Scope-Check).
+
+        Hinweis: TimesheetDetailView ist fuer Koordinator/Admin gedacht;
+        Betreuer haben hier gar keinen Zugriff."""
+        from apps.contracts.models import Contract as _C  # noqa: F401
+        other_user, other_profile, other_contract = self._make_other_betreuer_at_school(
+            school, school_year, activity_type, hourly_rate,
+            username="ts_idor_other", contract_number="CSFV-GSH-2526-TSIDOR1",
+        )
+        other_ts = MonthlyTimesheet.objects.create(
+            contract=other_contract, month=3, year=2026,
+        )
+        # Entry fuer Submit
+        TimeEntry.objects.create(
+            contract=other_contract,
+            date=date(2026, 3, 10),
+            start_time=time(14, 0),
+            end_time=time(16, 0),
+            break_minutes=0,
+        )
+        other_ts.submit()
+
+        client = Client()
+        client.force_login(betreuer_user)  # Betreuer A
+        url = reverse("timetracking:timesheet_detail", kwargs={"pk": other_ts.pk})
+        response = client.get(url)
+        # KoordinatorOrAdminMixin: Betreuer -> 403
+        assert response.status_code == 403
+
+    def test_timesheet_approve_koordinator_school_boundary(
+        self,
+        koordinator_user,
+        school_year,
+        activity_type,
+        hourly_rate,
+    ):
+        """Koordinator Schule X (GSH) darf KEIN Timesheet an Schule Y genehmigen.
+
+        Betreuer B hat Vertrag an fremder Schule -> Koordinator GSH bekommt 404
+        (get_object_or_404 filtert nach school_ids der koordinator-Profile)."""
+        school_y = School.objects.create(
+            code="GYX2",
+            school_number="666666",
+            name="Fremdes Gym",
+            school_type="gymnasium",
+            primary_color="#000000",
+        )
+        _user, _profile, contract_y = self._make_other_betreuer_at_school(
+            school_y, school_year, activity_type, hourly_rate,
+            username="koord_idor_b", contract_number="CSFV-GYX2-TSIDOR2",
+        )
+        ts_y = MonthlyTimesheet.objects.create(
+            contract=contract_y, month=3, year=2026,
+        )
+        TimeEntry.objects.create(
+            contract=contract_y,
+            date=date(2026, 3, 10),
+            start_time=time(14, 0),
+            end_time=time(16, 0),
+            break_minutes=0,
+        )
+        ts_y.submit()
+
+        client = Client()
+        client.force_login(koordinator_user)  # gehoert nur zu school (GSH)
+        url = reverse("timetracking:timesheet_approve", kwargs={"pk": ts_y.pk})
+        response = client.post(url)
+        assert response.status_code == 404
+
+        ts_y.refresh_from_db()
+        assert ts_y.status == "submitted"  # unveraendert
+
+    def test_time_entry_create_wrong_contract(
+        self, betreuer_user, betreuer_profile, school, school_year,
+        activity_type, hourly_rate,
+    ):
+        """Betreuer A versucht TimeEntry fuer Contract von Betreuer B anzulegen.
+
+        Die View redirectet mit messages.error (status 302) und der Eintrag
+        wird NICHT gespeichert -- ownership-check in TimeEntryCreateView.post()."""
+        _u, _p, other_contract = self._make_other_betreuer_at_school(
+            school, school_year, activity_type, hourly_rate,
+            username="te_wrong_ctr", contract_number="CSFV-GSH-TE-WRONG",
+        )
+
+        client = Client()
+        client.force_login(betreuer_user)  # Betreuer A
+        response = client.post(
+            reverse("timetracking:time_entry_create"),
+            {
+                "contract": other_contract.pk,
+                "date": "2026-02-14",
+                "start_time": "14:00",
+                "end_time": "16:00",
+                "break_minutes": "0",
+                "description": "IDOR-Versuch",
+            },
+        )
+        # Weicher Fehler mit Redirect (View redirectet nach Error-Message)
+        assert response.status_code == 302
+        assert not TimeEntry.objects.filter(contract=other_contract).exists()
+
+
+# ---------------------------------------------------------------------------
+# Concurrent Operations: Mehrere TimeEntries an verschiedenen Tagen
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+class TestTimeEntryConcurrency:
+    """
+    Regression-Schutz: Kein DB-Constraint darf mehrere TimeEntries des
+    gleichen Vertrags an unterschiedlichen Tagen blockieren. Historisch
+    gab es einen falschen unique_together-Versuch auf (contract, date) --
+    dieser Test stellt sicher, dass so etwas nicht zurueckkehrt.
+    """
+
+    def test_concurrent_timeentry_creates_allowed_for_different_dates(
+        self, contract,
+    ):
+        """
+        TimeEntries fuer den gleichen Vertrag, aber unterschiedliche
+        Tage, muessen gleichzeitig existieren koennen.
+        """
+        from datetime import date as d, time as t
+
+        # Drei Eintraege an verschiedenen Tagen anlegen
+        entries = []
+        for day in (10, 11, 12):
+            e = TimeEntry.objects.create(
+                contract=contract,
+                date=d(2026, 2, day),
+                start_time=t(14, 0),
+                end_time=t(16, 0),
+                break_minutes=0,
+                description=f"Tag {day}",
+            )
+            entries.append(e)
+
+        assert TimeEntry.objects.filter(contract=contract).count() == 3
+        for e in entries:
+            assert e.pk is not None
+
+    def test_multiple_timeentries_same_day_same_contract_allowed(self, contract):
+        """
+        Fachlich legitim: zwei AGs am gleichen Tag (morgens + nachmittags)
+        im gleichen Vertrag. Kein DB-Constraint sollte das blockieren.
+
+        Diese Freiheit ist bewusst -- wenn das mal gesperrt werden soll,
+        muss das via Form-Level-Validation (mit UI-Fehlermeldung) passieren,
+        nicht via IntegrityError.
+        """
+        from datetime import date as d, time as t
+
+        e1 = TimeEntry.objects.create(
+            contract=contract,
+            date=d(2026, 2, 10),
+            start_time=t(8, 0),
+            end_time=t(10, 0),
+            break_minutes=0,
+            description="Vormittag",
+        )
+        e2 = TimeEntry.objects.create(
+            contract=contract,
+            date=d(2026, 2, 10),  # gleicher Tag
+            start_time=t(14, 0),
+            end_time=t(16, 0),
+            break_minutes=0,
+            description="Nachmittag",
+        )
+        assert e1.pk != e2.pk
+        assert TimeEntry.objects.filter(
+            contract=contract, date=d(2026, 2, 10),
+        ).count() == 2
+
+
+# ---------------------------------------------------------------------------
+# Timesheet-PDF-Generation: Smoke-Test (File-Existenz + nicht-leer)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+@pytest.mark.slow
+class TestGenerateTimesheetPDFSmoke:
+    """
+    Erweiterter Smoke-Test fuer generate_timesheet_pdf():
+    Datei existiert im Storage + hat Groesse > 0.
+
+    Markiert als @pytest.mark.slow (WeasyPrint). Laeuft dennoch
+    im Default-Run mit. Ergaenzt die bestehenden Tests in
+    TestGenerateTimesheetPDF um die FS-/Storage-Pruefung.
+    """
+
+    def test_generate_timesheet_pdf_creates_file(
+        self, contract, time_entry, koordinator_user,
+    ):
+        """
+        Nach approve + generate_timesheet_pdf: Datei ist im Default-
+        Storage vorhanden und hat eine Groesse > 0.
+        """
+        from django.core.files.storage import default_storage
+
+        from apps.timetracking.services import generate_timesheet_pdf
+
+        ts = MonthlyTimesheet.objects.create(
+            contract=contract, month=2, year=2026,
+        )
+        ts.submit()
+        ts.approve(koordinator_user)
+
+        result = generate_timesheet_pdf(ts)
+        assert result.generated_pdf, "generated_pdf sollte befuellt sein."
+        assert result.generated_pdf.name.endswith(".pdf")
+
+        # FS-Seite
+        assert default_storage.exists(result.generated_pdf.name), (
+            "Erzeugte Timesheet-PDF fehlt im Default-Storage."
+        )
+        size = default_storage.size(result.generated_pdf.name)
+        assert size > 0, (
+            f"Timesheet-PDF ist leer (size={size}); WeasyPrint hat nichts "
+            "gerendert oder der Save hat geschlagen."
+        )
+
+

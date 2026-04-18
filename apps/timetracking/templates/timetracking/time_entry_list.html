@@ -31,7 +31,7 @@
             </label>
             <select id="school_filter" name="school_filter"
                     onchange="this.form.submit()"
-                    class="rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-credo-dark">
+                    class="rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-credo-dark focus-visible:ring-2 focus-visible:ring-credo-dark">
                 <option value="">Alle Schulen</option>
                 {% for s in betreuer_schools %}
                 <option value="{{ s.pk }}" {% if school_filter_id == s.pk|stringformat:"s" %}selected{% endif %}>
@@ -44,7 +44,9 @@
     {% endif %}
 
     {% if not contract_data %}
-    <div class="bg-white rounded-lg shadow p-8 text-center text-gray-500">
+    <div class="bg-white rounded-lg shadow p-8 text-center text-gray-500"
+         role="status"
+         aria-live="polite">
         Keine aktiven Vertr&auml;ge vorhanden.
     </div>
     {% endif %}
@@ -71,13 +73,13 @@
                 <div>
                     {% if cd.timesheet %}
                         {% if cd.timesheet.status == 'submitted' %}
-                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">Eingereicht</span>
+                        <span aria-label="Status: Eingereicht" class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">Eingereicht</span>
                         {% elif cd.timesheet.status == 'approved' %}
-                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">Genehmigt</span>
+                        <span aria-label="Status: Genehmigt" class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">Genehmigt</span>
                         {% elif cd.timesheet.status == 'rejected' %}
-                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">Abgelehnt</span>
+                        <span aria-label="Status: Abgelehnt" class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">Abgelehnt</span>
                         {% else %}
-                        <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">Entwurf</span>
+                        <span aria-label="Status: Entwurf" class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">Entwurf</span>
                         {% endif %}
                     {% endif %}
                 </div>
@@ -101,7 +103,7 @@
                 </thead>
                 <tbody>
                     {% for entry in cd.entries %}
-                    <tr class="border-b border-gray-100 hover:bg-gray-50">
+                    <tr class="border-b border-gray-100 hover:bg-gray-50 focus-within:bg-gray-50 focus-visible:ring-2 focus-visible:ring-credo-dark">
                         <td class="py-2 pr-4">{{ entry.date|date:"d.m." }}</td>
                         <td class="py-2 pr-4">{{ entry.start_time|time:"H:i" }}</td>
                         <td class="py-2 pr-4">{{ entry.end_time|time:"H:i" }}</td>
@@ -120,10 +122,11 @@
                             <div class="flex items-center justify-end gap-2">
                                 <a href="{% url 'timetracking:time_entry_update' entry.pk %}"
                                    class="text-xs text-schule-gsh hover:underline">Bearb.</a>
-                                <form method="post" action="{% url 'timetracking:time_entry_delete' entry.pk %}" class="inline">
+                                <form method="post" action="{% url 'timetracking:time_entry_delete' entry.pk %}" class="inline"
+                                      hx-confirm="Eintrag wirklich l&ouml;schen?"
+                                      x-on:submit="return confirm('Eintrag wirklich l&ouml;schen?')">
                                     {% csrf_token %}
-                                    <button type="submit" class="text-xs text-red-500 hover:underline"
-                                            onclick="return confirm('Eintrag loeschen?')">L&ouml;schen</button>
+                                    <button type="submit" class="text-xs text-red-500 hover:underline">L&ouml;schen</button>
                                 </form>
                             </div>
                             {% endif %}
@@ -133,7 +136,7 @@
                 </tbody>
                 <tfoot>
                     <tr class="font-semibold text-credo-dark">
-                        <td colspan="4" class="py-3 pr-4">Summe</td>
+                        <th scope="row" colspan="4" class="py-3 pr-4 text-left">Summe</th>
                         <td class="py-3 pr-4">{{ cd.total_minutes }} min ({{ cd.total_hours }} Std.)</td>
                         <td colspan="3"></td>
                     </tr>
@@ -150,7 +153,7 @@
             {# Add entry form (inline) #}
             <div x-data="{ showForm: false }" class="flex-1">
                 <button type="button" @click="showForm = !showForm" :aria-expanded="showForm.toString()"
-                        class="bg-schule-gsh hover:bg-blue-600 text-white text-sm font-medium py-2 px-4 rounded-md transition-colors">
+                        class="bg-schule-gsh hover:bg-blue-600 text-white text-sm font-medium py-2 px-4 rounded-md transition-colors focus-visible:ring-2 focus-visible:ring-credo-dark">
                     + Stunde eintragen
                 </button>
 
@@ -160,32 +163,34 @@
                         {% csrf_token %}
                         <input type="hidden" name="contract" value="{{ cd.contract.pk }}">
                         <div>
-                            <label for="date_{{ cd.contract.pk }}" class="block text-xs text-gray-500 mb-1">Datum</label>
+                            <label for="date_{{ cd.contract.pk }}" class="block text-xs text-gray-500 mb-1">Datum <span class="text-red-500" aria-label="erforderlich">*</span></label>
+                            {% with month_str=month|stringformat:"02d" %}
                             <input id="date_{{ cd.contract.pk }}" type="date" name="date" required
-                                   min="{{ year }}-{{ month|stringformat:'02d' }}-01"
-                                   max="{{ year }}-{{ month|stringformat:'02d' }}-{{ month_last_day }}"
-                                   class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
+                                   min="{{ year }}-{{ month_str }}-01"
+                                   max="{{ year }}-{{ month_str }}-{{ days_in_month|default:month_last_day|default:'31' }}"
+                                   class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-credo-dark/50 focus-visible:ring-2 focus-visible:ring-credo-dark">
+                            {% endwith %}
                         </div>
                         <div>
-                            <label for="start_time_{{ cd.contract.pk }}" class="block text-xs text-gray-500 mb-1">Von</label>
+                            <label for="start_time_{{ cd.contract.pk }}" class="block text-xs text-gray-500 mb-1">Von <span class="text-red-500" aria-label="erforderlich">*</span></label>
                             <input id="start_time_{{ cd.contract.pk }}" type="time" name="start_time" required
-                                   class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
+                                   class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-credo-dark/50 focus-visible:ring-2 focus-visible:ring-credo-dark">
                         </div>
                         <div>
-                            <label for="end_time_{{ cd.contract.pk }}" class="block text-xs text-gray-500 mb-1">Bis</label>
+                            <label for="end_time_{{ cd.contract.pk }}" class="block text-xs text-gray-500 mb-1">Bis <span class="text-red-500" aria-label="erforderlich">*</span></label>
                             <input id="end_time_{{ cd.contract.pk }}" type="time" name="end_time" required
-                                   class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
+                                   class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-credo-dark/50 focus-visible:ring-2 focus-visible:ring-credo-dark">
                         </div>
                         <div>
                             <label for="break_minutes_{{ cd.contract.pk }}" class="block text-xs text-gray-500 mb-1">Pause (Min.)</label>
                             <input id="break_minutes_{{ cd.contract.pk }}" type="number" name="break_minutes" value="0" min="0" max="120"
-                                   class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
+                                   class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-credo-dark/50 focus-visible:ring-2 focus-visible:ring-credo-dark">
                         </div>
                         {% if cd.foerderprogramme %}
                         <div>
                             <label for="foerderprogramm_{{ cd.contract.pk }}" class="block text-xs text-gray-500 mb-1">F&ouml;rderprogramm</label>
                             <select id="foerderprogramm_{{ cd.contract.pk }}" name="foerderprogramm"
-                                    class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
+                                    class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-credo-dark/50 focus-visible:ring-2 focus-visible:ring-credo-dark">
                                 <option value="">— Kein Programm —</option>
                                 {% for fp in cd.foerderprogramme %}
                                 <option value="{{ fp.pk }}">{{ fp.name }}</option>
@@ -196,11 +201,11 @@
                         <div>
                             <label for="description_{{ cd.contract.pk }}" class="block text-xs text-gray-500 mb-1">Beschreibung</label>
                             <input id="description_{{ cd.contract.pk }}" type="text" name="description" placeholder="Optional"
-                                   class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
+                                   class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-credo-dark/50 focus-visible:ring-2 focus-visible:ring-credo-dark">
                         </div>
                         <div>
                             <button type="submit"
-                                    class="w-full bg-credo-dark hover:bg-gray-700 text-white text-sm font-medium py-2 px-4 rounded-md transition-colors">
+                                    class="w-full bg-credo-dark hover:bg-gray-700 text-white text-sm font-medium py-2 px-4 rounded-md transition-colors focus-visible:ring-2 focus-visible:ring-credo-dark">
                                 Speichern
                             </button>
                         </div>
@@ -209,16 +214,24 @@
             </div>
 
             {% if cd.entries %}
-            <form method="post" action="{% url 'timetracking:timesheet_submit' %}">
+            <form method="post" action="{% url 'timetracking:timesheet_submit' %}"
+                  hx-confirm="Monat einreichen? Eintr&auml;ge k&ouml;nnen danach nicht mehr ge&auml;ndert werden."
+                  hx-indicator="#loading-submit-{{ cd.contract.pk }}"
+                  x-on:submit="return confirm('Monat einreichen? Eintr&auml;ge k&ouml;nnen danach nicht mehr ge&auml;ndert werden.')">
                 {% csrf_token %}
                 <input type="hidden" name="contract" value="{{ cd.contract.pk }}">
                 <input type="hidden" name="month" value="{{ month }}">
                 <input type="hidden" name="year" value="{{ year }}">
                 <button type="submit"
-                        class="bg-green-600 hover:bg-green-700 text-white text-sm font-medium py-2 px-4 rounded-md transition-colors"
-                        onclick="return confirm('Monat einreichen? Eintraege koennen danach nicht mehr geaendert werden.')">
+                        class="bg-green-600 hover:bg-green-700 text-white text-sm font-medium py-2 px-4 rounded-md transition-colors disabled:opacity-50 [&.htmx-request]:opacity-50 focus-visible:ring-2 focus-visible:ring-credo-dark">
                     Monat einreichen
                 </button>
+                <span id="loading-submit-{{ cd.contract.pk }}"
+                      class="htmx-indicator ml-2 text-xs text-gray-500"
+                      role="status"
+                      aria-live="polite">
+                    Wird gesendet&hellip;
+                </span>
             </form>
             {% endif %}
             {% endif %}

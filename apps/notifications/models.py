@@ -16,30 +16,23 @@ from django.db import models
 
 from apps.core.models import TimeStampedModel
 
-# Alle 19 Outbound-Events aus apps/notifications/services.py plus ein
-# Default-Wildcard. Muss synchron bleiben mit send_notification-Aufrufern.
+# Nur die Events, die aktuell vom Betreuer-Code tatsaechlich ausgeloest
+# werden (stand: Code-Scan ueber apps/contracts, apps/documents,
+# apps/timetracking). Plus ein Wildcard-Fallback "*".
+# Wer ein weiteres Event braucht, ergaenzt die Choice hier + eine
+# Migration (AlterField) + fuegt die entsprechende notify_*-Funktion
+# in apps/notifications/services.py hinzu.
 EVENT_CHOICES = [
     ("*", "Default (Fallback fuer alle nicht konfigurierten Events)"),
-    ("betreuer_registered", "Betreuer registriert"),
-    ("pending_approval", "Registrierung wartet auf Genehmigung"),
+    ("pending_approval", "Betreuer-Registrierung wartet auf Genehmigung"),
     ("betreuer_approved", "Betreuer genehmigt"),
-    ("betreuer_activated", "Betreuer aktiviert"),
     ("contract_created", "Vertrag erstellt"),
-    ("documents_generated", "Dokumente generiert"),
-    ("documents_sent", "Dokumente versendet"),
-    ("documents_complete", "Dokumente vollstaendig"),
-    ("document_rejected", "Dokument abgelehnt"),
-    ("document_expiring", "Dokument laeuft ab"),
+    ("duplicate_detected", "Duplikat bei Registrierung erkannt"),
+    ("email_mismatch", "E-Mail-Abweichung bei Registrierung"),
+    ("document_expiring", "Dokument laeuft in Kuerze ab"),
     ("document_expired", "Dokument abgelaufen"),
-    ("fuehrungszeugnis_required", "Fuehrungszeugnis erforderlich"),
-    ("freibetrag_warning", "Freibetrag-Warnung"),
-    ("timesheet_submitted", "Stundennachweis eingereicht"),
-    ("timesheet_approved", "Stundennachweis genehmigt"),
-    ("timesheet_rejected", "Stundennachweis abgelehnt"),
-    ("duplicate_detected", "Duplikat erkannt"),
-    ("email_mismatch", "E-Mail-Abweichung"),
-    ("kostenbuchung_created", "Kostenbuchung erstellt"),
-    ("password_set", "Passwort gesetzt"),
+    ("freibetrag_warning", "Freibetrag-Grenze erreicht"),
+    ("timesheet_approved", "Stundennachweis genehmigt (Abrechnung)"),
 ]
 
 
@@ -139,3 +132,23 @@ class InboundToken(models.Model):
         """Liefert das aktive Token oder None."""
         obj = cls.objects.filter(pk=1, is_active=True).first()
         return obj.token if obj else None
+
+
+class ProcessedWebhookEvent(models.Model):
+    """
+    Idempotency-Log fuer eingehende n8n-Webhooks. Speichert die
+    ``event_id``, die n8n im Payload mitliefert, damit der gleiche
+    Callback (z.B. bei Retry oder Netzwerk-Fehler) nicht zweimal
+    verarbeitet wird.
+    """
+
+    event_id = models.CharField(max_length=128, unique=True, db_index=True)
+    event_type = models.CharField(max_length=64)
+    processed_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Verarbeitetes Webhook-Event"
+        verbose_name_plural = "Verarbeitete Webhook-Events"
+
+    def __str__(self):
+        return f"{self.event_type}: {self.event_id}"

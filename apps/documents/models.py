@@ -154,6 +154,15 @@ class Document(TimeStampedModel, AuditLogMixin):
                 name="unique_document_per_contract_requirement",
             )
         ]
+        indexes = [
+            # Haeufige Filter: offene / abgelehnte Dokumente im Dashboard
+            models.Index(fields=["status"], name="documents_doc_status_idx"),
+            # Betreuer-Dokumente gefiltert nach Status (Profil-Seite, DMS-Export)
+            models.Index(
+                fields=["betreuer", "status"],
+                name="doc_betreuer_status_idx",
+            ),
+        ]
 
     def __str__(self):
         return f"{self.requirement.name} - {self.betreuer}"

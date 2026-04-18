@@ -1,74 +1,83 @@
 {% extends "_anonymous_base.html" %}
+{% load static %}
 
-{% block title %}Anmelden | BetreuerApp | CSFV{% endblock %}
-{% block header_title %}BetreuerApp{% endblock %}
+{% block title %}Anmelden | CSFV Betreuer-Portal{% endblock %}
+{% block header_title %}Betreuer-Portal{% endblock %}
 
 {% block content %}
-<div class="flex-1 flex items-center justify-center px-4 py-12">
-    <div class="w-full max-w-md">
+<section class="flex-1 flex items-center justify-center px-4 py-16 sm:py-24">
+    <div class="w-full max-w-sm">
 
-        <div class="bg-white rounded-lg shadow-md p-8">
-            <h2 class="text-xl font-bold text-credo-dark text-center mb-6">Anmelden</h2>
+        <div class="text-center mb-10">
+            <h2 class="text-2xl font-semibold tracking-tight text-credo-dark">
+                Willkommen zurueck
+            </h2>
+            <p class="mt-2 text-sm text-neutral-500">
+                Bitte melden Sie sich mit Ihren Zugangsdaten an.
+            </p>
+        </div>
 
-            {% if form.errors %}
-            <div class="mb-4 p-4 rounded-md bg-red-50 text-red-800 border border-red-200" role="alert">
-                <p class="text-sm font-medium">
-                    Benutzername oder Passwort ist nicht korrekt. Bitte versuchen Sie es erneut.
-                </p>
+        <div class="card-padded">
+
+            {% if form.errors and not form.non_field_errors %}
+            <div class="alert-error mb-6" role="alert">
+                <svg class="h-5 w-5 flex-shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+                </svg>
+                <div>
+                    <p class="font-medium">Anmeldung fehlgeschlagen</p>
+                    <p class="mt-0.5 text-red-700">Benutzername oder Passwort ist nicht korrekt.</p>
+                </div>
             </div>
             {% endif %}
 
-            {% if form.non_field_errors %}
             {% for error in form.non_field_errors %}
-            <div class="mb-4 p-4 rounded-md bg-red-50 text-red-800 border border-red-200" role="alert">
-                <p class="text-sm font-medium">{{ error }}</p>
+            <div class="alert-error mb-6" role="alert">
+                <svg class="h-5 w-5 flex-shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                    <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 6a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 6zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/>
+                </svg>
+                <div>{{ error }}</div>
             </div>
             {% endfor %}
-            {% endif %}
 
             <form method="post" class="space-y-5" novalidate>
                 {% csrf_token %}
 
                 <div>
-                    <label for="id_username" class="block text-sm font-medium text-credo-dark mb-1">Benutzername</label>
+                    <label for="id_username" class="form-label">Benutzername</label>
                     <input type="text"
                            name="username"
                            id="id_username"
                            autocomplete="username"
                            required
-                           autofocus
-                           class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm
-                                  placeholder-gray-400
-                                  focus:outline-none focus:ring-2 focus:ring-credo-dark focus:border-credo-dark
-                                  text-sm"
-                           placeholder="Benutzername eingeben">
+                           aria-invalid="{% if form.username.errors %}true{% else %}false{% endif %}"
+                           {% if form.username.errors %}aria-describedby="id_username_error"{% endif %}
+                           class="form-input"
+                           placeholder="z.B. admin">
+                    {% if form.username.errors %}
+                    <p id="id_username_error" role="alert" class="mt-1 text-xs text-red-600">{{ form.username.errors.0 }}</p>
+                    {% endif %}
                 </div>
 
                 <div>
-                    <label for="id_password" class="block text-sm font-medium text-credo-dark mb-1">Passwort</label>
+                    <label for="id_password" class="form-label">Passwort</label>
                     <input type="password"
                            name="password"
                            id="id_password"
                            autocomplete="current-password"
                            required
-                           class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm
-                                  placeholder-gray-400
-                                  focus:outline-none focus:ring-2 focus:ring-credo-dark focus:border-credo-dark
-                                  text-sm"
-                           placeholder="Passwort eingeben">
+                           aria-invalid="{% if form.password.errors %}true{% else %}false{% endif %}"
+                           {% if form.password.errors %}aria-describedby="id_password_error"{% endif %}
+                           class="form-input"
+                           placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;">
+                    {% if form.password.errors %}
+                    <p id="id_password_error" role="alert" class="mt-1 text-xs text-red-600">{{ form.password.errors.0 }}</p>
+                    {% endif %}
                 </div>
 
-                <div>
-                    <button type="submit"
-                            class="w-full flex justify-center py-2.5 px-4
-                                   bg-credo-dark hover:bg-gray-700
-                                   text-white text-sm font-semibold
-                                   rounded-md shadow-sm
-                                   focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-credo-dark
-                                   transition-colors duration-150">
-                        Anmelden
-                    </button>
-                </div>
+                <button type="submit" class="btn-primary w-full py-3 mt-2">
+                    Anmelden
+                </button>
 
                 {% if next %}
                 <input type="hidden" name="next" value="{{ next }}">
@@ -76,9 +85,13 @@
             </form>
         </div>
 
-        <p class="text-center text-xs text-gray-400 mt-6">
-            BetreuerApp &ndash; Christlicher Schulfoerderverein Minden e.V.
+        <p class="mt-6 text-center text-xs text-neutral-500">
+            Passwort vergessen? Bitte wenden Sie sich an Ihren Koordinator.
+        </p>
+
+        <p class="mt-8 text-center text-xs text-neutral-400">
+            &copy; {{ current_year|default:"2026" }} Christlicher Schulfoerderverein Minden e.&nbsp;V.
         </p>
     </div>
-</div>
+</section>
 {% endblock %}

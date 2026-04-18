@@ -8,13 +8,29 @@ plus CSV export utility.
 import csv
 import io
 from datetime import date
+from decimal import Decimal
 
 from django.db.models import Sum
 from django.http import HttpResponse
 
 from apps.contracts.models import BetreuerProfile
-from apps.freibetrag.services import get_freibetrag_status
+from apps.core.constants import (
+    WARNING_THRESHOLD_ORANGE,
+    WARNING_THRESHOLD_RED,
+    WARNING_THRESHOLD_YELLOW,
+)
+from apps.freibetrag.models import Uebungsleiterpauschale
 from apps.timetracking.models import MonthlyTimesheet
+
+
+def _warning_level(percentage):
+    if percentage >= WARNING_THRESHOLD_RED:
+        return "red"
+    if percentage >= WARNING_THRESHOLD_ORANGE:
+        return "orange"
+    if percentage >= WARNING_THRESHOLD_YELLOW:
+        return "yellow"
+    return None
 
 
 def get_monthly_overview(month, year, school_ids=None):
@@ -67,6 +83,10 @@ def get_freibetrag_overview(year=None, school_ids=None):
     Returns a list of dicts:
         betreuer_name, limit, earned_here, used_elsewhere, total_used,
         remaining, percentage, warning_level
+
+    Performance: Alle approved-Timesheet-Summen werden in genau einer
+    aggregierten SQL-Query geladen -- statt pro Betreuer ein
+    ``get_freibetrag_status()``-Call (N+1).
     """
     if year is None:
         year = date.today().year
@@ -82,19 +102,42 @@ def get_freibetrag_overview(year=None, school_ids=None):
 
     qs = qs.order_by("user__last_name", "user__first_name")
 
+    pauschale = Uebungsleiterpauschale.objects.filter(kalenderjahr=year).first()
+    limit = pauschale.betrag if pauschale else Decimal("3300.00")
+
+    sums_by_betreuer = dict(
+        MonthlyTimesheet.objects
+        .filter(
+            contract__betreuer__in=qs,
+            status="approved",
+            year=year,
+        )
+        .values("contract__betreuer_id")
+        .annotate(total=Sum("total_amount"))
+        .values_list("contract__betreuer_id", "total")
+    )
+
     results = []
     for bp in qs:
-        status = get_freibetrag_status(bp, year=year)
+        earned_here = sums_by_betreuer.get(bp.id) or Decimal(0)
+        used_elsewhere = bp.freibetrag_amount_elsewhere or Decimal(0)
+        total_used = used_elsewhere + earned_here
+        remaining = max(Decimal(0), limit - total_used)
+        if limit > 0:
+            percentage = round(float((total_used / limit) * 100), 1)
+        else:
+            percentage = 0.0
+
         results.append({
             "betreuer_name": bp.user.get_full_name(),
-            "year": status["year"],
-            "limit": status["limit"],
-            "earned_here": status["earned_here"],
-            "used_elsewhere": status["used_elsewhere"],
-            "total_used": status["total_used"],
-            "remaining": status["remaining"],
-            "percentage": status["percentage"],
-            "warning_level": status["warning_level"] or "",
+            "year": year,
+            "limit": limit,
+            "earned_here": earned_here,
+            "used_elsewhere": used_elsewhere,
+            "total_used": total_used,
+            "remaining": remaining,
+            "percentage": percentage,
+            "warning_level": _warning_level(percentage) or "",
         })
 
     return results

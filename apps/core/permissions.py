@@ -73,6 +73,29 @@ class KoordinatorOrAdminMixin(LoginRequiredMixin, UserPassesTestMixin):
         return has_koordinator_role(self.request.user)
 
 
+class KoordinatorScopedMixin(KoordinatorOrAdminMixin):
+    """
+    Mixin fuer Views, die zusaetzlich zum Rollen-Check automatisch
+    den Scope-Check durchfuehren: Koordinatoren duerfen nur auf
+    ``BetreuerProfile``-Objekte zugreifen, die an einer ihrer Schulen
+    einen Vertrag haben. Admins/Superuser bleiben uneingeschraenkt.
+
+    Muss ``get_object()`` aufrufen koennen -- typischerweise
+    kombiniert mit ``DetailView`` / ``UpdateView`` / ``DeleteView``.
+    """
+
+    def get_object(self, queryset=None):
+        obj = super().get_object(queryset=queryset)
+        # Lokaler Import, um zirkulaere Modell-Imports zu vermeiden.
+        from apps.contracts.models import BetreuerProfile
+
+        if isinstance(obj, BetreuerProfile):
+            require_scope_access(self.request.user, obj)
+        elif hasattr(obj, "betreuer"):
+            require_scope_access(self.request.user, obj.betreuer)
+        return obj
+
+
 class AdminOnlyMixin(LoginRequiredMixin, UserPassesTestMixin):
     """Mixin fuer Views, die nur von Admins (oder Superusern) aufgerufen werden duerfen."""
 

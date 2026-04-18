@@ -17,11 +17,13 @@
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 
         {# Betreuer #}
-        <div class="bg-white rounded-lg shadow p-6 border-l-4 border-credo-dark">
+        <a href="{% url 'contracts:betreuer_list' %}"
+           aria-label="{{ betreuer_count }} aktive Betreuer insgesamt anzeigen"
+           class="bg-white rounded-lg shadow p-6 border-l-4 border-credo-dark hover:shadow-md transition-shadow block focus-visible:ring-2 focus-visible:ring-credo-dark">
             <h3 class="text-lg font-semibold text-credo-dark">Betreuer</h3>
             <p class="text-3xl font-bold text-credo-dark mt-2">{{ betreuer_count }}</p>
             <p class="text-sm text-gray-500 mt-1">Aktive Betreuer gesamt</p>
-        </div>
+        </a>
 
         {# Schulen #}
         <div class="bg-white rounded-lg shadow p-6 border-l-4 border-schule-gsh">
@@ -31,11 +33,13 @@
         </div>
 
         {# Offene Genehmigungen #}
-        <div class="bg-white rounded-lg shadow p-6 border-l-4 border-schule-gsm">
+        <a href="{% url 'timetracking:timesheet_list' %}?status=submitted"
+           aria-label="{{ pending_timesheets }} offene Stundennachweise zur Genehmigung anzeigen"
+           class="bg-white rounded-lg shadow p-6 border-l-4 border-schule-gsm hover:shadow-md transition-shadow block focus-visible:ring-2 focus-visible:ring-credo-dark">
             <h3 class="text-lg font-semibold text-credo-dark">Genehmigungen</h3>
             <p class="text-3xl font-bold text-credo-dark mt-2">{{ pending_timesheets }}</p>
             <p class="text-sm text-gray-500 mt-1">Offene Stundennachweise</p>
-        </div>
+        </a>
 
         {# Vertraege #}
         <div class="bg-white rounded-lg shadow p-6 border-l-4 border-schule-gym">
@@ -103,7 +107,12 @@
                     <td class="py-2 px-4">
                         {# Progress bar + badge #}
                         <div class="flex items-center gap-2">
-                            <div class="w-20 bg-gray-200 rounded-full h-1.5">
+                            <div class="w-20 bg-gray-200 rounded-full h-1.5"
+                                 role="progressbar"
+                                 aria-valuenow="{{ s.percentage }}"
+                                 aria-valuemin="0"
+                                 aria-valuemax="100"
+                                 aria-label="Budget {{ fp.name }}: {{ s.percentage }} Prozent verbraucht">
                                 <div class="h-1.5 rounded-full
                                     {% if s.warning_level == 'red' %}bg-red-500
                                     {% elif s.warning_level == 'orange' %}bg-orange-400

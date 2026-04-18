@@ -61,3 +61,44 @@ WARNING_THRESHOLD_RED = 100
 MAX_UPLOAD_SIZE_BYTES = 10 * 1024 * 1024  # 10 MB
 
 ALLOWED_UPLOAD_EXTENSIONS = (".pdf", ".jpg", ".jpeg", ".png")
+
+
+# ---------------------------------------------------------------------------
+# Status-Strings (Single Source of Truth, vorerst nicht zurueck-refactored)
+# ---------------------------------------------------------------------------
+# Bewusst keine Enum-Klasse: Django-Choices erwarten Plain-Strings und
+# wir wollen die Konstanten in if-/Filter-Vergleichen nutzen koennen,
+# ohne .value-Zugriffe. Bei Bedarf spaeter auf TextChoices migrieren.
+
+# Document.status
+DOCUMENT_STATUS_PENDING = "pending"
+DOCUMENT_STATUS_GENERATED = "generated"
+DOCUMENT_STATUS_SENT = "sent"
+DOCUMENT_STATUS_UPLOADED = "uploaded"
+DOCUMENT_STATUS_VERIFIED = "verified"
+DOCUMENT_STATUS_REJECTED = "rejected"
+
+# MonthlyTimesheet.status
+TIMESHEET_STATUS_DRAFT = "draft"
+TIMESHEET_STATUS_SUBMITTED = "submitted"
+TIMESHEET_STATUS_APPROVED = "approved"
+TIMESHEET_STATUS_REJECTED = "rejected"
+
+# Contract.status
+CONTRACT_STATUS_DRAFT = "draft"
+CONTRACT_STATUS_GENERATED = "generated"
+CONTRACT_STATUS_SENT = "sent"
+CONTRACT_STATUS_SIGNED = "signed"
+CONTRACT_STATUS_ACTIVE = "active"
+CONTRACT_STATUS_EXPIRED = "expired"
+CONTRACT_STATUS_CANCELLED = "cancelled"
+
+# BetreuerProfile.onboarding_status
+BETREUER_STATUS_REGISTERED = "registered"
+BETREUER_STATUS_PENDING_APPROVAL = "pending_approval"
+BETREUER_STATUS_APPROVED = "approved"
+BETREUER_STATUS_DOCUMENTS_PENDING = "documents_pending"
+BETREUER_STATUS_DOCUMENTS_COMPLETE = "documents_complete"
+BETREUER_STATUS_ACTIVE = "active"
+BETREUER_STATUS_INACTIVE = "inactive"
+BETREUER_STATUS_ARCHIVED = "archived"

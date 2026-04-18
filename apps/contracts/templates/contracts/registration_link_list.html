@@ -17,12 +17,12 @@
         <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">
                 <tr>
-                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Schule</th>
-                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Link</th>
-                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ablauf</th>
-                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Erstellt</th>
-                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Notizen</th>
+                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Schule</th>
+                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Link</th>
+                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ablauf</th>
+                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Erstellt</th>
+                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Notizen</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-100">
@@ -34,11 +34,11 @@
                     </td>
                     <td class="px-4 py-3 text-sm">
                         {% if link.is_valid %}
-                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        <span aria-label="Status: Aktiv" class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                             Aktiv
                         </span>
                         {% else %}
-                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                        <span aria-label="Status: {% if link.used_at %}Verwendet{% else %}Abgelaufen{% endif %}" class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
                             {% if link.used_at %}Verwendet{% else %}Abgelaufen{% endif %}
                         </span>
                         {% endif %}
@@ -54,7 +54,9 @@
         </table>
     </div>
     {% else %}
-    <div class="bg-white shadow rounded-lg p-8 text-center text-gray-500">
+    <div class="bg-white shadow rounded-lg p-8 text-center text-gray-500"
+         role="status"
+         aria-live="polite">
         Noch keine Registrierungslinks vorhanden.
     </div>
     {% endif %}

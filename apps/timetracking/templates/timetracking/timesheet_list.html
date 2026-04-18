@@ -30,18 +30,18 @@
         <table class="w-full text-sm">
             <thead>
                 <tr class="text-left text-gray-500 bg-gray-50 border-b">
-                    <th class="py-3 px-4">Betreuer</th>
-                    <th class="py-3 px-4">Vertrag</th>
-                    <th class="py-3 px-4">Zeitraum</th>
-                    <th class="py-3 px-4 text-right">Stunden</th>
-                    <th class="py-3 px-4 text-right">Betrag</th>
-                    <th class="py-3 px-4 text-center">Status</th>
-                    <th class="py-3 px-4 text-right">Aktionen</th>
+                    <th scope="col" class="py-3 px-4">Betreuer</th>
+                    <th scope="col" class="py-3 px-4">Vertrag</th>
+                    <th scope="col" class="py-3 px-4">Zeitraum</th>
+                    <th scope="col" class="py-3 px-4 text-right">Stunden</th>
+                    <th scope="col" class="py-3 px-4 text-right">Betrag</th>
+                    <th scope="col" class="py-3 px-4 text-center">Status</th>
+                    <th scope="col" class="py-3 px-4 text-right">Aktionen</th>
                 </tr>
             </thead>
             <tbody>
                 {% for ts in timesheets %}
-                <tr class="border-b border-gray-100 hover:bg-gray-50">
+                <tr class="border-b border-gray-100 hover:bg-gray-50 focus-within:bg-gray-50">
                     <td class="py-3 px-4 font-medium">
                         {{ ts.contract.betreuer.user.get_full_name }}
                     </td>
@@ -59,23 +59,25 @@
                     </td>
                     <td class="py-3 px-4 text-center">
                         {% if ts.status == 'submitted' %}
-                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">Eingereicht</span>
+                        <span aria-label="Status: Eingereicht" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">Eingereicht</span>
                         {% elif ts.status == 'approved' %}
-                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Genehmigt</span>
+                        <span aria-label="Status: Genehmigt" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Genehmigt</span>
                         {% elif ts.status == 'rejected' %}
-                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Abgelehnt</span>
+                        <span aria-label="Status: Abgelehnt" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Abgelehnt</span>
                         {% else %}
-                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">Entwurf</span>
+                        <span aria-label="Status: Entwurf" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">Entwurf</span>
                         {% endif %}
                     </td>
                     <td class="py-3 px-4 text-right space-x-2">
                         {% if ts.status == 'approved' and ts.generated_pdf %}
                         <a href="{% url 'timetracking:timesheet_pdf_download' ts.pk %}"
-                           class="inline-flex items-center text-credo-dark hover:text-gray-900"
-                           title="PDF herunterladen">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                           class="inline-flex items-center text-credo-dark hover:text-gray-900 focus-visible:ring-2 focus-visible:ring-credo-dark"
+                           title="PDF herunterladen"
+                           aria-label="PDF fuer Stundennachweis {{ ts.month|stringformat:'02d' }}/{{ ts.year }} herunterladen">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                             </svg>
+                            <span class="sr-only">PDF herunterladen</span>
                         </a>
                         {% endif %}
                         <a href="{% url 'timetracking:timesheet_detail' ts.pk %}"
@@ -107,7 +109,9 @@
     {% endif %}
 
     {% else %}
-    <div class="bg-white rounded-lg shadow p-8 text-center text-gray-500">
+    <div class="bg-white rounded-lg shadow p-8 text-center text-gray-500"
+         role="status"
+         aria-live="polite">
         Keine Stundennachweise vorhanden.
     </div>
     {% endif %}

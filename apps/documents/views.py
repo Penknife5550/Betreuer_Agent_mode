@@ -12,44 +12,19 @@ import logging
 
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.db import transaction
 from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404, redirect
 from django.utils import timezone
 from django.views import View
 
 from apps.contracts.models import BetreuerProfile
+from apps.core.permissions import koordinator_has_access_to_betreuer
 from apps.documents.forms import DocumentUploadForm
 from apps.documents.models import Document
 from apps.documents.services import generate_all_pending_documents, send_all_generated_documents
 
 logger = logging.getLogger(__name__)
-
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-
-def _koordinator_has_access_to_betreuer(user, betreuer_profile):
-    """
-    Return True if the user is a superuser/admin, or is a koordinator
-    whose assigned schools overlap with the betreuer's contract schools.
-    """
-    if user.is_superuser:
-        return True
-    if not hasattr(user, "profile"):
-        return False
-    if user.profile.is_admin:
-        return True
-    if user.profile.is_koordinator:
-        koordinator_school_ids = set(
-            user.profile.schools.values_list("id", flat=True)
-        )
-        betreuer_school_ids = set(
-            betreuer_profile.contracts.values_list("school_id", flat=True)
-        )
-        return bool(koordinator_school_ids & betreuer_school_ids)
-    return False
 
 
 class DocumentUploadView(LoginRequiredMixin, UserPassesTestMixin, View):
@@ -96,29 +71,36 @@ class DocumentVerifyView(LoginRequiredMixin, UserPassesTestMixin, View):
         document = get_object_or_404(Document, pk=pk)
 
         # Scope check: koordinators can only verify documents for their schools
-        if not _koordinator_has_access_to_betreuer(request.user, document.betreuer):
+        if not koordinator_has_access_to_betreuer(request.user, document.betreuer):
             raise Http404
 
         action = request.POST.get("action")  # "verify" or "reject"
 
+        # Transaction-Boundary: Document-Statuswechsel + nachgelagerter
+        # Onboarding-Status-Uebergang muessen atomar laufen. Ein Crash
+        # zwischen document.save() und _check_onboarding_complete() wuerde
+        # sonst einen verifizierten Doc + einen inkonsistenten Betreuer-
+        # Status hinterlassen.
         if action == "verify" and document.can_transition_to("verified"):
-            document.status = "verified"
-            document.verified_by = request.user
-            document.verified_at = timezone.now()
-            document.save()
+            with transaction.atomic():
+                document.status = "verified"
+                document.verified_by = request.user
+                document.verified_at = timezone.now()
+                document.save()
+                # Check if all documents for this betreuer are now verified
+                _check_onboarding_complete(document.betreuer)
             messages.success(
                 request,
                 f"'{document.requirement.name}' verifiziert.",
             )
-            # Check if all documents for this betreuer are now verified
-            _check_onboarding_complete(document.betreuer)
 
         elif action == "reject" and document.can_transition_to("rejected"):
-            document.status = "rejected"
-            document.rejection_reason = request.POST.get("rejection_reason", "")
-            document.verified_by = request.user
-            document.verified_at = timezone.now()
-            document.save()
+            with transaction.atomic():
+                document.status = "rejected"
+                document.rejection_reason = request.POST.get("rejection_reason", "")
+                document.verified_by = request.user
+                document.verified_at = timezone.now()
+                document.save()
             messages.warning(
                 request,
                 f"'{document.requirement.name}' abgelehnt.",
@@ -166,19 +148,23 @@ class GenerateDocumentsView(LoginRequiredMixin, UserPassesTestMixin, View):
         betreuer = get_object_or_404(BetreuerProfile, pk=pk)
 
         # Scope check
-        if not _koordinator_has_access_to_betreuer(request.user, betreuer):
+        if not koordinator_has_access_to_betreuer(request.user, betreuer):
             raise Http404
 
-        total_generated = 0
+        total_scheduled = 0
 
-        for contract in betreuer.contracts.all():
-            generated = generate_all_pending_documents(contract)
-            total_generated += len(generated)
+        # select_related vermeidet N+1-Queries auf der Contracts-Schleife.
+        for contract in betreuer.contracts.select_related(
+            "school", "activity_type", "hourly_rate"
+        ).all():
+            scheduled = generate_all_pending_documents(contract)
+            total_scheduled += len(scheduled)
 
-        if total_generated > 0:
+        if total_scheduled > 0:
             messages.success(
                 request,
-                f"{total_generated} Dokument(e) erfolgreich generiert.",
+                f"{total_scheduled} Dokument(e) zur Generierung eingeplant. "
+                f"Die PDFs werden im Hintergrund erstellt.",
             )
         else:
             messages.info(request, "Keine Dokumente zum Generieren vorhanden.")
@@ -203,12 +189,15 @@ class SendDocumentsView(LoginRequiredMixin, UserPassesTestMixin, View):
         betreuer = get_object_or_404(BetreuerProfile, pk=pk)
 
         # Scope check
-        if not _koordinator_has_access_to_betreuer(request.user, betreuer):
+        if not koordinator_has_access_to_betreuer(request.user, betreuer):
             raise Http404
 
         total_sent = 0
 
-        for contract in betreuer.contracts.all():
+        # select_related vermeidet N+1-Queries auf der Contracts-Schleife.
+        for contract in betreuer.contracts.select_related(
+            "school", "activity_type", "hourly_rate"
+        ).all():
             sent = send_all_generated_documents(contract)
             total_sent += len(sent)
 
@@ -241,7 +230,7 @@ class DocumentDownloadView(LoginRequiredMixin, View):
 
         if not is_owner:
             # For koordinators/admins: verify school-based access
-            if not _koordinator_has_access_to_betreuer(user, document.betreuer):
+            if not koordinator_has_access_to_betreuer(user, document.betreuer):
                 raise Http404
 
         if not document.generated_file:

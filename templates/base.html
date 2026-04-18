@@ -25,7 +25,7 @@
                 {# Logo + App-Name #}
                 <div class="flex items-center">
                     <img src="{% static 'img/logo_foerderverein.svg' %}"
-                         alt="CSFV"
+                         alt="CSFV Logo"
                          class="h-10 w-auto">
                     <span class="ml-3 text-white text-lg font-semibold hidden sm:block">BetreuerApp</span>
                 </div>
@@ -117,9 +117,11 @@
                     {# User-Dropdown #}
                     <div class="relative" x-data="{ open: false }">
                         <button @click="open = !open"
+                                :aria-expanded="open.toString()"
+                                aria-haspopup="true"
                                 class="flex items-center text-gray-300 hover:text-white text-sm font-medium">
                             <span>{{ user.get_full_name|default:user.username }}</span>
-                            <svg class="ml-1 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg class="ml-1 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                       d="M19 9l-7 7-7-7"/>
                             </svg>
@@ -142,8 +144,11 @@
 
                 {# Mobile-Menu-Button #}
                 <button @click="mobileOpen = !mobileOpen"
+                        :aria-expanded="mobileOpen.toString()"
+                        aria-label="Navigationsmenue oeffnen"
+                        aria-controls="mobile-navigation"
                         class="md:hidden text-gray-300 hover:text-white">
-                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                         <path x-show="!mobileOpen"
                               stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                               d="M4 6h16M4 12h16M4 18h16"/>
@@ -156,7 +161,8 @@
         </div>
 
         {# Mobile Navigation #}
-        <div x-show="mobileOpen"
+        <div id="mobile-navigation"
+             x-show="mobileOpen"
              x-transition
              class="md:hidden bg-credo-dark border-t border-gray-600">
             <div class="px-4 pt-2 pb-3 space-y-1">
@@ -246,13 +252,16 @@
     {# Messages (Django Messages Framework)                                #}
     {# ------------------------------------------------------------------ #}
     {% if messages %}
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4"
+         aria-live="polite"
+         aria-atomic="true">
         {% for message in messages %}
         <div class="mb-2 p-4 rounded-md
                     {% if message.tags == 'success' %}bg-green-50 text-green-800 border border-green-200
                     {% elif message.tags == 'error' %}bg-red-50 text-red-800 border border-red-200
                     {% elif message.tags == 'warning' %}bg-yellow-50 text-yellow-800 border border-yellow-200
                     {% else %}bg-blue-50 text-blue-800 border border-blue-200{% endif %}"
+             role="{% if message.tags == 'error' %}alert{% else %}status{% endif %}"
              x-data="{ show: true }"
              x-show="show"
              x-transition>

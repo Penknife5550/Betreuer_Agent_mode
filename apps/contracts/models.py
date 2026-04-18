@@ -8,7 +8,7 @@ Contract represents the formal agreement between CSFV and a Betreuer.
 
 import hashlib
 import uuid
-from datetime import date
+from datetime import date, timedelta
 
 from django.conf import settings
 from django.core.validators import RegexValidator
@@ -16,6 +16,16 @@ from django.db import models
 from django.utils import timezone
 
 from apps.core.models import AuditLogMixin, TimeStampedModel
+
+
+def _registration_link_default_expiry():
+    """
+    Default-Ablauf fuer RegistrationLink: 30 Tage ab Erstellung.
+
+    Callable (kein Lambda), damit Django Migrations den Default
+    importieren koennen und die Referenz stable bleibt.
+    """
+    return timezone.now() + timedelta(days=30)
 
 
 # ---------------------------------------------------------------------------
@@ -312,7 +322,12 @@ class RegistrationLink(TimeStampedModel):
         help_text="If True, link becomes inactive after one use.",
     )
     is_active = models.BooleanField(default=True)
-    expires_at = models.DateTimeField(null=True, blank=True)
+    expires_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        default=_registration_link_default_expiry,
+        help_text="Default: 30 Tage ab Erstellung.",
+    )
     used_at = models.DateTimeField(null=True, blank=True)
     used_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -470,6 +485,11 @@ class Contract(TimeStampedModel, AuditLogMixin):
             models.Index(fields=["betreuer", "school_year"]),
             models.Index(fields=["school", "school_year"]),
             models.Index(fields=["status"]),
+            # Betreuer-Vertraege gefiltert nach Status (Dashboard, Listen)
+            models.Index(
+                fields=["betreuer", "status"],
+                name="contracts_contract_betr_st_idx",
+            ),
         ]
 
     def __str__(self):

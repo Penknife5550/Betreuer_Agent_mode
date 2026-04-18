@@ -1997,3 +1997,260 @@ class TestRegistrationFormPassword:
         form = BetreuerRegistrationForm(data=data)
         assert not form.is_valid()
         assert "password" in form.errors
+
+
+# ---------------------------------------------------------------------------
+# IDOR: Koordinator-Scope-Check fuer Betreuer-Views
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+class TestBetreuerIDOR:
+    """IDOR-Schutz: Koordinator Schule X darf Betreuer, die nur an Schule Y
+    Vertraege haben, weder im Detail noch im Review sehen."""
+
+    def _make_foreign_betreuer(
+        self, other_school_code="GYZ",
+    ):
+        """Helper: legt einen Betreuer an einer neuen Schule (nicht an
+        der koordinator_user-Schule) an."""
+        from apps.accounts.models import UserProfile
+        from apps.rates.models import ActivityType, HourlyRate
+
+        other_school = School.objects.create(
+            code=other_school_code,
+            school_number=f"999{other_school_code}"[-10:],
+            name=f"Fremdes Gym {other_school_code}",
+            school_type="gymnasium",
+            primary_color="#000000",
+        )
+        other_sy = SchoolYear.objects.create(
+            name="2030/2031",
+            start_date=date(2030, 9, 1),
+            end_date=date(2031, 7, 31),
+        )
+        at = ActivityType.objects.create(
+            name=f"Test {other_school_code}",
+            code=f"idor_{other_school_code.lower()}",
+            sort_order=1,
+        )
+        hr = HourlyRate.objects.create(
+            activity_type=at,
+            betreuer_type="schueler",
+            rate_60min=Decimal("9.00"),
+            rate_45min=Decimal("7.00"),
+            valid_from=date(2030, 8, 1),
+            school_year=other_sy,
+        )
+        user = User.objects.create_user(
+            username=f"idor_b_{other_school_code.lower()}",
+            password="x",
+            first_name="Fremde",
+            last_name="Person",
+        )
+        UserProfile.objects.create(user=user, role="betreuer")
+        profile = BetreuerProfile.objects.create(
+            user=user,
+            anrede="frau",
+            geburtsdatum=date(1990, 1, 1),
+            geschlecht="weiblich",
+            staatsangehoerigkeit="deutsch",
+            street="Fremd",
+            house_number="1",
+            plz="32425",
+            city="Minden",
+            kontoinhaber="Fremde Person",
+            iban="DE89370400440532013001",
+            betreuer_type="schueler",
+        )
+        Contract.objects.create(
+            contract_number=f"CSFV-{other_school_code}-2526-IDOR",
+            betreuer=profile,
+            school=other_school,
+            school_year=other_sy,
+            activity_type=at,
+            hourly_rate=hr,
+            hour_duration=60,
+            start_date=date(2030, 9, 1),
+            end_date=date(2031, 7, 31),
+            status="draft",
+        )
+        return profile
+
+    def test_betreuer_detail_koordinator_scope(self, koordinator_user):
+        """Koordinator Schule X sieht Betreuer von Schule Y nicht -> 404.
+
+        BetreuerDetailView filtert den Queryset auf die Schulen des
+        Koordinators, daher 404 (statt 403) wenn pk unerreichbar."""
+        foreign = self._make_foreign_betreuer("GYZ1")
+
+        client = Client()
+        client.force_login(koordinator_user)  # gehoert nur zu school (GSH)
+        url = reverse("contracts:betreuer_detail", kwargs={"pk": foreign.pk})
+        response = client.get(url)
+        assert response.status_code == 404
+
+    def test_betreuer_review_koordinator_scope(self, koordinator_user):
+        """Koordinator Schule X darf fremden Betreuer nicht reviewen -> 404.
+
+        BetreuerReviewView ruft require_scope_access(), das Http404 wirft
+        wenn keine Schnittmenge der Schulen besteht."""
+        foreign = self._make_foreign_betreuer("GYZ2")
+
+        client = Client()
+        client.force_login(koordinator_user)
+        url = reverse("contracts:betreuer_review", kwargs={"pk": foreign.pk})
+        response = client.get(url)
+        assert response.status_code == 404
+
+    def test_betreuer_approve_koordinator_scope(self, koordinator_user):
+        """Koordinator Schule X darf fremden Betreuer nicht approven -> 404."""
+        foreign = self._make_foreign_betreuer("GYZ3")
+
+        client = Client()
+        client.force_login(koordinator_user)
+        url = reverse("contracts:betreuer_approve", kwargs={"pk": foreign.pk})
+        response = client.get(url)
+        assert response.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# Onboarding-Status: Invalid-Transition-Tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+class TestBetreuerOnboardingInvalidTransitions:
+    """
+    Tests fuer den Onboarding-Status-Automaten.
+
+    BetreuerProfile.VALID_STATUS_TRANSITIONS erlaubt NUR die definierten
+    Uebergaenge. Alles andere muss ValueError werfen. Diese Tests
+    decken die Lücken ab, die TestBetreuerProfile bisher nicht hatte:
+    Rückwärts-Uebergaenge, Skip-Ahead, Unsinniges.
+    """
+
+    def test_onboarding_cannot_go_backward_to_registered_from_active(
+        self, betreuer_profile,
+    ):
+        """
+        Active ist ein 'Happy-Path'-Status; ein Zurueckgehen auf
+        'registered' ist fachlich NICHT zulaessig.
+
+        Erlaubt aus 'active' ist nur -> 'inactive'.
+        """
+        # Via valid chain auf active bringen
+        betreuer_profile.transition_to("pending_approval")
+        betreuer_profile.transition_to("approved")
+        betreuer_profile.transition_to("documents_pending")
+        betreuer_profile.transition_to("documents_complete")
+        betreuer_profile.transition_to("active")
+        assert betreuer_profile.onboarding_status == "active"
+
+        # Rueckwaerts-Transition nicht erlaubt
+        assert betreuer_profile.can_transition_to("registered") is False
+        with pytest.raises(ValueError, match="Cannot transition"):
+            betreuer_profile.transition_to("registered")
+
+        # State muss unveraendert geblieben sein
+        betreuer_profile.refresh_from_db()
+        assert betreuer_profile.onboarding_status == "active"
+
+    def test_onboarding_cannot_skip_from_registered_to_approved(
+        self, betreuer_profile,
+    ):
+        """
+        Aus 'registered' ist NUR -> 'pending_approval' erlaubt.
+        Sprung auf 'approved' wird als Invalid-Transition abgelehnt.
+        """
+        assert betreuer_profile.onboarding_status == "registered"
+        assert betreuer_profile.can_transition_to("approved") is False
+        with pytest.raises(ValueError, match="Cannot transition"):
+            betreuer_profile.transition_to("approved")
+
+        betreuer_profile.refresh_from_db()
+        assert betreuer_profile.onboarding_status == "registered"
+
+    def test_onboarding_cannot_skip_from_approved_to_active(
+        self, betreuer_profile,
+    ):
+        """
+        Aus 'approved' ist NUR -> 'documents_pending' erlaubt.
+        Sprung direkt auf 'active' muss scheitern.
+        """
+        betreuer_profile.transition_to("pending_approval")
+        betreuer_profile.transition_to("approved")
+        assert betreuer_profile.onboarding_status == "approved"
+
+        assert betreuer_profile.can_transition_to("active") is False
+        with pytest.raises(ValueError, match="Cannot transition"):
+            betreuer_profile.transition_to("active")
+
+    def test_onboarding_cannot_reactivate_from_archived(self, betreuer_profile):
+        """
+        'archived' ist terminal: kein Uebergang ist erlaubt (auch nicht
+        zurueck auf 'inactive' oder 'active').
+        """
+        # Volle Kette bis archived
+        betreuer_profile.transition_to("pending_approval")
+        betreuer_profile.transition_to("approved")
+        betreuer_profile.transition_to("documents_pending")
+        betreuer_profile.transition_to("documents_complete")
+        betreuer_profile.transition_to("active")
+        betreuer_profile.transition_to("inactive")
+        betreuer_profile.transition_to("archived")
+
+        for forbidden in ("active", "inactive", "documents_complete", "registered"):
+            assert betreuer_profile.can_transition_to(forbidden) is False, (
+                f"'archived' darf nicht nach '{forbidden}' transitionen koennen."
+            )
+            with pytest.raises(ValueError, match="Cannot transition"):
+                betreuer_profile.transition_to(forbidden)
+
+    def test_onboarding_invalid_transition_raises_error(self, betreuer_profile):
+        """
+        Parametrisierter Pruef-Walk: Jede nicht in VALID_STATUS_TRANSITIONS
+        gelistete Kombination (source_status, target_status) muss
+        ValueError werfen. Serviert als Regression-Net gegen
+        stillschweigende Matrix-Aenderungen.
+        """
+        from apps.contracts.models import BetreuerProfile
+
+        # Wir pruefen eine Handvoll klar ungueltiger Kombinationen
+        # statt aller O(n^2) - punktgenaue Nicht-Uebergaenge.
+        invalid_pairs = [
+            ("registered", "archived"),
+            ("registered", "documents_complete"),
+            ("pending_approval", "active"),
+            ("approved", "archived"),
+            ("documents_pending", "active"),
+            ("documents_complete", "registered"),
+            ("inactive", "documents_pending"),
+        ]
+
+        # Gueltige, definierte Uebergaenge sanity-check
+        valid_map = BetreuerProfile.VALID_STATUS_TRANSITIONS
+
+        for src, dst in invalid_pairs:
+            # Vorbedingung: diese Kombi darf NICHT in der Matrix sein.
+            assert dst not in valid_map.get(src, []), (
+                f"Pre-Check: ({src} -> {dst}) sollte ungueltig sein, "
+                "ist aber in VALID_STATUS_TRANSITIONS aufgefuehrt."
+            )
+
+            # Fuer die Assertion den Betreuer per Save in den Quell-Status
+            # bringen (direkt, nicht per transition_to -- sonst verheddern
+            # wir uns).
+            betreuer_profile.onboarding_status = src
+            betreuer_profile.save(update_fields=["onboarding_status"])
+
+            assert betreuer_profile.can_transition_to(dst) is False
+            with pytest.raises(ValueError, match="Cannot transition"):
+                betreuer_profile.transition_to(dst)
+
+            # State unveraendert
+            betreuer_profile.refresh_from_db()
+            assert betreuer_profile.onboarding_status == src, (
+                f"State muss nach Fehl-Transition '{src}' bleiben, "
+                f"war aber '{betreuer_profile.onboarding_status}'."
+            )

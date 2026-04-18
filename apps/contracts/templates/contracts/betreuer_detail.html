@@ -14,15 +14,15 @@
         <div class="flex items-center gap-3">
             {# Status Badge #}
             {% if betreuer.onboarding_status == 'registered' %}
-            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-700">Registriert</span>
+            <span aria-label="Status: Registriert" class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-700">Registriert</span>
             {% elif betreuer.onboarding_status == 'documents_pending' %}
-            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800">Dokumente ausstehend</span>
+            <span aria-label="Status: Dokumente ausstehend" class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800">Dokumente ausstehend</span>
             {% elif betreuer.onboarding_status == 'documents_complete' %}
-            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">Dokumente vollstaendig</span>
+            <span aria-label="Status: Dokumente vollst&auml;ndig" class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">Dokumente vollstaendig</span>
             {% elif betreuer.onboarding_status == 'active' %}
-            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">Aktiv</span>
+            <span aria-label="Status: Aktiv" class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">Aktiv</span>
             {% elif betreuer.onboarding_status == 'inactive' %}
-            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800">Inaktiv</span>
+            <span aria-label="Status: Inaktiv" class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800">Inaktiv</span>
             {% endif %}
         </div>
     </div>
@@ -71,7 +71,8 @@
                     <div class="border border-gray-200 rounded-md p-4">
                         <div class="flex items-center justify-between">
                             <span class="font-mono text-sm font-semibold">{{ contract.contract_number }}</span>
-                            <span class="text-xs px-2 py-0.5 rounded-full
+                            <span aria-label="Status: {{ contract.get_status_display }}"
+                                  class="text-xs px-2 py-0.5 rounded-full
                                 {% if contract.status == 'draft' %}bg-gray-100 text-gray-600
                                 {% elif contract.status == 'active' %}bg-green-100 text-green-800
                                 {% else %}bg-yellow-100 text-yellow-800{% endif %}">
@@ -110,10 +111,12 @@
                         Daten pruefen & bestaetigen
                     </a>
                     {% elif betreuer.onboarding_status == 'documents_complete' %}
-                    <form method="post" action="{% url 'contracts:betreuer_activate' betreuer.pk %}">
+                    <form method="post" action="{% url 'contracts:betreuer_activate' betreuer.pk %}"
+                          hx-confirm="Betreuer wirklich aktivieren?"
+                          x-on:submit="return confirm('Betreuer wirklich aktivieren?')">
                         {% csrf_token %}
                         <button type="submit"
-                                class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-md text-sm transition-colors">
+                                class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-md text-sm transition-colors focus-visible:ring-2 focus-visible:ring-credo-dark">
                             Betreuer aktivieren
                         </button>
                     </form>
@@ -122,19 +125,23 @@
                     {# PDF generation & sending (Koordinator/Admin only) #}
                     {% if request.user.is_superuser or request.user.profile.is_koordinator or request.user.profile.is_admin %}
                     {% if has_pending_documents %}
-                    <form method="post" action="{% url 'documents:generate_documents' betreuer.pk %}">
+                    <form method="post" action="{% url 'documents:generate_documents' betreuer.pk %}"
+                          hx-confirm="Dokumente jetzt generieren?"
+                          x-on:submit="return confirm('Dokumente jetzt generieren?')">
                         {% csrf_token %}
                         <button type="submit"
-                                class="w-full bg-schule-gsh hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-md text-sm transition-colors">
+                                class="w-full bg-schule-gsh hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-md text-sm transition-colors focus-visible:ring-2 focus-visible:ring-credo-dark">
                             Dokumente generieren
                         </button>
                     </form>
                     {% endif %}
                     {% if has_generated_documents %}
-                    <form method="post" action="{% url 'documents:send_documents' betreuer.pk %}">
+                    <form method="post" action="{% url 'documents:send_documents' betreuer.pk %}"
+                          hx-confirm="Dokumente jetzt an den Betreuer versenden?"
+                          x-on:submit="return confirm('Dokumente jetzt an den Betreuer versenden?')">
                         {% csrf_token %}
                         <button type="submit"
-                                class="w-full bg-schule-ges hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-md text-sm transition-colors">
+                                class="w-full bg-schule-ges hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-md text-sm transition-colors focus-visible:ring-2 focus-visible:ring-credo-dark">
                             Dokumente versenden
                         </button>
                     </form>
@@ -202,8 +209,9 @@
                             {# Download link for generated/sent/uploaded/verified documents #}
                             {% if doc.generated_file %}
                             <a href="{% url 'documents:document_download' doc.pk %}"
-                               class="inline-flex items-center gap-1 text-xs text-schule-gsh hover:underline mt-1">
-                                <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                               aria-label="PDF fuer Dokument {{ doc.requirement.name }} herunterladen"
+                               class="inline-flex items-center gap-1 text-xs text-schule-gsh hover:underline mt-1 focus-visible:ring-2 focus-visible:ring-credo-dark">
+                                <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                                 </svg>
                                 PDF herunterladen
@@ -215,18 +223,28 @@
                             {% if request.user.profile.is_betreuer %}
                             <form method="post" action="{% url 'documents:document_upload' doc.pk %}"
                                   enctype="multipart/form-data"
-                                  class="mt-2" x-data="{ showUpload: false }">
+                                  class="mt-2" x-data="{ showUpload: false, uploading: false }"
+                                  x-on:submit="uploading = true"
+                                  hx-indicator="#upload-indicator-{{ doc.pk }}">
                                 {% csrf_token %}
                                 <button type="button" @click="showUpload = !showUpload"
-                                        class="text-xs bg-blue-100 text-blue-700 hover:bg-blue-200 px-2 py-1 rounded">
+                                        :aria-expanded="showUpload.toString()"
+                                        class="text-xs bg-blue-100 text-blue-700 hover:bg-blue-200 px-2 py-1 rounded focus-visible:ring-2 focus-visible:ring-credo-dark">
                                     Dokument hochladen
                                 </button>
                                 <div x-show="showUpload" x-transition class="mt-2">
                                     <input type="file" name="file" accept=".pdf,.jpg,.jpeg,.png"
+                                           required
                                            class="text-xs w-full">
-                                    <button type="submit" class="mt-1 text-xs bg-schule-gsh text-white px-2 py-1 rounded">
-                                        Hochladen
+                                    <button type="submit" class="mt-1 text-xs bg-schule-gsh text-white px-2 py-1 rounded disabled:opacity-50"
+                                            x-bind:disabled="uploading">
+                                        <span x-show="!uploading">Hochladen</span>
+                                        <span x-show="uploading">Wird hochgeladen&hellip;</span>
                                     </button>
+                                    <div id="upload-indicator-{{ doc.pk }}"
+                                         role="status"
+                                         aria-live="polite" aria-atomic="true"
+                                         class="htmx-indicator text-xs text-gray-500 mt-1"></div>
                                 </div>
                             </form>
                             {% endif %}
@@ -237,10 +255,12 @@
                             {% with up=request.user.profile %}
                             {% if request.user.is_superuser or up.is_admin or up.is_koordinator %}
                             <div class="mt-2 flex gap-2">
-                                <form method="post" action="{% url 'documents:document_verify' doc.pk %}" class="inline">
+                                <form method="post" action="{% url 'documents:document_verify' doc.pk %}" class="inline"
+                                      hx-confirm="Dokument wirklich verifizieren?"
+                                      x-on:submit="return confirm('Dokument wirklich verifizieren?')">
                                     {% csrf_token %}
                                     <input type="hidden" name="action" value="verify">
-                                    <button type="submit" class="text-xs bg-green-100 text-green-700 hover:bg-green-200 px-2 py-1 rounded">
+                                    <button type="submit" class="text-xs bg-green-100 text-green-700 hover:bg-green-200 px-2 py-1 rounded focus-visible:ring-2 focus-visible:ring-credo-dark">
                                         Verifizieren
                                     </button>
                                 </form>
@@ -249,7 +269,8 @@
                                     {% csrf_token %}
                                     <input type="hidden" name="action" value="reject">
                                     <button type="button" @click="showReject = !showReject"
-                                            class="text-xs bg-red-100 text-red-700 hover:bg-red-200 px-2 py-1 rounded">
+                                            :aria-expanded="showReject.toString()"
+                                            class="text-xs bg-red-100 text-red-700 hover:bg-red-200 px-2 py-1 rounded focus-visible:ring-2 focus-visible:ring-credo-dark">
                                         Ablehnen
                                     </button>
                                     <div x-show="showReject" x-transition class="mt-2">
@@ -292,7 +313,8 @@
                 <div class="flex items-center justify-between mb-4 border-b border-gray-200 pb-2">
                     <h2 class="text-lg font-semibold text-credo-dark">Buchhaltung / DMS</h2>
                     <button @click="editAccounting = !editAccounting"
-                            class="text-xs text-schule-gsh hover:underline font-medium"
+                            :aria-expanded="editAccounting.toString()"
+                            class="text-xs text-schule-gsh hover:underline font-medium focus-visible:ring-2 focus-visible:ring-credo-dark"
                             x-text="editAccounting ? 'Abbrechen' : 'Bearbeiten'">
                     </button>
                 </div>

@@ -61,11 +61,11 @@
         <table class="w-full text-sm">
             <thead>
                 <tr class="text-left text-gray-500 border-b">
-                    <th class="py-2 px-6">Betreuer</th>
-                    <th class="py-2 px-4">Vertrag</th>
-                    <th class="py-2 px-4">T&auml;tigkeit</th>
-                    <th class="py-2 px-4 text-right">Stunden</th>
-                    <th class="py-2 px-4 text-right">Betrag</th>
+                    <th scope="col" class="py-2 px-6">Betreuer</th>
+                    <th scope="col" class="py-2 px-4">Vertrag</th>
+                    <th scope="col" class="py-2 px-4">T&auml;tigkeit</th>
+                    <th scope="col" class="py-2 px-4 text-right">Stunden</th>
+                    <th scope="col" class="py-2 px-4 text-right">Betrag</th>
                 </tr>
             </thead>
             <tbody>
@@ -81,7 +81,7 @@
             </tbody>
             <tfoot>
                 <tr class="bg-gray-50 font-semibold">
-                    <td colspan="3" class="py-2 px-6 text-gray-600">Zwischensumme</td>
+                    <th scope="row" colspan="3" class="py-2 px-6 text-left text-gray-600">Zwischensumme</th>
                     <td class="py-2 px-4 text-right">{{ school.subtotal_hours }}</td>
                     <td class="py-2 px-4 text-right">{{ school.subtotal_amount }} &euro;</td>
                 </tr>

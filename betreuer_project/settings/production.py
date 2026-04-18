@@ -11,7 +11,7 @@ import os
 from django.core.exceptions import ImproperlyConfigured
 
 from .base import *  # noqa: F401, F403
-from .base import BASE_DIR, MIDDLEWARE  # noqa: F401
+from .base import BASE_DIR, DATABASES, MIDDLEWARE  # noqa: F401
 
 # ---------------------------------------------------------------------------
 # Hard-Fail-Checks fuer Env-Config
@@ -44,6 +44,15 @@ if not os.environ.get("FERNET_KEY"):
     )
 
 DEBUG = False
+
+# ---------------------------------------------------------------------------
+# Datenbank: statement_timeout 30s
+# Verhindert, dass hakelnde Queries (vergessene Filter, Lock-Contention)
+# einen Worker auf Dauer blockieren. -1 = nur fuer diese Connection.
+# ---------------------------------------------------------------------------
+
+DATABASES["default"].setdefault("OPTIONS", {})
+DATABASES["default"]["OPTIONS"]["options"] = "-c statement_timeout=30000"
 
 # ---------------------------------------------------------------------------
 # Security-Header

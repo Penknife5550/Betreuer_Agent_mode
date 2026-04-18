@@ -86,6 +86,71 @@ def test_audit_log_no_entry_on_no_change():
     assert AuditLog.objects.count() == count_after_create
 
 
+@pytest.mark.django_db
+def test_auditlog_for_document_change():
+    """
+    Updating a Document (AuditLogMixin) should produce an AuditLog
+    entry with the exact before/after values of the changed field.
+    """
+    from apps.core.factories import DocumentFactory
+
+    document = DocumentFactory(status='pending')
+
+    # Create-Log existiert bereits -- jetzt Status aendern
+    document.status = 'generated'
+    document.save()
+
+    log = (
+        AuditLog.objects
+        .filter(
+            model_name='documents.Document',
+            object_id=str(document.pk),
+            action='update',
+        )
+        .order_by('-timestamp')
+        .first()
+    )
+    assert log is not None, "Keine AuditLog-Update-Row fuer Document gefunden."
+    assert 'status' in log.changes
+    assert log.changes['status']['old'] == 'pending'
+    assert log.changes['status']['new'] == 'generated'
+
+
+@pytest.mark.django_db
+def test_auditlog_for_timeentry_change():
+    """
+    Updating a TimeEntry (AuditLogMixin) should produce an AuditLog
+    entry that records the changed field (description here).
+    """
+    from datetime import time
+
+    from apps.core.factories import TimeEntryFactory
+
+    entry = TimeEntryFactory(
+        start_time=time(14, 0),
+        end_time=time(16, 0),
+        description='Original',
+    )
+
+    entry.description = 'Ueberarbeitet'
+    entry.save()
+
+    log = (
+        AuditLog.objects
+        .filter(
+            model_name='timetracking.TimeEntry',
+            object_id=str(entry.pk),
+            action='update',
+        )
+        .order_by('-timestamp')
+        .first()
+    )
+    assert log is not None, "Keine AuditLog-Update-Row fuer TimeEntry gefunden."
+    assert 'description' in log.changes
+    assert log.changes['description']['old'] == 'Original'
+    assert log.changes['description']['new'] == 'Ueberarbeitet'
+
+
 # ---------------------------------------------------------------------------
 # EncryptedCharField
 # ---------------------------------------------------------------------------

@@ -7,7 +7,8 @@
 
     <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
 </head>
-<body class="bg-gray-50 font-sans text-credo-dark min-h-screen flex flex-col">
+<body class="bg-gray-50 font-sans text-credo-dark min-h-screen flex flex-col"
+      hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
 
     {# Header with logo #}
     <header class="bg-white shadow-sm">
@@ -19,7 +20,9 @@
 
     {# Messages #}
     {% if messages %}
-    <div class="max-w-3xl mx-auto px-4 mt-4">
+    <div class="max-w-3xl mx-auto px-4 mt-4"
+         aria-live="polite"
+         aria-atomic="true">
         {% for message in messages %}
         <div class="mb-2 p-4 rounded-md
             {% if message.tags == 'success' %}bg-green-50 text-green-800 border border-green-200
@@ -44,6 +47,11 @@
         <form method="post" class="space-y-6" hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
             {% csrf_token %}
 
+            {# Honeypot-Feld: visuell + fuer Screen-Reader unsichtbar, aber fuer Bots sichtbar #}
+            <div style="display: none;" aria-hidden="true">
+                {{ form.website_url }}
+            </div>
+
             {# Non-field errors #}
             {% if form.non_field_errors %}
             <div class="p-4 bg-red-50 border border-red-200 rounded-md text-red-800 text-sm" role="alert">
@@ -54,165 +62,165 @@
             {% endif %}
 
             {# ---- Section 1: Personal data ---- #}
-            <div class="bg-white shadow rounded-lg p-6">
-                <h2 class="text-lg font-semibold text-credo-dark mb-4 border-b border-gray-200 pb-2">
+            <fieldset class="bg-white shadow rounded-lg p-6">
+                <legend class="text-lg font-semibold text-credo-dark mb-4 border-b border-gray-200 pb-2 w-full">
                     Persoenliche Daten
-                </h2>
+                </legend>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {% for field in form %}
                         {% if field.name == 'first_name' or field.name == 'last_name' or field.name == 'email' or field.name == 'anrede' or field.name == 'geburtsdatum' or field.name == 'geschlecht' or field.name == 'staatsangehoerigkeit' %}
                         <div class="{% if field.name == 'email' %}md:col-span-2{% endif %}">
                             <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
-                                {{ field.label }}{% if field.field.required %} <span class="text-red-500">*</span>{% endif %}
+                                {{ field.label }}{% if field.field.required %} <span class="text-red-500" aria-label="erforderlich">*</span>{% endif %}
                             </label>
                             {{ field }}
                             {% if field.errors %}
-                            <p class="mt-1 text-xs text-red-600">{{ field.errors.0 }}</p>
+                            <p id="id_{{ field.name }}_error" role="alert" class="mt-1 text-xs text-red-600">{{ field.errors.0 }}</p>
                             {% endif %}
                         </div>
                         {% endif %}
                     {% endfor %}
                 </div>
-            </div>
+            </fieldset>
 
             {# ---- Section 2: Address ---- #}
-            <div class="bg-white shadow rounded-lg p-6">
-                <h2 class="text-lg font-semibold text-credo-dark mb-4 border-b border-gray-200 pb-2">
+            <fieldset class="bg-white shadow rounded-lg p-6">
+                <legend class="text-lg font-semibold text-credo-dark mb-4 border-b border-gray-200 pb-2 w-full">
                     Adresse
-                </h2>
+                </legend>
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <div class="md:col-span-3">
                         <label for="{{ form.street.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
-                            {{ form.street.label }} <span class="text-red-500">*</span>
+                            {{ form.street.label }} <span class="text-red-500" aria-label="erforderlich">*</span>
                         </label>
                         {{ form.street }}
-                        {% if form.street.errors %}<p class="mt-1 text-xs text-red-600">{{ form.street.errors.0 }}</p>{% endif %}
+                        {% if form.street.errors %}<p id="id_street_error" role="alert" class="mt-1 text-xs text-red-600">{{ form.street.errors.0 }}</p>{% endif %}
                     </div>
                     <div>
                         <label for="{{ form.house_number.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
-                            {{ form.house_number.label }} <span class="text-red-500">*</span>
+                            {{ form.house_number.label }} <span class="text-red-500" aria-label="erforderlich">*</span>
                         </label>
                         {{ form.house_number }}
-                        {% if form.house_number.errors %}<p class="mt-1 text-xs text-red-600">{{ form.house_number.errors.0 }}</p>{% endif %}
+                        {% if form.house_number.errors %}<p id="id_house_number_error" role="alert" class="mt-1 text-xs text-red-600">{{ form.house_number.errors.0 }}</p>{% endif %}
                     </div>
                     <div>
                         <label for="{{ form.plz.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
-                            {{ form.plz.label }} <span class="text-red-500">*</span>
+                            {{ form.plz.label }} <span class="text-red-500" aria-label="erforderlich">*</span>
                         </label>
                         {{ form.plz }}
-                        {% if form.plz.errors %}<p class="mt-1 text-xs text-red-600">{{ form.plz.errors.0 }}</p>{% endif %}
+                        {% if form.plz.errors %}<p id="id_plz_error" role="alert" class="mt-1 text-xs text-red-600">{{ form.plz.errors.0 }}</p>{% endif %}
                     </div>
                     <div class="md:col-span-3">
                         <label for="{{ form.city.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
-                            {{ form.city.label }} <span class="text-red-500">*</span>
+                            {{ form.city.label }} <span class="text-red-500" aria-label="erforderlich">*</span>
                         </label>
                         {{ form.city }}
-                        {% if form.city.errors %}<p class="mt-1 text-xs text-red-600">{{ form.city.errors.0 }}</p>{% endif %}
+                        {% if form.city.errors %}<p id="id_city_error" role="alert" class="mt-1 text-xs text-red-600">{{ form.city.errors.0 }}</p>{% endif %}
                     </div>
                 </div>
-            </div>
+            </fieldset>
 
             {# ---- Section 3: Bank details ---- #}
-            <div class="bg-white shadow rounded-lg p-6">
-                <h2 class="text-lg font-semibold text-credo-dark mb-4 border-b border-gray-200 pb-2">
+            <fieldset class="bg-white shadow rounded-lg p-6">
+                <legend class="text-lg font-semibold text-credo-dark mb-4 border-b border-gray-200 pb-2 w-full">
                     Bankdaten
-                </h2>
+                </legend>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div class="md:col-span-2">
                         <label for="{{ form.kontoinhaber.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
-                            {{ form.kontoinhaber.label }} <span class="text-red-500">*</span>
+                            {{ form.kontoinhaber.label }} <span class="text-red-500" aria-label="erforderlich">*</span>
                         </label>
                         {{ form.kontoinhaber }}
-                        {% if form.kontoinhaber.errors %}<p class="mt-1 text-xs text-red-600">{{ form.kontoinhaber.errors.0 }}</p>{% endif %}
+                        {% if form.kontoinhaber.errors %}<p id="id_kontoinhaber_error" role="alert" class="mt-1 text-xs text-red-600">{{ form.kontoinhaber.errors.0 }}</p>{% endif %}
                     </div>
                     <div>
                         <label for="{{ form.iban.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
-                            {{ form.iban.label }} <span class="text-red-500">*</span>
+                            {{ form.iban.label }} <span class="text-red-500" aria-label="erforderlich">*</span>
                         </label>
                         {{ form.iban }}
-                        {% if form.iban.errors %}<p class="mt-1 text-xs text-red-600">{{ form.iban.errors.0 }}</p>{% endif %}
+                        {% if form.iban.errors %}<p id="id_iban_error" role="alert" class="mt-1 text-xs text-red-600">{{ form.iban.errors.0 }}</p>{% endif %}
                     </div>
                     <div>
                         <label for="{{ form.bic.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
                             {{ form.bic.label }}
                         </label>
                         {{ form.bic }}
-                        {% if form.bic.errors %}<p class="mt-1 text-xs text-red-600">{{ form.bic.errors.0 }}</p>{% endif %}
+                        {% if form.bic.errors %}<p id="id_bic_error" role="alert" class="mt-1 text-xs text-red-600">{{ form.bic.errors.0 }}</p>{% endif %}
                     </div>
                 </div>
-            </div>
+            </fieldset>
 
             {# ---- Section 4: Contract / Activity ---- #}
-            <div class="bg-white shadow rounded-lg p-6" x-data="{ isAG: false }">
-                <h2 class="text-lg font-semibold text-credo-dark mb-4 border-b border-gray-200 pb-2">
+            <fieldset class="bg-white shadow rounded-lg p-6" x-data="{ isAG: false }">
+                <legend class="text-lg font-semibold text-credo-dark mb-4 border-b border-gray-200 pb-2 w-full">
                     Vertrag & Taetigkeit
-                </h2>
+                </legend>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label for="{{ form.school.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
-                            {{ form.school.label }} <span class="text-red-500">*</span>
+                            {{ form.school.label }} <span class="text-red-500" aria-label="erforderlich">*</span>
                         </label>
                         {{ form.school }}
-                        {% if form.school.errors %}<p class="mt-1 text-xs text-red-600">{{ form.school.errors.0 }}</p>{% endif %}
+                        {% if form.school.errors %}<p id="id_school_error" role="alert" class="mt-1 text-xs text-red-600">{{ form.school.errors.0 }}</p>{% endif %}
                     </div>
                     <div>
                         <label for="{{ form.foerderprogramm.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
-                            {{ form.foerderprogramm.label }} <span class="text-red-500">*</span>
+                            {{ form.foerderprogramm.label }} <span class="text-red-500" aria-label="erforderlich">*</span>
                         </label>
                         <div id="foerderprogramm-container" aria-live="polite">
                             {{ form.foerderprogramm }}
                         </div>
-                        {% if form.foerderprogramm.errors %}<p class="mt-1 text-xs text-red-600">{{ form.foerderprogramm.errors.0 }}</p>{% endif %}
+                        {% if form.foerderprogramm.errors %}<p id="id_foerderprogramm_error" role="alert" class="mt-1 text-xs text-red-600">{{ form.foerderprogramm.errors.0 }}</p>{% endif %}
                     </div>
                     <div>
                         <label for="{{ form.activity_type.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
-                            {{ form.activity_type.label }} <span class="text-red-500">*</span>
+                            {{ form.activity_type.label }} <span class="text-red-500" aria-label="erforderlich">*</span>
                         </label>
                         <div id="activity-type-container" aria-live="polite" @change="isAG = $event.target.selectedOptions[0] && $event.target.selectedOptions[0].text.includes('AG')">
                             {{ form.activity_type }}
                         </div>
-                        {% if form.activity_type.errors %}<p class="mt-1 text-xs text-red-600">{{ form.activity_type.errors.0 }}</p>{% endif %}
+                        {% if form.activity_type.errors %}<p id="id_activity_type_error" role="alert" class="mt-1 text-xs text-red-600">{{ form.activity_type.errors.0 }}</p>{% endif %}
                     </div>
                     <div>
                         <label for="{{ form.betreuer_type.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
-                            {{ form.betreuer_type.label }} <span class="text-red-500">*</span>
+                            {{ form.betreuer_type.label }} <span class="text-red-500" aria-label="erforderlich">*</span>
                         </label>
                         {{ form.betreuer_type }}
-                        {% if form.betreuer_type.errors %}<p class="mt-1 text-xs text-red-600">{{ form.betreuer_type.errors.0 }}</p>{% endif %}
+                        {% if form.betreuer_type.errors %}<p id="id_betreuer_type_error" role="alert" class="mt-1 text-xs text-red-600">{{ form.betreuer_type.errors.0 }}</p>{% endif %}
                     </div>
                     <div>
                         <label for="{{ form.hour_duration.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
-                            {{ form.hour_duration.label }} <span class="text-red-500">*</span>
+                            {{ form.hour_duration.label }} <span class="text-red-500" aria-label="erforderlich">*</span>
                         </label>
                         {{ form.hour_duration }}
-                        {% if form.hour_duration.errors %}<p class="mt-1 text-xs text-red-600">{{ form.hour_duration.errors.0 }}</p>{% endif %}
+                        {% if form.hour_duration.errors %}<p id="id_hour_duration_error" role="alert" class="mt-1 text-xs text-red-600">{{ form.hour_duration.errors.0 }}</p>{% endif %}
                     </div>
                     <div class="md:col-span-2" x-show="isAG" x-transition>
                         <label for="{{ form.ag_name.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
                             {{ form.ag_name.label }}
                         </label>
                         {{ form.ag_name }}
-                        {% if form.ag_name.errors %}<p class="mt-1 text-xs text-red-600">{{ form.ag_name.errors.0 }}</p>{% endif %}
+                        {% if form.ag_name.errors %}<p id="id_ag_name_error" role="alert" class="mt-1 text-xs text-red-600">{{ form.ag_name.errors.0 }}</p>{% endif %}
                     </div>
                     <div id="rate-display" class="md:col-span-2" aria-live="polite">
                         {% include "contracts/partials/_rate_display.html" with rate=None %}
                     </div>
                 </div>
-            </div>
+            </fieldset>
 
             {# ---- Section 5: Freibetrag ---- #}
-            <div class="bg-white shadow rounded-lg p-6"
-                 x-data="{ usedElsewhere: {{ form.freibetrag_used_elsewhere.value|yesno:'true,false' }} }"
-                 @change="usedElsewhere = $event.target.name === '{{ form.freibetrag_used_elsewhere.html_name }}' ? $event.target.checked : usedElsewhere">
-                <h2 class="text-lg font-semibold text-credo-dark mb-4 border-b border-gray-200 pb-2">
+            <fieldset class="bg-white shadow rounded-lg p-6"
+                 x-data="{ usedElsewhere: {% if form.freibetrag_used_elsewhere.value %}true{% else %}false{% endif %} }">
+                <legend class="text-lg font-semibold text-credo-dark mb-4 border-b border-gray-200 pb-2 w-full">
                     Freibetrag-Erklaerung
-                </h2>
+                </legend>
                 <p class="text-sm text-gray-600 mb-4">
                     Der Uebungsleiterfreibetrag betraegt aktuell 3.300 EUR pro Kalenderjahr.
                     Bitte geben Sie an, ob Sie diesen bereits bei einem anderen Verein nutzen.
                 </p>
                 <div class="space-y-4">
                     <div class="flex items-center gap-3">
+                        {# Checkbox mit Alpine @change: Widget in forms.py setzt das Attribut bereits. #}
                         {{ form.freibetrag_used_elsewhere }}
                         <label for="{{ form.freibetrag_used_elsewhere.id_for_label }}" class="text-sm text-gray-700 cursor-pointer select-none">
                             {{ form.freibetrag_used_elsewhere.label }}
@@ -221,30 +229,30 @@
                     <div x-show="usedElsewhere" x-transition class="grid grid-cols-1 md:grid-cols-2 gap-4 pl-7 pt-2 border-l-2 border-gray-200">
                         <div>
                             <label for="{{ form.freibetrag_amount_elsewhere.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
-                                {{ form.freibetrag_amount_elsewhere.label }}
+                                {{ form.freibetrag_amount_elsewhere.label }} <span class="text-red-500" aria-label="erforderlich" x-show="usedElsewhere">*</span>
                             </label>
                             {{ form.freibetrag_amount_elsewhere }}
                             {% if form.freibetrag_amount_elsewhere.errors %}
-                            <p class="mt-1 text-xs text-red-600">{{ form.freibetrag_amount_elsewhere.errors.0 }}</p>
+                            <p id="id_freibetrag_amount_elsewhere_error" role="alert" class="mt-1 text-xs text-red-600">{{ form.freibetrag_amount_elsewhere.errors.0 }}</p>
                             {% endif %}
                         </div>
                         <div>
                             <label for="{{ form.freibetrag_verein_name.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
-                                {{ form.freibetrag_verein_name.label }} <span class="text-red-500">*</span>
+                                {{ form.freibetrag_verein_name.label }} <span class="text-red-500" aria-label="erforderlich">*</span>
                             </label>
                             {{ form.freibetrag_verein_name }}
                             {% if form.freibetrag_verein_name.errors %}
-                            <p class="mt-1 text-xs text-red-600">{{ form.freibetrag_verein_name.errors.0 }}</p>
+                            <p id="id_freibetrag_verein_name_error" role="alert" class="mt-1 text-xs text-red-600">{{ form.freibetrag_verein_name.errors.0 }}</p>
                             {% endif %}
                         </div>
                     </div>
                 </div>
-            </div>
+            </fieldset>
 
             {# Submit #}
             <div class="flex justify-end">
                 <button type="submit"
-                        class="bg-credo-dark hover:bg-gray-700 text-white font-semibold py-3 px-8 rounded-md transition-colors">
+                        class="bg-credo-dark hover:bg-gray-700 text-white font-semibold py-3 px-8 rounded-md transition-colors focus-visible:ring-2 focus-visible:ring-credo-dark">
                     Registrierung absenden
                 </button>
             </div>

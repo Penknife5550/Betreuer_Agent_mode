@@ -37,14 +37,14 @@
         <table class="w-full text-sm">
             <thead>
                 <tr class="text-left text-gray-500 bg-gray-50 border-b">
-                    <th class="py-3 px-4">Betreuer</th>
-                    <th class="py-3 px-4 text-right">Limit</th>
-                    <th class="py-3 px-4 text-right">Verdient</th>
-                    <th class="py-3 px-4 text-right">Extern</th>
-                    <th class="py-3 px-4 text-right">Gesamt</th>
-                    <th class="py-3 px-4 text-right">Verbleibend</th>
-                    <th class="py-3 px-4 text-right">%</th>
-                    <th class="py-3 px-4 text-center">Status</th>
+                    <th scope="col" class="py-3 px-4">Betreuer</th>
+                    <th scope="col" class="py-3 px-4 text-right">Limit</th>
+                    <th scope="col" class="py-3 px-4 text-right">Verdient</th>
+                    <th scope="col" class="py-3 px-4 text-right">Extern</th>
+                    <th scope="col" class="py-3 px-4 text-right">Gesamt</th>
+                    <th scope="col" class="py-3 px-4 text-right">Verbleibend</th>
+                    <th scope="col" class="py-3 px-4 text-right">%</th>
+                    <th scope="col" class="py-3 px-4 text-center">Status</th>
                 </tr>
             </thead>
             <tbody>
@@ -59,19 +59,19 @@
                     <td class="py-3 px-4 text-right font-medium">{{ row.percentage }}%</td>
                     <td class="py-3 px-4 text-center">
                         {% if row.warning_level == "red" %}
-                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                        <span aria-label="Status: Freibetrag ausgesch&ouml;pft" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
                             Ausgesch&ouml;pft
                         </span>
                         {% elif row.warning_level == "orange" %}
-                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                        <span aria-label="Status: &uuml;ber 90 Prozent" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
                             &ge; 90%
                         </span>
                         {% elif row.warning_level == "yellow" %}
-                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                        <span aria-label="Status: &uuml;ber 80 Prozent" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
                             &ge; 80%
                         </span>
                         {% else %}
-                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        <span aria-label="Status: OK" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                             OK
                         </span>
                         {% endif %}

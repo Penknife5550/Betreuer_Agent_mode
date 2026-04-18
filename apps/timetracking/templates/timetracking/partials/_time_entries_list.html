@@ -3,13 +3,13 @@
 <table class="w-full text-sm">
     <thead>
         <tr class="text-left text-gray-500 border-b">
-            <th class="py-2 pr-4">Datum</th>
-            <th class="py-2 pr-4">Von</th>
-            <th class="py-2 pr-4">Bis</th>
-            <th class="py-2 pr-4">Pause</th>
-            <th class="py-2 pr-4">Dauer</th>
-            <th class="py-2 pr-4">Beschreibung</th>
-            <th class="py-2 text-right">Aktionen</th>
+            <th scope="col" class="py-2 pr-4">Datum</th>
+            <th scope="col" class="py-2 pr-4">Von</th>
+            <th scope="col" class="py-2 pr-4">Bis</th>
+            <th scope="col" class="py-2 pr-4">Pause</th>
+            <th scope="col" class="py-2 pr-4">Dauer</th>
+            <th scope="col" class="py-2 pr-4">Beschreibung</th>
+            <th scope="col" class="py-2 text-right">Aktionen</th>
         </tr>
     </thead>
     <tbody>
@@ -26,10 +26,11 @@
                 <div class="flex items-center justify-end gap-2">
                     <a href="{% url 'timetracking:time_entry_update' entry.pk %}"
                        class="text-xs text-schule-gsh hover:underline">Bearb.</a>
-                    <form method="post" action="{% url 'timetracking:time_entry_delete' entry.pk %}" class="inline">
+                    <form method="post" action="{% url 'timetracking:time_entry_delete' entry.pk %}" class="inline"
+                          hx-confirm="Eintrag wirklich l&ouml;schen?"
+                          x-on:submit="return confirm('Eintrag wirklich l&ouml;schen?')">
                         {% csrf_token %}
-                        <button type="submit" class="text-xs text-red-500 hover:underline"
-                                onclick="return confirm('Eintrag loeschen?')">L&ouml;schen</button>
+                        <button type="submit" class="text-xs text-red-500 hover:underline">L&ouml;schen</button>
                     </form>
                 </div>
                 {% endif %}
@@ -39,7 +40,7 @@
     </tbody>
     <tfoot>
         <tr class="font-semibold text-credo-dark">
-            <td colspan="4" class="py-3 pr-4">Summe</td>
+            <th scope="row" colspan="4" class="py-3 pr-4 text-left">Summe</th>
             <td class="py-3 pr-4">{{ total_minutes }} min ({{ total_hours }} Std.)</td>
             <td colspan="2"></td>
         </tr>

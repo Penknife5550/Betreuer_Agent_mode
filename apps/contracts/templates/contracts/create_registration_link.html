@@ -12,14 +12,14 @@
         {% for field in form %}
         <div>
             <label for="{{ field.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
-                {{ field.label }}{% if field.field.required %} <span class="text-red-500">*</span>{% endif %}
+                {{ field.label }}{% if field.field.required %} <span class="text-red-500" aria-label="erforderlich">*</span>{% endif %}
             </label>
             {{ field }}
             {% if field.help_text %}
             <p class="mt-1 text-xs text-gray-500">{{ field.help_text }}</p>
             {% endif %}
             {% if field.errors %}
-            <p class="mt-1 text-xs text-red-600">{{ field.errors.0 }}</p>
+            <p id="id_{{ field.name }}_error" role="alert" class="mt-1 text-xs text-red-600">{{ field.errors.0 }}</p>
             {% endif %}
         </div>
         {% endfor %}

@@ -27,10 +27,15 @@ from django.utils import timezone
 from django.views import View
 from django.views.generic import DetailView, FormView, ListView, TemplateView
 
-from apps.contracts.forms import BetreuerRegistrationForm, RegistrationLinkForm
+from apps.contracts.forms import (
+    ApprovalForm,
+    BetreuerRegistrationForm,
+    RegistrationLinkForm,
+)
 from apps.contracts.models import BetreuerProfile, RegistrationLink
 from apps.contracts.services import (
     _create_pending_documents,  # re-export fuer bestehende Tests
+    approve_betreuer,
     check_duplicate_registration,
     generate_unique_hash,
     register_betreuer_from_form,
@@ -39,9 +44,11 @@ from apps.core.middleware import get_current_ip
 from apps.core.permissions import (
     AdminOnlyMixin,
     KoordinatorOrAdminMixin,
+    KoordinatorScopedMixin,
     has_admin_role,
     require_scope_access,
 )
+from apps.core.utils import safe_get_by_id
 from apps.documents.models import Document
 from apps.rates.models import ActivityType, HourlyRate
 from apps.schools.models import Foerderprogramm, School, SchoolYear
@@ -172,8 +179,9 @@ class CreateRegistrationLinkView(KoordinatorOrAdminMixin, FormView):
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
-        profile = self.request.user.profile
-        if profile.is_koordinator and not profile.is_admin:
+        # Superuser haben ggf. kein UserProfile -- dann sehen sie alle Schulen.
+        profile = getattr(self.request.user, "profile", None)
+        if profile and profile.is_koordinator and not profile.is_admin:
             kwargs["koordinator_schools"] = profile.schools.filter(is_active=True)
         return kwargs
 
@@ -240,10 +248,16 @@ class BetreuerListView(KoordinatorOrAdminMixin, ListView):
         return qs
 
 
-class BetreuerDetailView(KoordinatorOrAdminMixin, DetailView):
+class BetreuerDetailView(KoordinatorScopedMixin, DetailView):
     """
     Detail-Ansicht fuer einen Betreuer. Nicht-Admin-Koordinatoren
     sehen nur Betreuer mit Vertraegen an ihren Schulen (IDOR-Schutz).
+
+    Scope-Check laeuft doppelgleisig:
+    1. ``get_queryset`` filtert auf Betreuer mit Contracts an
+       Koordinator-Schulen (-> 404 bei Nicht-Schnittmenge).
+    2. ``KoordinatorScopedMixin.get_object`` ruft zusaetzlich
+       ``require_scope_access`` auf (Defense-in-Depth).
     """
 
     model = BetreuerProfile
@@ -400,7 +414,6 @@ class ApprovalView(KoordinatorOrAdminMixin, View):
             "school", "activity_type", "hourly_rate", "school_year",
         ).prefetch_related("foerderprogramme")
 
-        from apps.contracts.forms import ApprovalForm
         form = ApprovalForm(betreuer_profile=betreuer)
 
         return render(
@@ -411,9 +424,6 @@ class ApprovalView(KoordinatorOrAdminMixin, View):
 
     def post(self, request, pk):
         betreuer = self._get_betreuer(request, pk)
-
-        from apps.contracts.forms import ApprovalForm
-        from apps.contracts.services import approve_betreuer
 
         form = ApprovalForm(request.POST, betreuer_profile=betreuer)
         if not form.is_valid():
@@ -461,9 +471,8 @@ class RateLookupView(View):
         if not school_year:
             return render(request, "contracts/partials/_rate_display.html", {"rate": None})
 
-        try:
-            activity_type = ActivityType.objects.get(pk=activity_type_id)
-        except (ActivityType.DoesNotExist, ValueError):
+        activity_type = safe_get_by_id(ActivityType, activity_type_id)
+        if activity_type is None:
             return render(request, "contracts/partials/_rate_display.html", {"rate": None})
 
         rate = HourlyRate.get_current_rate(activity_type, betreuer_type, school_year)
@@ -490,15 +499,8 @@ class FoerderprogrammLookupView(View):
 
     def get(self, request):
         school_id = request.GET.get("school")
-        if not school_id:
-            return render(
-                request,
-                "contracts/partials/_foerderprogramm_select.html",
-                {"programmes": []},
-            )
-        try:
-            school = School.objects.get(pk=school_id)
-        except (School.DoesNotExist, ValueError):
+        school = safe_get_by_id(School, school_id)
+        if school is None:
             return render(
                 request,
                 "contracts/partials/_foerderprogramm_select.html",
@@ -518,15 +520,8 @@ class ActivityTypeLookupView(View):
 
     def get(self, request):
         programm_id = request.GET.get("foerderprogramm")
-        if not programm_id:
-            return render(
-                request,
-                "contracts/partials/_activity_type_select.html",
-                {"activity_types": []},
-            )
-        try:
-            programm = Foerderprogramm.objects.get(pk=programm_id)
-        except (Foerderprogramm.DoesNotExist, ValueError):
+        programm = safe_get_by_id(Foerderprogramm, programm_id)
+        if programm is None:
             return render(
                 request,
                 "contracts/partials/_activity_type_select.html",

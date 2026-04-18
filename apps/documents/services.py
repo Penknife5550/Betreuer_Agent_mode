@@ -22,6 +22,8 @@ from django.utils import timezone
 import segno
 import weasyprint
 
+from apps.core.utils import safe_url_fetcher
+
 logger = logging.getLogger(__name__)
 
 
@@ -89,10 +91,22 @@ def generate_document_pdf(document):
 
     # Convert to PDF via WeasyPrint --------------------------------
     base_url = str(settings.BASE_DIR / "static")
-    pdf_bytes = weasyprint.HTML(
-        string=html_string,
-        base_url=base_url,
-    ).write_pdf()
+    try:
+        pdf_bytes = weasyprint.HTML(
+            string=html_string,
+            base_url=base_url,
+            url_fetcher=safe_url_fetcher,
+        ).write_pdf()
+    except (IOError, OSError, ValueError) as exc:
+        logger.error(
+            "PDF generation failed for document %s: %s",
+            document.pk,
+            exc,
+        )
+        raise ValueError(
+            f"PDF-Generierung fehlgeschlagen: {str(exc)[:100]}. "
+            f"Bitte Admin benachrichtigen."
+        ) from exc
 
     # Save to model -------------------------------------------------
     filename = (
@@ -115,9 +129,16 @@ def generate_document_pdf(document):
 
 def generate_all_pending_documents(contract):
     """
-    Generate PDFs for **all** pending, auto-generated documents of a
-    contract.  Returns the list of generated Document instances.
+    Schedule PDF generation for **all** pending, auto-generated documents
+    of a contract via django-q2.
+
+    Returns the list of scheduled Document ``pk`` values (not Document
+    instances). PDF-Erzeugung mit WeasyPrint ist teuer -- blockierend
+    wuerde der Koordinator-Request Sekunden bis Minuten haengen. Daher:
+    Enqueue pro Document, Worker erledigt im Hintergrund.
     """
+    from django_q.tasks import async_task
+
     from apps.documents.models import Document
 
     documents = Document.objects.filter(
@@ -126,18 +147,38 @@ def generate_all_pending_documents(contract):
         requirement__is_generated=True,
     ).select_related("requirement", "contract", "betreuer")
 
-    generated = []
-    for doc in documents:
-        try:
-            generate_document_pdf(doc)
-            generated.append(doc)
-        except (ValueError, Exception) as exc:
-            logger.error(
-                "Failed to generate PDF for document %s: %s",
-                doc.pk,
-                exc,
-            )
-    return generated
+    doc_ids = list(documents.values_list("id", flat=True))
+    for doc_id in doc_ids:
+        async_task("apps.documents.services._generate_document_pdf_task", doc_id)
+    return doc_ids
+
+
+def _generate_document_pdf_task(doc_id):
+    """
+    Async-Worker (django-q2): PDF fuer ein einzelnes Document generieren.
+
+    Einzelne Fehler werden geloggt, brechen den Task aber nicht ab --
+    damit ein schlechter Datensatz (z.B. kaputtes Template) nicht die
+    gesamte Queue blockiert.
+    """
+    from apps.documents.models import Document
+
+    try:
+        doc = Document.objects.select_related(
+            "requirement", "contract", "betreuer__user"
+        ).get(pk=doc_id)
+    except Document.DoesNotExist:
+        logger.error("_generate_document_pdf_task: Document %s not found", doc_id)
+        return
+
+    try:
+        generate_document_pdf(doc)
+    except Exception as exc:  # noqa: BLE001 -- Task-Isolation
+        logger.error(
+            "Failed to generate PDF for document %s: %s",
+            doc.pk,
+            exc,
+        )
 
 
 def send_all_generated_documents(contract):
@@ -272,7 +313,6 @@ def check_and_notify_renewals():
             continue  # No way to determine expiry
 
         if expiry_date < today:
-            # Already expired
             try:
                 notify_document_expired(doc)
             except Exception as exc:
@@ -280,11 +320,11 @@ def check_and_notify_renewals():
                     "Failed to send expired notification for document %s: %s",
                     doc.pk, exc,
                 )
+                continue
             doc.renewal_reminder_sent = True
             doc.save(update_fields=["renewal_reminder_sent"])
             expired += 1
         elif expiry_date <= thirty_days:
-            # Expiring within 30 days
             days_remaining = (expiry_date - today).days
             try:
                 notify_document_expiring(doc, days_remaining)
@@ -293,6 +333,7 @@ def check_and_notify_renewals():
                     "Failed to send expiring notification for document %s: %s",
                     doc.pk, exc,
                 )
+                continue
             doc.renewal_reminder_sent = True
             doc.save(update_fields=["renewal_reminder_sent"])
             warned += 1
@@ -328,6 +369,7 @@ def check_and_notify_renewals():
                     "Failed to send Fuehrungszeugnis warning for document %s: %s",
                     doc.pk, exc,
                 )
+                continue
             doc.renewal_reminder_sent = True
             doc.save(update_fields=["renewal_reminder_sent"])
             warned += 1

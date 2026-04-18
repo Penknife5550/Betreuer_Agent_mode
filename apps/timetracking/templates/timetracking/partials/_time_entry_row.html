@@ -11,10 +11,11 @@
         <div class="flex items-center justify-end gap-2">
             <a href="{% url 'timetracking:time_entry_update' entry.pk %}"
                class="text-xs text-schule-gsh hover:underline">Bearb.</a>
-            <form method="post" action="{% url 'timetracking:time_entry_delete' entry.pk %}" class="inline">
+            <form method="post" action="{% url 'timetracking:time_entry_delete' entry.pk %}" class="inline"
+                  hx-confirm="Eintrag wirklich l&ouml;schen?"
+                  x-on:submit="return confirm('Eintrag wirklich l&ouml;schen?')">
                 {% csrf_token %}
-                <button type="submit" class="text-xs text-red-500 hover:underline"
-                        onclick="return confirm('Eintrag loeschen?')">L&ouml;schen</button>
+                <button type="submit" class="text-xs text-red-500 hover:underline">L&ouml;schen</button>
             </form>
         </div>
         {% endif %}

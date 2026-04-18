@@ -6,7 +6,6 @@ timesheet review / approval / rejection (Koordinator/Admin),
 PDF download for approved timesheets.
 """
 
-import calendar
 import logging
 from datetime import date
 
@@ -15,15 +14,12 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import FileResponse, Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
-from django.utils import timezone
 from django.views import View
 from django.views.generic import ListView, TemplateView
 
 from apps.contracts.models import Contract
-from apps.core.constants import MONTH_NAMES_DE
 from apps.core.permissions import BetreuerOnlyMixin as BetreuerRequiredMixin
 from apps.core.permissions import KoordinatorOrAdminMixin
-from apps.schools.models import Foerderprogramm, School
 from apps.timetracking.forms import TimeEntryForm
 from apps.timetracking.models import MonthlyTimesheet, TimeEntry
 
@@ -36,113 +32,39 @@ logger = logging.getLogger(__name__)
 
 
 class TimeEntryListView(BetreuerRequiredMixin, TemplateView):
-    """Monthly view of time entries for the logged-in Betreuer."""
+    """
+    Monthly view of time entries for the logged-in Betreuer.
+
+    Delegiert die Context-Berechnung an
+    ``apps.timetracking.services.get_monthly_time_entry_context`` --
+    die View selbst behandelt nur das HTTP/GET-Parameter-Parsing.
+    """
 
     template_name = "timetracking/time_entry_list.html"
 
     def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        user = self.request.user
+        from apps.timetracking.services import get_monthly_time_entry_context
 
-        # Month/year from query params or current date
+        context = super().get_context_data(**kwargs)
+
         today = date.today()
         try:
             month = int(self.request.GET.get("month", today.month))
             year = int(self.request.GET.get("year", today.year))
         except (ValueError, TypeError):
             month, year = today.month, today.year
-
-        # Clamp month
         month = max(1, min(12, month))
 
-        # Previous / next month
-        if month == 1:
-            prev_month, prev_year = 12, year - 1
-        else:
-            prev_month, prev_year = month - 1, year
-        if month == 12:
-            next_month, next_year = 1, year + 1
-        else:
-            next_month, next_year = month + 1, year
-
-        # Betreuer's active contracts
-        betreuer_profile = getattr(user, "betreuer_profile", None)
-        contracts = (
-            Contract.objects.filter(betreuer=betreuer_profile)
-            .select_related("school", "activity_type")
-            .prefetch_related("foerderprogramme")
-            if betreuer_profile
-            else Contract.objects.none()
-        )
-
-        # School filter from query param (optional)
         school_filter_id = self.request.GET.get("school_filter")
 
-        # Entries grouped by contract
-        contract_data = []
-        for contract in contracts:
-            # Skip contracts not matching the school filter
-            if school_filter_id and str(contract.school_id) != school_filter_id:
-                continue
-
-            entries = (
-                TimeEntry.objects.filter(
-                    contract=contract,
-                    date__month=month,
-                    date__year=year,
-                )
-                .select_related("foerderprogramm")
-                .order_by("date", "start_time")
-            )
-
-            total_minutes = sum(e.duration_minutes for e in entries)
-
-            # Existing timesheet for this month?
-            timesheet = MonthlyTimesheet.objects.filter(
-                contract=contract,
+        context.update(
+            get_monthly_time_entry_context(
+                self.request.user,
                 month=month,
                 year=year,
-            ).first()
-
-            # Foerderprogramme available for this contract (for the inline form)
-            foerderprogramme = list(contract.foerderprogramme.filter(is_active=True))
-
-            contract_data.append({
-                "contract": contract,
-                "entries": entries,
-                "total_minutes": total_minutes,
-                "total_hours": round(total_minutes / 60, 2),
-                "timesheet": timesheet,
-                "foerderprogramme": foerderprogramme,
-            })
-
-        # Distinct schools for the school filter dropdown
-        betreuer_schools = (
-            School.objects.filter(
-                contracts__betreuer=betreuer_profile
-            ).distinct().order_by("code")
-            if betreuer_profile
-            else School.objects.none()
+                school_filter_id=school_filter_id,
+            )
         )
-
-        # Monatsname via zentrale Konstante (1-basiert -> -1 Offset)
-        month_last_day = calendar.monthrange(year, month)[1]
-
-        context.update({
-            "month": month,
-            "year": year,
-            "month_name": MONTH_NAMES_DE[month - 1],
-            "month_last_day": month_last_day,
-            "prev_month": prev_month,
-            "prev_year": prev_year,
-            "next_month": next_month,
-            "next_year": next_year,
-            "contract_data": contract_data,
-            "contracts": contracts,
-            "betreuer_profile": betreuer_profile,
-            "betreuer_schools": betreuer_schools,
-            "school_filter_id": school_filter_id or "",
-        })
         return context
 
 
@@ -465,16 +387,22 @@ class TimesheetApproveView(KoordinatorOrAdminMixin, View):
                 timesheet_pk = timesheet.pk
 
                 def _schedule_followup():
+                    # Darf NIEMALS eine Exception re-raisen -- sonst wird
+                    # der bereits committete DB-State inkonsistent mit der
+                    # Response und Django-Q kann den Request noch
+                    # zuruecksetzen. Alle Fehler werden still geloggt.
                     try:
                         from django_q.tasks import async_task
                         async_task(
                             "apps.timetracking.services.generate_timesheet_pdf_and_notify",
                             timesheet_pk,
                         )
-                    except Exception:
-                        logger.exception(
-                            "Could not schedule follow-up for timesheet %s",
+                    except Exception as exc:
+                        logger.error(
+                            "Could not schedule follow-up for timesheet %s: %s",
                             timesheet_pk,
+                            exc,
+                            exc_info=True,
                         )
 
                 transaction.on_commit(_schedule_followup)

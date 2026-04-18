@@ -36,6 +36,12 @@ class CustomLoginView(LoginView):
 
     template_name = "registration/login.html"
 
+    def form_valid(self, form):
+        """Rotate session key after successful login (prevent session fixation)."""
+        response = super().form_valid(form)
+        self.request.session.cycle_key()
+        return response
+
     def get_success_url(self):
         """
         Return the URL to redirect to after a successful login.

@@ -32,22 +32,42 @@
                 <span class="text-base font-normal text-gray-500">/ {{ freibetrag.limit|default:"3300" }} &euro;</span>
             </p>
             {% if freibetrag.warning_level == 'red' %}
-            <div class="w-full bg-gray-200 rounded-full h-2 mt-2">
+            <div class="w-full bg-gray-200 rounded-full h-2 mt-2"
+                 role="progressbar"
+                 aria-valuenow="100"
+                 aria-valuemin="0"
+                 aria-valuemax="100"
+                 aria-label="Freibetrag: 100 Prozent ausgeschoepft">
                 <div class="bg-red-500 h-2 rounded-full" style="width: 100%"></div>
             </div>
             <p class="text-sm text-red-600 mt-1 font-medium">Freibetrag ausgeschoepft!</p>
             {% elif freibetrag.warning_level == 'orange' %}
-            <div class="w-full bg-gray-200 rounded-full h-2 mt-2">
+            <div class="w-full bg-gray-200 rounded-full h-2 mt-2"
+                 role="progressbar"
+                 aria-valuenow="{{ freibetrag.percentage }}"
+                 aria-valuemin="0"
+                 aria-valuemax="100"
+                 aria-label="Freibetrag: {{ freibetrag.percentage }} Prozent verbraucht">
                 <div class="bg-orange-500 h-2 rounded-full" style="width: {{ freibetrag.percentage }}%"></div>
             </div>
             <p class="text-sm text-orange-600 mt-1">{{ freibetrag.percentage }}% verbraucht</p>
             {% elif freibetrag.warning_level == 'yellow' %}
-            <div class="w-full bg-gray-200 rounded-full h-2 mt-2">
+            <div class="w-full bg-gray-200 rounded-full h-2 mt-2"
+                 role="progressbar"
+                 aria-valuenow="{{ freibetrag.percentage }}"
+                 aria-valuemin="0"
+                 aria-valuemax="100"
+                 aria-label="Freibetrag: {{ freibetrag.percentage }} Prozent verbraucht">
                 <div class="bg-yellow-500 h-2 rounded-full" style="width: {{ freibetrag.percentage }}%"></div>
             </div>
             <p class="text-sm text-yellow-600 mt-1">{{ freibetrag.percentage }}% verbraucht</p>
             {% else %}
-            <div class="w-full bg-gray-200 rounded-full h-2 mt-2">
+            <div class="w-full bg-gray-200 rounded-full h-2 mt-2"
+                 role="progressbar"
+                 aria-valuenow="{{ freibetrag.percentage|default:0 }}"
+                 aria-valuemin="0"
+                 aria-valuemax="100"
+                 aria-label="Freibetrag: {{ freibetrag.percentage|default:0 }} Prozent verbraucht">
                 <div class="bg-green-500 h-2 rounded-full" style="width: {{ freibetrag.percentage|default:0 }}%"></div>
             </div>
             <p class="text-sm text-gray-500 mt-1">Verbraucht im Kalenderjahr {{ freibetrag.year|default:"2026" }}</p>
@@ -109,7 +129,12 @@
                 {{ s.spent|de_money }} <span class="text-sm font-normal text-gray-500">/ {{ s.budget|de_money }} &euro;</span>
             </p>
             {# Progress bar #}
-            <div class="w-full bg-gray-200 rounded-full h-2 mt-2 mb-1">
+            <div class="w-full bg-gray-200 rounded-full h-2 mt-2 mb-1"
+                 role="progressbar"
+                 aria-valuenow="{{ s.percentage }}"
+                 aria-valuemin="0"
+                 aria-valuemax="100"
+                 aria-label="Budget {{ fp.name }}: {{ s.percentage }} Prozent verbraucht">
                 <div class="h-2 rounded-full
                     {% if s.warning_level == 'red' %}bg-red-500
                     {% elif s.warning_level == 'orange' %}bg-orange-400
@@ -180,22 +205,32 @@
                 <div class="flex items-center gap-2 flex-shrink-0">
                     {% if doc.generated_file %}
                     <a href="{% url 'documents:document_download' doc.pk %}"
-                       class="text-xs text-schule-gsh hover:underline">PDF</a>
+                       aria-label="PDF fuer Dokument {{ doc.requirement.name }} herunterladen"
+                       class="text-xs text-schule-gsh hover:underline focus-visible:ring-2 focus-visible:ring-credo-dark rounded">PDF</a>
                     {% endif %}
                     {% if doc.status == 'sent' or doc.status == 'rejected' %}
                     <form method="post" action="{% url 'documents:document_upload' doc.pk %}"
                           enctype="multipart/form-data"
-                          class="inline" x-data="{ showUp: false }">
+                          class="inline" x-data="{ showUp: false, uploading: false }"
+                          x-on:submit="uploading = true"
+                          hx-indicator="#dashboard-upload-indicator-{{ doc.pk }}">
                         {% csrf_token %}
                         <button type="button" @click="showUp = !showUp"
-                                class="text-xs bg-schule-gsh text-white px-2 py-1 rounded hover:bg-blue-600">
+                                :aria-expanded="showUp.toString()"
+                                class="text-xs bg-schule-gsh text-white px-2 py-1 rounded hover:bg-blue-600 focus-visible:ring-2 focus-visible:ring-credo-dark">
                             Hochladen
                         </button>
                         <div x-show="showUp" x-transition class="absolute mt-1 bg-white shadow-lg rounded p-3 z-10">
-                            <input type="file" name="file" accept=".pdf,.jpg,.jpeg,.png" class="text-xs">
-                            <button type="submit" class="mt-1 text-xs bg-credo-dark text-white px-2 py-1 rounded">
-                                Absenden
+                            <input type="file" name="file" accept=".pdf,.jpg,.jpeg,.png" required class="text-xs">
+                            <button type="submit" class="mt-1 text-xs bg-credo-dark text-white px-2 py-1 rounded disabled:opacity-50"
+                                    x-bind:disabled="uploading">
+                                <span x-show="!uploading">Absenden</span>
+                                <span x-show="uploading">Wird hochgeladen&hellip;</span>
                             </button>
+                            <div id="dashboard-upload-indicator-{{ doc.pk }}"
+                                 role="status"
+                                 aria-live="polite" aria-atomic="true"
+                                 class="htmx-indicator text-xs text-gray-500 mt-1"></div>
                         </div>
                     </form>
                     {% endif %}

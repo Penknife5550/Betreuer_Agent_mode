@@ -60,7 +60,9 @@ class Command(BaseCommand):
         if created:
             admin_user.set_password("admin123!")
             admin_user.save()
-            UserProfile.objects.create(user=admin_user, role="admin")
+            UserProfile.objects.get_or_create(
+                user=admin_user, defaults={"role": "admin"}
+            )
             self.stdout.write(self.style.SUCCESS("  Admin-User erstellt"))
         else:
             self.stdout.write("  Admin-User existiert bereits")

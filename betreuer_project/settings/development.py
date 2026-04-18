@@ -4,7 +4,23 @@ Django development settings for betreuer_project.
 These settings are for local development only.
 """
 
+import os
+
+from django.core.exceptions import ImproperlyConfigured
+
 from .base import *  # noqa: F401, F403
+
+# ---------------------------------------------------------------------------
+# Guard: diese Settings duerfen NIE in Production aktiv sein.
+# DEBUG=True + ALLOWED_HOSTS wuerden sonst massive Angriffsflaechen oeffnen
+# (Debug-Tracebacks mit Source, Host-Header-Injection, etc.)
+# ---------------------------------------------------------------------------
+
+if os.environ.get("DJANGO_ENV", "").lower() == "production":
+    raise ImproperlyConfigured(
+        "development.py darf NICHT mit DJANGO_ENV=production genutzt werden. "
+        "Bitte DJANGO_SETTINGS_MODULE=betreuer_project.settings.production setzen."
+    )
 
 # ---------------------------------------------------------------------------
 # Debug mode
@@ -13,10 +29,16 @@ from .base import *  # noqa: F401, F403
 DEBUG = True
 
 # ---------------------------------------------------------------------------
-# Allowed hosts (relaxed for development)
+# Allowed hosts (relaxed for development, aber NICHT wildcard "*")
 # ---------------------------------------------------------------------------
 
-ALLOWED_HOSTS = ["*"]
+ALLOWED_HOSTS = [
+    "localhost",
+    "127.0.0.1",
+    "0.0.0.0",
+    "*.local",
+    "*.localhost",
+]
 
 # ---------------------------------------------------------------------------
 # CSRF trusted origins (required for Django 4.0+)

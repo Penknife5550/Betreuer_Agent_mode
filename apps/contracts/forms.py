@@ -308,33 +308,48 @@ class BetreuerRegistrationForm(forms.Form):
         return iban
 
     def clean(self):
+        """
+        Cross-Field-Validations: die einzelnen Felder sind bereits durch
+        ``clean_<field>``-Methoden abgedeckt (website_url, email, iban).
+        Hier nur Abhaengigkeiten zwischen mehreren Feldern.
+        """
         cleaned = super().clean()
+        self._validate_password_match(cleaned)
+        self._validate_school_foerderprogramm(cleaned)
+        self._validate_foerderprogramm_activity(cleaned)
+        return cleaned
 
-        # Password confirmation
+    def _validate_password_match(self, cleaned):
+        """Passwort und Bestaetigung muessen uebereinstimmen."""
         password = cleaned.get("password")
         password_confirm = cleaned.get("password_confirm")
         if password and password_confirm and password != password_confirm:
-            self.add_error("password_confirm", "Die Passwoerter stimmen nicht ueberein.")
+            self.add_error(
+                "password_confirm",
+                "Die Passwoerter stimmen nicht ueberein.",
+            )
 
+    def _validate_school_foerderprogramm(self, cleaned):
+        """Foerderprogramm muss fuer die gewaehlte Schule verfuegbar sein."""
         school = cleaned.get("school")
         prog = cleaned.get("foerderprogramm")
+        if school and prog and not prog.is_available_for_school(school):
+            self.add_error(
+                "foerderprogramm",
+                "Dieses Foerderprogramm ist fuer diese Schule nicht verfuegbar.",
+            )
+
+    def _validate_foerderprogramm_activity(self, cleaned):
+        """Activity-Type muss unter dem Foerderprogramm zulaessig sein."""
+        prog = cleaned.get("foerderprogramm")
         activity = cleaned.get("activity_type")
-
-        if school and prog:
-            if not prog.is_available_for_school(school):
-                self.add_error(
-                    "foerderprogramm",
-                    "Dieses Foerderprogramm ist fuer diese Schule nicht verfuegbar.",
-                )
-
-        if prog and activity:
-            if not prog.activity_types.filter(pk=activity.pk).exists():
-                self.add_error(
-                    "activity_type",
-                    "Diese Taetigkeit ist unter diesem Foerderprogramm nicht verfuegbar.",
-                )
-
-        return cleaned
+        if prog and activity and not prog.activity_types.filter(
+            pk=activity.pk
+        ).exists():
+            self.add_error(
+                "activity_type",
+                "Diese Taetigkeit ist unter diesem Foerderprogramm nicht verfuegbar.",
+            )
 
 
 class RegistrationLinkForm(forms.Form):

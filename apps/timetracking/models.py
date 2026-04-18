@@ -7,7 +7,6 @@ Business rule: Stichtag (deadline) = 17th of the month.
 """
 
 from datetime import datetime
-from decimal import Decimal
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
@@ -229,6 +228,11 @@ class MonthlyTimesheet(TimeStampedModel, AuditLogMixin):
             models.Index(fields=["status"]),
             models.Index(fields=["year", "month"]),
             models.Index(fields=["status", "year", "month"]),
+            # Vertrag + Status: Koordinator-View listet offene Nachweise pro Vertrag
+            models.Index(
+                fields=["contract", "status"],
+                name="mt_contract_status_idx",
+            ),
         ]
 
     def __str__(self):
@@ -271,24 +275,16 @@ class MonthlyTimesheet(TimeStampedModel, AuditLogMixin):
         """
         Recalculate total_hours and total_amount from TimeEntries.
         Does NOT save — caller must save.
-        """
-        entries = TimeEntry.objects.filter(
-            contract=self.contract,
-            date__month=self.month,
-            date__year=self.year,
-        )
-        total_minutes = entries.aggregate(
-            total=models.Sum("duration_minutes")
-        )["total"] or 0
 
-        self.total_hours = (Decimal(total_minutes) / Decimal(60)).quantize(Decimal("0.01"))
-        rate = self.contract.effective_rate or Decimal(0)
-        # Rate is per hour_duration (60 or 45 min), convert entries to units
-        if self.contract.hour_duration == 45:
-            units = Decimal(total_minutes) / Decimal(45)
-        else:
-            units = Decimal(total_minutes) / Decimal(60)
-        self.total_amount = (units * rate).quantize(Decimal("0.01"))
+        Eigentliche Rechen-Logik lebt in
+        ``apps.timetracking.services.calculate_timesheet_amounts`` --
+        hier nur Zuweisung auf die Model-Attribute, damit die Methode
+        als Facade auf dem Modell erhalten bleibt.
+        """
+        # Lokaler Import: Service importiert Model -> Kreis-Import
+        from apps.timetracking.services import calculate_timesheet_amounts
+
+        self.total_hours, self.total_amount = calculate_timesheet_amounts(self)
 
     def submit(self):
         """

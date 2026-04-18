@@ -2,41 +2,177 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ------------------------------------------------------------------ */
-/* CREDO Corporate Design Utilities                                   */
-/* ------------------------------------------------------------------ */
+/* ==========================================================================
+ * CREDO Corporate Design
+ * ========================================================================== */
 
-/* CREDO-Linie: horizontale Farbleiste unten auf der Seite */
-.credo-linie {
-  display: flex;
-  width: 100%;
-  height: 6px;
+/* Montserrat lokal gehostet -- DSGVO-konform, kein Google-Fonts-CDN. */
+@font-face {
+  font-family: "Montserrat";
+  src: url("/static/fonts/Montserrat-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
 }
-.credo-linie > span { flex: 1; }
-.credo-linie > .c-grau { background-color: #575756; }
-.credo-linie > .c-gelb { background-color: #FBC900; }
-.credo-linie > .c-gruen { background-color: #6BAA24; }
-.credo-linie > .c-rot { background-color: #E2001A; }
-.credo-linie > .c-blau { background-color: #009AC6; }
+@font-face {
+  font-family: "Montserrat";
+  src: url("/static/fonts/Montserrat-Medium.ttf") format("truetype");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Montserrat";
+  src: url("/static/fonts/Montserrat-SemiBold.ttf") format("truetype");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Montserrat";
+  src: url("/static/fonts/Montserrat-Bold.ttf") format("truetype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
 
-/* Globale Fokus-Ringe fuer Tastatur-Nutzer (WCAG 2.4.7) */
-:focus-visible {
-  outline: 2px solid #575756;
-  outline-offset: 2px;
-  border-radius: 2px;
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  /* Focus-Ring fuer Tastaturnutzer (WCAG 2.4.7) */
+  :focus-visible {
+    outline: 2px solid theme("colors.credo.dark");
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  /* Skip-Link */
+  .skip-link {
+    position: absolute;
+    top: -48px;
+    left: 0;
+    background: theme("colors.credo.dark");
+    color: white;
+    padding: 10px 20px;
+    z-index: 9999;
+    font-weight: 500;
+    text-decoration: none;
+    border-bottom-right-radius: 8px;
+    transition: top 0.15s ease;
+  }
+  .skip-link:focus {
+    top: 0;
+  }
+
+  /* Screen-Reader-Only (Tailwind-kompatibel, falls Utility nicht kompiliert) */
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+  }
+
+  /* HTMX-Indicator: Nur sichtbar waehrend Request */
+  .htmx-indicator {
+    opacity: 0;
+    transition: opacity 200ms ease-in;
+  }
+  .htmx-request .htmx-indicator,
+  .htmx-request.htmx-indicator {
+    opacity: 1;
+  }
 }
 
-/* Skip-to-content-Link sichtbar machen bei Fokus */
-.skip-link {
-  position: absolute;
-  top: -40px;
-  left: 0;
-  background: #575756;
-  color: white;
-  padding: 8px 16px;
-  z-index: 9999;
-  text-decoration: none;
-}
-.skip-link:focus {
-  top: 0;
+@layer components {
+  /* ---- CREDO-Linie ---- */
+  .credo-linie {
+    display: flex;
+    width: 100%;
+    height: 5px;
+  }
+  .credo-linie > span { flex: 1; }
+  .credo-linie > .c-grau { background-color: theme("colors.credo.dark"); flex: 4; }
+  .credo-linie > .c-gelb { background-color: #FBC900; }
+  .credo-linie > .c-gruen { background-color: #6BAA24; }
+  .credo-linie > .c-rot { background-color: #E2001A; }
+  .credo-linie > .c-blau { background-color: #009AC6; }
+
+  /* ---- Buttons ---- */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2
+           rounded-lg px-4 py-2.5 text-sm font-medium
+           transition-all duration-150
+           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2;
+  }
+  .btn-primary {
+    @apply btn bg-credo-dark text-white
+           hover:bg-neutral-700 active:bg-neutral-800
+           focus-visible:ring-credo-dark
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-secondary {
+    @apply btn bg-white text-credo-dark border border-neutral-200
+           hover:bg-neutral-50 hover:border-neutral-300
+           focus-visible:ring-credo-dark;
+  }
+  .btn-ghost {
+    @apply btn text-credo-dark hover:bg-neutral-100
+           focus-visible:ring-credo-dark;
+  }
+
+  /* ---- Form-Inputs ---- */
+  .form-input {
+    @apply w-full rounded-lg border border-neutral-200 bg-white
+           px-3.5 py-2.5 text-sm text-credo-dark
+           placeholder:text-neutral-400
+           shadow-sm
+           transition-all duration-150
+           focus:border-credo-dark focus:ring-2 focus:ring-credo-dark/50 focus:outline-none;
+  }
+  .form-input[aria-invalid="true"] {
+    @apply border-red-300 focus:border-red-500 focus:ring-red-100;
+  }
+  .form-label {
+    @apply block text-xs font-medium text-neutral-600 mb-1.5 tracking-wide uppercase;
+  }
+  .form-hint {
+    @apply mt-1 text-xs text-neutral-500;
+  }
+  .form-error {
+    @apply mt-1 text-xs text-red-600;
+  }
+
+  /* ---- Cards ---- */
+  .card {
+    @apply bg-white rounded-2xl shadow-sm ring-1 ring-neutral-100;
+  }
+  .card-padded {
+    @apply card p-6 sm:p-8;
+  }
+
+  /* ---- Alerts ---- */
+  .alert {
+    @apply rounded-lg px-4 py-3 text-sm border flex gap-3;
+  }
+  .alert-error {
+    @apply alert bg-red-50 border-red-200 text-red-800;
+  }
+  .alert-success {
+    @apply alert bg-green-50 border-green-200 text-green-800;
+  }
+  .alert-info {
+    @apply alert bg-blue-50 border-blue-200 text-blue-800;
+  }
 }

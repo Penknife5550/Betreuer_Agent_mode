@@ -51,6 +51,13 @@ def _block_external_http(monkeypatch, settings):
     for method in ("post", "get", "put", "delete", "patch"):
         monkeypatch.setattr(requests, method, _stub)
 
+    # Zusaetzlich: Session-Methoden stubben, da apps.notifications.services
+    # jetzt ein Modul-Level ``_session`` nutzt statt direkt ``requests.post``.
+    # Ohne diese Zusatz-Stubs wuerden Tests, die ``_session.post`` mocken,
+    # Live-HTTP ausloesen.
+    for method in ("post", "get", "put", "delete", "patch"):
+        monkeypatch.setattr(requests.Session, method, _stub)
+
 
 @pytest.fixture(autouse=True)
 def _sync_on_commit_and_queue(monkeypatch):
@@ -186,9 +193,23 @@ def hourly_rate(db, activity_type, school_year):
 
 
 @pytest.fixture
-def betreuer_profile(db, betreuer_user):
-    from apps.contracts.models import BetreuerProfile
-    return BetreuerProfile.objects.create(
+def betreuer_profile(db, betreuer_user, school, school_year, activity_type, hourly_rate):
+    """
+    BetreuerProfile mit einem draft-Contract an ``school`` (= GSH).
+
+    Wichtig fuer den Koordinator-Scope-Check: der ``koordinator_user``
+    ist derselben ``school`` zugeordnet, sodass Scope-Tests (die
+    ``require_scope_access`` / ``koordinator_has_access_to_betreuer``
+    aufrufen) ohne weitere Fixture-Gymnastik funktionieren.
+
+    Tests, die _explizit_ auch noch die ``contract``-Fixture nutzen,
+    erhalten dadurch _zwei_ Contracts fuer denselben Betreuer (dieser
+    hier mit Nummer 000, der ``contract``-Fixture mit 001). Das ist
+    beabsichtigt und bricht keinen bestehenden Test, da keine
+    Test-Assertion auf eine bestimmte Contract-Anzahl basiert.
+    """
+    from apps.contracts.models import BetreuerProfile, Contract
+    profile = BetreuerProfile.objects.create(
         user=betreuer_user,
         anrede='herr',
         geburtsdatum=date(2000, 1, 15),
@@ -203,6 +224,21 @@ def betreuer_profile(db, betreuer_user):
         betreuer_type='schueler',
         onboarding_status='registered',
     )
+    # Scope-Contract: draft-Status, Nummer 000 damit 001 fuer die
+    # ``contract``-Fixture frei bleibt.
+    Contract.objects.create(
+        contract_number='CSFV-GSH-2526-000',
+        betreuer=profile,
+        school=school,
+        school_year=school_year,
+        activity_type=activity_type,
+        hourly_rate=hourly_rate,
+        hour_duration=60,
+        start_date=date(2025, 9, 1),
+        end_date=date(2026, 7, 31),
+        status='draft',
+    )
+    return profile
 
 
 @pytest.fixture

@@ -6,17 +6,23 @@ confirmation, document_received_confirmation). Authentifiziert via
 Bearer-Token. Das Token wird NICHT aus settings gelesen, sondern aus
 dem Singleton-Model ``apps.notifications.models.InboundToken``
 (editierbar im Django-Admin).
+
+Die eigentliche Business-Logik der Event-Handler lebt in
+``apps.notifications.webhook_handlers`` -- hier wird nur Authentifi-
+zierung, Idempotency und Routing erledigt.
 """
 
 import hmac
 import json
 import logging
 
+from django.db import IntegrityError
 from django.http import JsonResponse
-from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.views import View
 from django.views.decorators.csrf import csrf_exempt
+
+from apps.notifications.webhook_handlers import EVENT_HANDLERS
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +40,11 @@ class N8NWebhookView(View):
       contract or document.
     - ``document_received_confirmation``: Updates a document's notes to
       record that it was received by the Betreuer.
+
+    Idempotency: Wenn die Payload ein ``event_id``-Feld enthaelt, wird
+    jedes Event nur einmal verarbeitet. Doppelte Callbacks
+    (z.B. n8n-Retry) werden mit ``{"status": "ok", "detail": "Duplicate"}``
+    quittiert, aber nicht erneut ausgefuehrt.
     """
 
     http_method_names = ["post"]
@@ -53,11 +64,17 @@ class N8NWebhookView(View):
                 status=503,
             )
 
-        auth_header = request.META.get("HTTP_AUTHORIZATION", "")
-        if not auth_header.startswith("Bearer "):
+        auth_header = request.META.get("HTTP_AUTHORIZATION", "") or ""
+        expected_prefix = "Bearer "
+        header_prefix = auth_header[:len(expected_prefix)]
+        # Konstant-Zeit-Vergleich auch fuer den Prefix, um Timing-Angriffe
+        # auf die Prefix-Validierung auszuschliessen.
+        if not hmac.compare_digest(
+            header_prefix.encode(), expected_prefix.encode()
+        ):
             return JsonResponse({"error": "Unauthorized."}, status=401)
 
-        provided_token = auth_header[7:]
+        provided_token = auth_header[len(expected_prefix):]
         if not hmac.compare_digest(provided_token, token):
             return JsonResponse({"error": "Unauthorized."}, status=401)
 
@@ -65,6 +82,8 @@ class N8NWebhookView(View):
 
     def post(self, request):
         """Process the incoming webhook event."""
+        from apps.notifications.models import ProcessedWebhookEvent
+
         try:
             data = json.loads(request.body)
         except (json.JSONDecodeError, ValueError):
@@ -80,16 +99,32 @@ class N8NWebhookView(View):
                 status=400,
             )
 
-        handler = self.EVENT_HANDLERS.get(event_type)
+        handler = EVENT_HANDLERS.get(event_type)
         if not handler:
             return JsonResponse(
                 {"error": f"Unknown event_type: {event_type}"},
                 status=400,
             )
 
+        # Idempotency-Check: wenn event_id bekannt -> Duplicate.
+        event_id = data.get("event_id")
+        if event_id:
+            if ProcessedWebhookEvent.objects.filter(event_id=event_id).exists():
+                logger.info(
+                    "Duplicate webhook event_id '%s' (%s) -- skipping.",
+                    event_id,
+                    event_type,
+                )
+                return JsonResponse({"status": "ok", "detail": "Duplicate"})
+        else:
+            logger.warning(
+                "Incoming webhook event '%s' ohne event_id -- "
+                "Idempotency-Schutz deaktiviert.",
+                event_type,
+            )
+
         try:
-            result = handler(self, data)
-            return JsonResponse({"status": "ok", "detail": result})
+            result = handler(data)
         except Exception as exc:
             logger.error(
                 "Error processing webhook event '%s': %s",
@@ -100,100 +135,20 @@ class N8NWebhookView(View):
                 status=500,
             )
 
-    # ------------------------------------------------------------------
-    # Event handlers
-    # ------------------------------------------------------------------
-
-    def _handle_email_sent_confirmation(self, data):
-        """
-        Record that an email was sent.
-
-        Expected payload keys:
-        - contract_number (optional): Add note to contract
-        - document_id (optional): Add note to document
-        - recipient_email: Who received the email
-        - sent_at: When it was sent
-        """
-        note_text = (
-            f"E-Mail gesendet an {data.get('recipient_email', '?')} "
-            f"am {data.get('sent_at', timezone.now().isoformat())}."
-        )
-
-        contract_number = data.get("contract_number")
-        if contract_number:
-            from apps.contracts.models import Contract
+        # Nach erfolgreicher Verarbeitung: Idempotency-Eintrag anlegen.
+        if event_id:
             try:
-                contract = Contract.objects.get(contract_number=contract_number)
-                contract.notes = (
-                    f"{contract.notes}\n{note_text}" if contract.notes else note_text
-                ).strip()
-                contract.save(update_fields=["notes"])
+                ProcessedWebhookEvent.objects.create(
+                    event_id=event_id,
+                    event_type=event_type,
+                )
+            except IntegrityError:
+                # Race-Condition: zwei gleichzeitige Requests mit selber
+                # event_id. Handler lief bereits, wir behandeln das als
+                # harmloses Duplikat.
                 logger.info(
-                    "Email confirmation recorded for contract %s.",
-                    contract_number,
-                )
-            except Contract.DoesNotExist:
-                logger.warning(
-                    "Contract %s not found for email confirmation.",
-                    contract_number,
+                    "Race on ProcessedWebhookEvent.event_id '%s' -- ignoring.",
+                    event_id,
                 )
 
-        document_id = data.get("document_id")
-        if document_id:
-            from apps.documents.models import Document
-            try:
-                doc = Document.objects.get(pk=document_id)
-                doc.notes = (
-                    f"{doc.notes}\n{note_text}" if doc.notes else note_text
-                ).strip()
-                doc.save(update_fields=["notes"])
-                logger.info(
-                    "Email confirmation recorded for document %s.",
-                    document_id,
-                )
-            except Document.DoesNotExist:
-                logger.warning(
-                    "Document %s not found for email confirmation.",
-                    document_id,
-                )
-
-        return "email_sent_confirmation processed"
-
-    def _handle_document_received_confirmation(self, data):
-        """
-        Record that a document was received by the Betreuer.
-
-        Expected payload keys:
-        - document_id: The Document pk
-        - received_at: When it was confirmed received
-        """
-        document_id = data.get("document_id")
-        if not document_id:
-            return "Missing document_id"
-
-        from apps.documents.models import Document
-
-        try:
-            doc = Document.objects.get(pk=document_id)
-            received_at = data.get("received_at", timezone.now().isoformat())
-            note_text = f"Dokument empfangen am {received_at}."
-            doc.notes = (
-                f"{doc.notes}\n{note_text}" if doc.notes else note_text
-            ).strip()
-            doc.save(update_fields=["notes"])
-            logger.info(
-                "Document received confirmation recorded for document %s.",
-                document_id,
-            )
-            return f"document {document_id} updated"
-        except Document.DoesNotExist:
-            logger.warning(
-                "Document %s not found for received confirmation.",
-                document_id,
-            )
-            return f"document {document_id} not found"
-
-    EVENT_HANDLERS = {
-        "email_sent_confirmation": _handle_email_sent_confirmation,
-        "document_received_confirmation": _handle_document_received_confirmation,
-    }
+        return JsonResponse({"status": "ok", "detail": result})

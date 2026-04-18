@@ -117,45 +117,60 @@
         </div>
 
         {# ---- Freibetrag Declaration ---- #}
-        <div class="bg-white rounded-lg shadow p-6 mb-6">
-            <h2 class="text-lg font-semibold text-credo-dark mb-4">Freibetrag-Erkl&auml;rung</h2>
+        <fieldset class="bg-white rounded-lg shadow p-6 mb-6"
+             x-data="{ usedElsewhere: {% if form.freibetrag_used_elsewhere.value %}true{% else %}false{% endif %} }">
+            <legend class="text-lg font-semibold text-credo-dark mb-4">Freibetrag-Erkl&auml;rung</legend>
             <div class="space-y-4">
                 <div class="flex items-center gap-3">
-                    {{ form.freibetrag_used_elsewhere }}
+                    <input type="checkbox"
+                           name="{{ form.freibetrag_used_elsewhere.html_name }}"
+                           id="id_freibetrag_used_elsewhere"
+                           {% if form.freibetrag_used_elsewhere.value %}checked{% endif %}
+                           @change="usedElsewhere = $event.target.checked"
+                           class="h-4 w-4 rounded border-gray-300 text-credo-dark focus:ring-2 focus:ring-credo-dark/50">
                     <label for="id_freibetrag_used_elsewhere" class="text-sm text-gray-700">
                         {{ form.freibetrag_used_elsewhere.label }}
                     </label>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4"
-                     x-data="{ show: {{ form.freibetrag_used_elsewhere.value|yesno:'true,false' }} }"
-                     x-show="show"
+                     x-show="usedElsewhere"
                      x-transition>
                     <div>
                         <label for="id_freibetrag_amount_elsewhere" class="block text-sm font-medium text-gray-700 mb-1">
-                            {{ form.freibetrag_amount_elsewhere.label }}
+                            {{ form.freibetrag_amount_elsewhere.label }} <span class="text-red-500" aria-label="erforderlich" x-show="usedElsewhere">*</span>
                         </label>
-                        {{ form.freibetrag_amount_elsewhere }}
+                        <input type="number" step="0.01" min="0"
+                               name="{{ form.freibetrag_amount_elsewhere.html_name }}"
+                               id="id_freibetrag_amount_elsewhere"
+                               value="{{ form.freibetrag_amount_elsewhere.value|default_if_none:'' }}"
+                               :required="usedElsewhere"
+                               class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-credo-dark/50">
                         {% if form.freibetrag_amount_elsewhere.errors %}
-                        <p class="mt-1 text-xs text-red-600">{{ form.freibetrag_amount_elsewhere.errors.0 }}</p>
+                        <p class="mt-1 text-xs text-red-600" role="alert">{{ form.freibetrag_amount_elsewhere.errors.0 }}</p>
                         {% endif %}
                     </div>
                     <div>
                         <label for="id_freibetrag_verein_name" class="block text-sm font-medium text-gray-700 mb-1">
-                            {{ form.freibetrag_verein_name.label }}
+                            {{ form.freibetrag_verein_name.label }} <span class="text-red-500" aria-label="erforderlich" x-show="usedElsewhere">*</span>
                         </label>
-                        {{ form.freibetrag_verein_name }}
+                        <input type="text" maxlength="200"
+                               name="{{ form.freibetrag_verein_name.html_name }}"
+                               id="id_freibetrag_verein_name"
+                               value="{{ form.freibetrag_verein_name.value|default_if_none:'' }}"
+                               :required="usedElsewhere"
+                               class="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-credo-dark/50">
                         {% if form.freibetrag_verein_name.errors %}
-                        <p class="mt-1 text-xs text-red-600">{{ form.freibetrag_verein_name.errors.0 }}</p>
+                        <p class="mt-1 text-xs text-red-600" role="alert">{{ form.freibetrag_verein_name.errors.0 }}</p>
                         {% endif %}
                     </div>
                 </div>
             </div>
-        </div>
+        </fieldset>
 
         {# ---- Submit ---- #}
         <div class="flex items-center gap-3">
             <button type="submit"
-                    class="bg-credo-dark hover:bg-gray-700 text-white text-sm font-medium py-2 px-6 rounded-md transition-colors">
+                    class="bg-credo-dark hover:bg-gray-700 text-white text-sm font-medium py-2 px-6 rounded-md transition-colors focus-visible:ring-2 focus-visible:ring-credo-dark">
                 Speichern
             </button>
             <a href="{% url 'accounts:profile' %}"
