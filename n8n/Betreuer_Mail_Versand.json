@@ -1,0 +1,183 @@
+{
+  "name": "Betreuer-App – E-Mail Versand (SMTP)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Betreuer-App – E-Mail-Versand\n\n**Zentraler Webhook fuer alle 9 Outbound-Events der Django-App:**\n\n`POST /webhook/betreuer-events`\n\nAuth: Header `Authorization: Bearer <Token>` (entspricht dem Wert in WebhookEndpoint.auth_header_value im Django-Admin).\n\n**Setup nach Import:**\n1. Header-Auth-Credential anlegen (\"Betreuer Bearer\")\n2. SMTP-Credential anlegen (\"FES SMTP\")\n3. ENV im Code-Node anpassen:\n   - ADMIN_EMAIL\n   - BUCHHALTUNG_EMAIL\n   - DJANGO_BASE_URL\n   - DJANGO_INBOUND_TOKEN\n4. Workflow aktivieren\n\nDer letzte HTTP-Node sendet eine `email_sent_confirmation` zurueck an Djangos `/api/webhook/n8n/` (optional, kann deaktiviert werden).",
+        "height": 360,
+        "width": 360,
+        "color": 5
+      },
+      "id": "11111111-1111-1111-1111-111111111111",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-1280, -480]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "betreuer-events",
+        "authentication": "headerAuth",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "22222222-2222-2222-2222-222222222222",
+      "name": "Webhook Betreuer Events",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-1280, -80],
+      "webhookId": "betreuer-events-webhook",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_WITH_HEADER_AUTH_ID",
+          "name": "Betreuer Bearer"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// ---------------------------------------------------------------\n// Mail-Builder fuer alle 9 Event-Typen der Betreuer-App.\n// Liest event_type aus dem Webhook-Body und produziert\n// { to, subject, html, eventType, contractNumber, documentId }.\n//\n// Empfaenger-Mapping:\n//   pending_approval     -> coordinator_email\n//   betreuer_approved    -> betreuer_email\n//   contract_created     -> betreuer_email\n//   duplicate_detected   -> ADMIN_EMAIL\n//   email_mismatch       -> ADMIN_EMAIL\n//   document_expiring    -> betreuer_email\n//   document_expired     -> ADMIN_EMAIL\n//   freibetrag_warning   -> ADMIN_EMAIL\n//   timesheet_approved   -> BUCHHALTUNG_EMAIL\n// ---------------------------------------------------------------\n\nconst ADMIN_EMAIL        = 'admin@fes-credo.de';\nconst BUCHHALTUNG_EMAIL  = 'buchhaltung@fes-minden.de';\nconst FROM_EMAIL         = 'noreply@fes-credo.de';\n\nconst raw = $input.first().json;\nconst d   = raw.body || raw;   // n8n verschachtelt Webhook-Daten unter .body\nconst evt = d.event_type;\n\nfunction esc(s){ return String(s == null ? '' : s).replace(/[&<>\"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;','\\'':'&#39;'}[c])); }\nfunction money(n){ const x = Number(n||0).toFixed(2).split('.'); x[0]=x[0].replace(/\\B(?=(\\d{3})+(?!\\d))/g,'.'); return x.join(',') + ' EUR'; }\nfunction shellHtml(headline, lead, bodyHtml){\n  return '<!DOCTYPE html><html lang=\"de\"><body style=\"margin:0;padding:0;background:#eeeded;font-family:Arial,sans-serif\">'+\n    '<table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:#eeeded\"><tr><td align=\"center\" style=\"padding:32px 15px\">'+\n      '<table width=\"600\" cellpadding=\"0\" cellspacing=\"0\" style=\"max-width:600px;width:100%;background:#fff\">'+\n        '<tr><td style=\"background:#FBC900;height:6px\"></td></tr>'+\n        '<tr><td style=\"background:#575756;padding:30px 36px\">'+\n          '<p style=\"margin:0 0 6px;font-size:10px;color:#aaa;letter-spacing:3px;text-transform:uppercase\">Betreuer-App &middot; FES Minden</p>'+\n          '<h1 style=\"margin:0 0 6px;font-size:24px;color:#fff;line-height:1.2\">'+esc(headline)+'</h1>'+\n          '<p style=\"margin:0;color:#bbbbb9;font-size:13px\">'+esc(lead)+'</p>'+\n        '</td></tr>'+\n        '<tr><td style=\"padding:28px 36px;color:#333;font-size:14px;line-height:1.6\">'+bodyHtml+'</td></tr>'+\n        '<tr><td style=\"background:#575756;padding:18px 36px;color:#aaa;font-size:11px\">'+\n          'Christlicher Schulverein Minden e.V. &bull; Kingsleyallee 6 &bull; 32425 Minden &bull; fes-minden.de'+\n        '</td></tr>'+\n        '<tr><td style=\"background:#FBC900;height:5px\"></td></tr>'+\n      '</table>'+\n    '</td></tr></table></body></html>';\n}\nfunction kv(label, value){\n  return '<p style=\"margin:0 0 6px\"><span style=\"display:inline-block;min-width:160px;color:#888;text-transform:uppercase;font-size:11px;letter-spacing:1px\">'+esc(label)+'</span> <strong>'+esc(value || '—')+'</strong></p>';\n}\n\nlet to = '';\nlet subject = '';\nlet body = '';\nlet headline = '';\nlet lead = '';\n\nswitch (evt) {\n  case 'pending_approval':\n    to = d.coordinator_email || ADMIN_EMAIL;\n    headline = 'Neue Betreuer-Registrierung';\n    lead = 'Wartet auf Genehmigung im Koordinator-Dashboard.';\n    subject = '[Betreuer] Neue Registrierung wartet: ' + (d.betreuer_name || '');\n    body = kv('Betreuer', d.betreuer_name) + kv('E-Mail', d.betreuer_email) +\n           kv('Schule', d.school_name + ' (' + d.school_code + ')') +\n           kv('Vertragsnummer', d.contract_number) +\n           '<p style=\"margin-top:18px\">Bitte im Koordinator-Dashboard pruefen und freigeben.</p>';\n    break;\n  case 'betreuer_approved':\n    to = d.betreuer_email;\n    headline = 'Registrierung freigegeben';\n    lead = 'Ihre Anmeldung wurde von der Schule bestaetigt.';\n    subject = '[Betreuer] Ihre Registrierung ist freigegeben';\n    body = '<p>Hallo ' + esc(d.betreuer_name) + ',</p>' +\n           '<p>Ihre Registrierung fuer die Schule <strong>' + esc(d.school_name) + '</strong> wurde freigegeben. Sie koennen sich jetzt im Portal anmelden und mit dem Onboarding fortfahren.</p>' +\n           kv('Vertragsnummer', d.contract_number);\n    break;\n  case 'contract_created':\n    to = d.betreuer_email;\n    headline = 'Vertragsentwurf erstellt';\n    lead = 'Bitte im Portal pruefen.';\n    subject = '[Betreuer] Vertragsentwurf ' + (d.contract_number || '');\n    body = '<p>Hallo ' + esc(d.betreuer_name) + ',</p>' +\n           '<p>fuer Ihre Taetigkeit wurde ein Vertragsentwurf angelegt:</p>' +\n           kv('Vertragsnummer', d.contract_number) + kv('Schule', d.school_name) + kv('Taetigkeit', d.activity_type);\n    break;\n  case 'duplicate_detected':\n    to = ADMIN_EMAIL;\n    headline = 'Duplikat bei Registrierung';\n    lead = 'Manuelle Pruefung erforderlich.';\n    subject = '[Betreuer] Duplikat erkannt: ' + (d.new_betreuer_name || '');\n    body = kv('Neue Registrierung', d.new_betreuer_name + ' (' + d.new_betreuer_email + ')') +\n           kv('Bestehender Eintrag', d.existing_betreuer_name + ' (' + d.existing_betreuer_email + ')') +\n           '<p style=\"margin-top:18px;color:#E2001A\">Bitte im Admin pruefen, ob es sich um dieselbe Person handelt.</p>';\n    break;\n  case 'email_mismatch':\n    to = ADMIN_EMAIL;\n    headline = 'E-Mail-Abweichung bei Registrierung';\n    lead = 'Bekannter Betreuer registriert sich mit anderer Adresse.';\n    subject = '[Betreuer] E-Mail-Abweichung: ' + (d.betreuer_name || '');\n    body = kv('Betreuer', d.betreuer_name) + kv('Neue E-Mail', d.new_email) + kv('Bisherige E-Mail', d.stored_email);\n    break;\n  case 'document_expiring':\n    to = d.betreuer_email;\n    headline = 'Dokument laeuft bald ab';\n    lead = 'Bitte fristgerecht erneuern.';\n    subject = '[Betreuer] ' + (d.document_type || 'Dokument') + ' laeuft in ' + (d.days_remaining || '?') + ' Tagen ab';\n    body = '<p>Hallo ' + esc(d.betreuer_name) + ',</p>' +\n           '<p>Ihr Dokument <strong>' + esc(d.document_type) + '</strong> laeuft am <strong>' + esc(d.expires_at) + '</strong> ab (' + esc(d.days_remaining) + ' Tage).</p>' +\n           '<p>Bitte laden Sie rechtzeitig eine erneuerte Version ueber das Portal hoch.</p>';\n    break;\n  case 'document_expired':\n    to = ADMIN_EMAIL;\n    headline = 'Dokument abgelaufen';\n    lead = 'Erneuerung ueberfaellig.';\n    subject = '[Betreuer] Dokument abgelaufen: ' + (d.document_type || '') + ' / ' + (d.betreuer_name || '');\n    body = kv('Betreuer', d.betreuer_name + ' (' + d.betreuer_email + ')') +\n           kv('Dokument', d.document_type) + kv('Abgelaufen am', d.expired_at);\n    break;\n  case 'freibetrag_warning':\n    to = ADMIN_EMAIL;\n    const lvl = d.warning_level || '';\n    const farb = lvl === 'red' ? '#E2001A' : (lvl === 'orange' ? '#F39200' : '#FBC900');\n    headline = 'Freibetrag-Warnung (' + lvl + ')';\n    lead = (d.percentage || '?') + ' % des Jahres-Freibetrags erreicht.';\n    subject = '[Betreuer] Freibetrag ' + lvl + ': ' + (d.betreuer_name || '');\n    body = kv('Betreuer', d.betreuer_name) + kv('Jahr', d.year) +\n           kv('Auslastung', d.percentage + ' %') +\n           kv('Bisher genutzt', money(d.total_used)) +\n           kv('Verbleibend', money(d.remaining)) +\n           kv('Limit', money(d.limit)) +\n           '<p style=\"margin-top:14px;padding:10px 14px;border-left:4px solid '+farb+';background:#fafafa\">Warnstufe: <strong>' + esc(lvl) + '</strong></p>';\n    break;\n  case 'timesheet_approved':\n    to = BUCHHALTUNG_EMAIL;\n    headline = 'Stundennachweis genehmigt';\n    lead = 'Abrechnung kann angestossen werden.';\n    subject = '[Betreuer] Abrechnung ' + (d.contract_number || '') + ' / ' + (d.month || '') + '.' + (d.year || '');\n    body = kv('Betreuer', d.betreuer_name) +\n           kv('Schule', d.school_name + ' (' + d.school_code + ')') +\n           kv('Vertrag', d.contract_number) +\n           kv('Zeitraum', d.month + '/' + d.year) +\n           kv('Stunden', d.total_hours) +\n           kv('Betrag', money(d.total_amount)) +\n           kv('Projektnummer', d.projektnummer) +\n           kv('Kreditorennummer', d.kreditorennummer) +\n           (d.pdf_url ? '<p style=\"margin-top:14px\">PDF im Portal: <code>' + esc(d.pdf_url) + '</code></p>' : '');\n    break;\n  default:\n    return [{ json: { skip: true, reason: 'unknown_event_type', event_type: evt } }];\n}\n\nif (!to) {\n  return [{ json: { skip: true, reason: 'missing_recipient', event_type: evt } }];\n}\n\nconst html = shellHtml(headline, lead, body);\n\nreturn [{\n  json: {\n    skip: false,\n    eventType: evt,\n    to: to,\n    from: FROM_EMAIL,\n    subject: subject,\n    html: html,\n    contractNumber: d.contract_number || null,\n    documentId: d.document_id || null,\n    sentAt: new Date().toISOString()\n  }\n}];\n"
+      },
+      "id": "33333333-3333-3333-3333-333333333333",
+      "name": "Mail Builder",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-960, -80]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "44444444-4444-4444-4444-444444444444",
+              "leftValue": "={{ $json.skip }}",
+              "rightValue": false,
+              "operator": { "type": "boolean", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "55555555-5555-5555-5555-555555555555",
+      "name": "IF nicht skip",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [-640, -80]
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $json.from }}",
+        "toEmail": "={{ $json.to }}",
+        "subject": "={{ $json.subject }}",
+        "html": "={{ $json.html }}",
+        "options": {
+          "appendAttribution": false,
+          "replyTo": "buchhaltung@fes-minden.de"
+        }
+      },
+      "id": "66666666-6666-6666-6666-666666666666",
+      "name": "SMTP Send",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [-320, -160],
+      "credentials": {
+        "smtp": {
+          "id": "REPLACE_WITH_SMTP_CREDENTIAL_ID",
+          "name": "FES SMTP"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Confirmation-Payload fuer den Django-Inbound-Webhook bauen.\n// Schickt event_type=email_sent_confirmation mit event_id (uuid)\n// + recipient + sent_at + ggf. contract_number / document_id zurueck.\nconst src = $input.first().json;\nfunction uuid(){\n  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {\n    const r = Math.random()*16|0; const v = c==='x'?r:(r&0x3|0x8); return v.toString(16);\n  });\n}\nreturn [{ json: {\n  event_type: 'email_sent_confirmation',\n  event_id: uuid(),\n  recipient_email: src.to,\n  sent_at: src.sentAt,\n  contract_number: src.contractNumber,\n  document_id: src.documentId\n} }];\n"
+      },
+      "id": "77777777-7777-7777-7777-777777777777",
+      "name": "Build Confirmation Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [0, -160]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://betreuer.fes-credo.de/api/webhook/n8n/",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer REPLACE_WITH_DJANGO_INBOUND_TOKEN"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "timeout": 10000,
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "88888888-8888-8888-8888-888888888888",
+      "name": "Confirm to Django",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [320, -160]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Ruhig-still-Pfad: bei skip == true loggen, aber 200 zurueckgeben.\nreturn [{ json: { status: 'skipped', reason: $input.first().json.reason, event_type: $input.first().json.event_type } }];\n"
+      },
+      "id": "99999999-9999-9999-9999-999999999999",
+      "name": "Log skip",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-320, 80]
+    }
+  ],
+  "connections": {
+    "Webhook Betreuer Events": {
+      "main": [[{ "node": "Mail Builder", "type": "main", "index": 0 }]]
+    },
+    "Mail Builder": {
+      "main": [[{ "node": "IF nicht skip", "type": "main", "index": 0 }]]
+    },
+    "IF nicht skip": {
+      "main": [
+        [{ "node": "SMTP Send", "type": "main", "index": 0 }],
+        [{ "node": "Log skip", "type": "main", "index": 0 }]
+      ]
+    },
+    "SMTP Send": {
+      "main": [[{ "node": "Build Confirmation Payload", "type": "main", "index": 0 }]]
+    },
+    "Build Confirmation Payload": {
+      "main": [[{ "node": "Confirm to Django", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveExecutionProgress": true,
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "pinData": {},
+  "versionId": "00000000-0000-0000-0000-000000000001",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

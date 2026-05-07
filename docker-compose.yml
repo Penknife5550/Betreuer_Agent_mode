@@ -1,5 +1,5 @@
 # =====================================================================
-# Production-Baseline
+# Production-Baseline (Multi-Mandant-faehig)
 # =====================================================================
 # Dev laedt zusaetzlich docker-compose.override.yml automatisch
 # (Source-Mount, runserver, exponierte Ports).
@@ -12,12 +12,18 @@
 # externe Docker-Netzwerk "reverse_proxy".
 # Vor dem ersten Start auf dem Server einmalig:
 #   docker network create reverse_proxy
+#
+# Multi-Mandant: Container-, Volume- und Netzwerk-Namen werden ueber
+# die Variable MANDANT aus der .env eingesetzt -- so kann derselbe Code
+# fuer mehrere Mandanten parallel laufen, ohne Namens-Kollisionen.
+# Caddy spricht den Container dann unter "betreuer-${MANDANT}-django"
+# an (siehe Caddyfile.example).
 # =====================================================================
 
 services:
   django:
     build: .
-    container_name: betreuer_django
+    container_name: betreuer-${MANDANT}-django
     restart: unless-stopped
     env_file: .env
     environment:
@@ -40,7 +46,7 @@ services:
 
   postgres:
     image: postgres:16-alpine
-    container_name: betreuer_postgres
+    container_name: betreuer-${MANDANT}-postgres
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
@@ -61,7 +67,7 @@ services:
   # Muss laufen, damit async_task-Jobs abgearbeitet werden.
   django_q:
     build: .
-    container_name: betreuer_django_q
+    container_name: betreuer-${MANDANT}-django_q
     restart: unless-stopped
     env_file: .env
     environment:
@@ -75,12 +81,19 @@ services:
     networks:
       - internal
 
+# Volume-Keys mit explizitem name: damit fuer jeden MANDANT ein
+# eigenes Volume entsteht (Variablen-Expansion in Top-Level-Keys ist
+# nicht erlaubt -- daher feste Keys + name-Attribut mit Variable).
 volumes:
   postgres_data:
+    name: betreuer_${MANDANT}_postgres_data
   static_files:
+    name: betreuer_${MANDANT}_static_files
   media_files:
+    name: betreuer_${MANDANT}_media_files
 
 networks:
   internal:
+    name: betreuer_${MANDANT}_internal
   reverse_proxy:
     external: true

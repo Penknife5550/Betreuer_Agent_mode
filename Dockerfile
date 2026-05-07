@@ -65,9 +65,7 @@ RUN DATABASE_URL=sqlite:///tmp/build.db \
     DJANGO_SETTINGS_MODULE=betreuer_project.settings.development \
     python manage.py collectstatic --noinput || true
 
-# Healthcheck (nutzt den Django-View, der auch die DB prueft)
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD curl -fsS http://localhost:8000/health/ || exit 1
+# Healthcheck wird in docker-compose.yml definiert (war hier doppelt).
 
 EXPOSE 8000
 
