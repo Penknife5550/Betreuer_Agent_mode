@@ -58,7 +58,13 @@ DATABASES["default"]["OPTIONS"]["options"] = "-c statement_timeout=30000"
 # Security-Header
 # ---------------------------------------------------------------------------
 
-SECURE_SSL_REDIRECT = True
+# HTTP->HTTPS-Redirect: per Default OFF, weil Caddy davor steht und den
+# Redirect bereits automatisch (mit Let's-Encrypt-TLS) erledigt.
+# Wer Django ohne Caddy laufen laesst, kann SECURE_SSL_REDIRECT=True in
+# der .env setzen -- dann muss aber sichergestellt sein, dass der
+# Reverse-Proxy "X-Forwarded-Proto: https" verlaesslich weiterreicht,
+# sonst entsteht ein Redirect-Loop.
+SECURE_SSL_REDIRECT = os.environ.get("SECURE_SSL_REDIRECT", "False").lower() in ("true", "1", "yes")
 SESSION_COOKIE_SECURE = True
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = "Lax"
