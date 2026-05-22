@@ -47,13 +47,14 @@ RUN mkdir -p /app/staticfiles /app/media \
     && chown -R app:app /app
 
 # Tailwind-CSS bauen (ersetzt das bisherige CDN-Einbinden im Template).
-# Gescheiterter Build darf den Image-Build nicht blocken, daher || true --
-# in der Prod-Pipeline sollte ein gruener Build dennoch sichergestellt sein.
+# Fail-fast: gescheiterter Tailwind-Build muss den Image-Build stoppen,
+# sonst landet eine stale CSS im Container -- UI-Aenderungen wie Schatten
+# oder Ring-Utilities wuerden dann stillschweigend nicht greifen.
 RUN tailwindcss \
     -c /app/tailwind.config.js \
     -i /app/static/css/tailwind.input.css \
     -o /app/static/css/tailwind.css \
-    --minify || true
+    --minify
 
 # Collect static files mit production-Settings, damit das ManifestStaticFiles-
 # Storage zur Build-Zeit das staticfiles.json-Manifest erzeugt. Sonst wirft
