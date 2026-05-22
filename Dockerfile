@@ -55,15 +55,18 @@ RUN tailwindcss \
     -o /app/static/css/tailwind.css \
     --minify || true
 
-# Collect static files (faellt waehrend Build ggf. leise fehl, weil .env
-# nicht verfuegbar ist -- kein Blocker).
+# Collect static files mit production-Settings, damit das ManifestStaticFiles-
+# Storage zur Build-Zeit das staticfiles.json-Manifest erzeugt. Sonst wirft
+# Django zur Laufzeit "Missing staticfiles manifest entry" beim ersten Render.
+# Dummy-ENVs erfuellen die Fail-Fast-Checks in production.py; werden zur
+# Laufzeit durch die echte .env ueberschrieben.
 USER app
 RUN DATABASE_URL=sqlite:///tmp/build.db \
-    SECRET_KEY=build-time-only \
-    ALLOWED_HOSTS=localhost \
-    FERNET_KEY=build-time \
-    DJANGO_SETTINGS_MODULE=betreuer_project.settings.development \
-    python manage.py collectstatic --noinput || true
+    SECRET_KEY=build-time-only-not-for-runtime-xxxxxxxxxxxxxxxxxxxxxxxx \
+    ALLOWED_HOSTS=build.example.com \
+    FERNET_KEY=build-time-placeholder \
+    DJANGO_SETTINGS_MODULE=betreuer_project.settings.production \
+    python manage.py collectstatic --noinput
 
 # Healthcheck wird in docker-compose.yml definiert (war hier doppelt).
 

@@ -354,7 +354,7 @@
 <aside class="sidebar">
   <div class="sidebar-header">
     <h2>BetreuerApp</h2>
-    <p>Benutzerhandbuch v1.0 · 2026</p>
+    <p>Benutzerhandbuch v1.1 · Stand 25.02.2026</p>
   </div>
   <nav>
     <div class="nav-section">Einführung</div>
@@ -376,6 +376,13 @@
     <a class="nav-link sub" href="#koord-pruefen">Betreuer prüfen</a>
     <a class="nav-link sub" href="#koord-nachweise">Stundennachweise</a>
     <a class="nav-link sub" href="#koord-aktivieren">Betreuer aktivieren</a>
+
+    <div class="nav-section">Berichte</div>
+    <a class="nav-link" href="#berichte-monat">Monatsübersicht</a>
+    <a class="nav-link" href="#berichte-freibetrag">Freibetrag-Übersicht</a>
+
+    <div class="nav-section">Dokumente</div>
+    <a class="nav-link" href="#dok-erneuerung">Dokumente erneuern</a>
 
     <div class="nav-section">Betreuer</div>
     <a class="nav-link" href="#betreuer-registrierung">Registrierung</a>
@@ -940,12 +947,191 @@
 
 
     <!-- ══════════════════════════════════════════════════════ -->
+    <!-- BERICHTE                                              -->
+    <!-- ══════════════════════════════════════════════════════ -->
+    <h2 id="berichte-monat">Berichte – Monatsübersicht</h2>
+    <div class="role-badge role-admin">🏛️ Admin</div>
+    <div class="role-badge role-koord">🏫 Koordinator</div>
+
+    <p>Die <strong>Monatsübersicht</strong> ist die Standard-Auswertung am Monatsende. Sie zeigt alle <em>genehmigten</em> Stundennachweise eines bestimmten Monats – gruppiert nach Schule, mit Summen je Betreuer und Auszahlbetrag. Genau das, was die Buchhaltung für den Lohnlauf braucht.</p>
+
+    <p>Erreichbar über die obere Navigation unter <strong>„Berichte" → „Monatsübersicht"</strong> (URL: <code>/berichte/monatsuebersicht/</code>).</p>
+
+    <h4>Wer sieht was?</h4>
+    <table>
+      <thead><tr><th>Rolle</th><th>Sichtbarkeit</th></tr></thead>
+      <tbody>
+        <tr><td>Admin</td><td>Alle Schulen. Filter nach Schule, Monat und Jahr.</td></tr>
+        <tr><td>Koordinator</td><td>Nur die eigenen Schulen. Filter nach Monat und Jahr.</td></tr>
+      </tbody>
+    </table>
+
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <strong>Monat und Jahr wählen</strong>
+          <p>Standardmäßig ist der Vormonat vorausgewählt – das ist meist genau die Abrechnung, die jetzt ansteht.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <strong>(Admin) Schule eingrenzen</strong>
+          <p>Optional auf eine einzelne Schule beschränken. Leer lassen für „alle Schulen".</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <strong>„Filtern" klicken</strong>
+          <p>Die Tabelle wird aktualisiert: Betreuer, Anzahl Stunden, Stundensatz, Auszahlungsbetrag, Status.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <strong>CSV-Export</strong>
+          <p>Über <strong>„CSV Export"</strong> wird eine Datei <code>monatsuebersicht_YYYYMM.csv</code> heruntergeladen. Lässt sich direkt in Excel oder LibreOffice öffnen und an die Buchhaltung weitergeben.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout callout-info">
+      <div class="callout-icon">ℹ️</div>
+      <div class="callout-body">
+        <h4>Nur genehmigte Stunden</h4>
+        <p>Eingereichte, aber noch nicht genehmigte Nachweise erscheinen <em>nicht</em> in der Monatsübersicht. Wenn Zahlen fehlen: prüfen Sie unter „Nachweise" → Filter „Eingereicht", ob noch Nachweise auf Ihre Entscheidung warten.</p>
+      </div>
+    </div>
+
+    <h2 id="berichte-freibetrag">Berichte – Freibetrag-Übersicht</h2>
+    <div class="role-badge role-admin">🏛️ Admin</div>
+    <div class="role-badge role-koord">🏫 Koordinator</div>
+
+    <p>Die <strong>Freibetrag-Übersicht</strong> zeigt für jeden aktiven Betreuer den Stand seines Jahres-Freibetrags. Mit einem Blick sehen Sie, wer demnächst über die 3.300 €-Grenze rutscht. Erreichbar unter <strong>„Berichte" → „Freibetrag-Übersicht"</strong> (URL: <code>/berichte/freibetrag-uebersicht/</code>).</p>
+
+    <h4>Was steht in der Tabelle?</h4>
+    <ul>
+      <li><strong>Betreuer</strong> – Name und Schule</li>
+      <li><strong>Verbraucht</strong> – wie viel des Freibetrags dieses Jahr genutzt wurde (€)</li>
+      <li><strong>Restbetrag</strong> – wie viel noch übrig ist</li>
+      <li><strong>Auslastung</strong> – Prozent-Balken mit Farbcode (grün/gelb/orange/rot, identisch zur Dashboard-Ampel)</li>
+      <li><strong>Anderer Verein</strong> – falls in der Selbstauskunft angegeben</li>
+    </ul>
+
+    <div class="callout callout-tip">
+      <div class="callout-icon">💡</div>
+      <div class="callout-body">
+        <h4>Vorausschauend planen</h4>
+        <p>Wer im Herbst schon bei 80 % steht, schafft das ganze Schuljahr nicht steuerfrei. Sortieren Sie die Tabelle nach <strong>Auslastung absteigend</strong> und sprechen Sie mit den betroffenen Betreuern, bevor die rote Marke erreicht ist.</p>
+      </div>
+    </div>
+
+    <p>Auch hier gibt es einen <strong>CSV-Export</strong> – nützlich, um die Liste z.B. in einer Tabellenkalkulation weiterzubearbeiten oder an die Geschäftsstelle zu mailen.</p>
+
+    <!-- ══════════════════════════════════════════════════════ -->
+    <!-- DOKUMENT-ERNEUERUNG                                   -->
+    <!-- ══════════════════════════════════════════════════════ -->
+    <h2 id="dok-erneuerung">Dokumente erneuern</h2>
+    <p>Manche Dokumente sind zeitlich begrenzt gültig. Das System überwacht den Ablauf automatisch und schickt rechtzeitig Erinnerungen.</p>
+
+    <table>
+      <thead>
+        <tr><th>Dokument</th><th>Gilt für</th><th>Gültigkeit</th><th>Was passiert vor Ablauf?</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Infektionsschutzbelehrung (IfSB)</strong></td>
+          <td>alle Betreuer</td>
+          <td>24 Monate</td>
+          <td>System erstellt 30 Tage vor Ablauf ein neues PDF und benachrichtigt den Betreuer per E-Mail.</td>
+        </tr>
+        <tr>
+          <td><strong>Erweitertes Führungszeugnis</strong></td>
+          <td>nur externe Betreuer (keine Schüler/innen)</td>
+          <td>3 Monate ab Ausstellung</td>
+          <td>System mahnt rechtzeitig zur Neubeantragung beim Bürgeramt.</td>
+        </tr>
+        <tr>
+          <td><strong>Masernschutznachweis</strong></td>
+          <td>alle Betreuer</td>
+          <td>unbefristet (Immunität ist dauerhaft)</td>
+          <td>keine Erneuerung nötig</td>
+        </tr>
+        <tr>
+          <td><strong>Vertrag &amp; Vertraulichkeitserklärung</strong></td>
+          <td>alle Betreuer</td>
+          <td>solange aktiv</td>
+          <td>neuer Vertrag bei Tätigkeitswechsel oder neuem Schuljahr</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>Ablauf einer Erneuerung</h3>
+    <div class="process" style="flex-wrap:wrap">
+      <div class="process-step" style="min-width:110px">
+        <div class="ps-icon">📅</div>
+        <div class="ps-label">System erkennt nahenden Ablauf</div>
+        <div class="ps-who">täglich automatisch</div>
+      </div>
+      <div class="process-arrow">→</div>
+      <div class="process-step" style="min-width:110px">
+        <div class="ps-icon">📄</div>
+        <div class="ps-label">Neues PDF wird generiert</div>
+        <div class="ps-who">System</div>
+      </div>
+      <div class="process-arrow">→</div>
+      <div class="process-step" style="min-width:110px">
+        <div class="ps-icon">📧</div>
+        <div class="ps-label">E-Mail an Betreuer + Koordinator</div>
+        <div class="ps-who">System</div>
+      </div>
+      <div class="process-arrow">→</div>
+      <div class="process-step" style="min-width:110px">
+        <div class="ps-icon">✍️</div>
+        <div class="ps-label">Betreuer unterschreibt &amp; lädt hoch</div>
+        <div class="ps-who">Betreuer</div>
+      </div>
+      <div class="process-arrow">→</div>
+      <div class="process-step" style="min-width:110px">
+        <div class="ps-icon">✅</div>
+        <div class="ps-label">Koordinator prüft &amp; akzeptiert</div>
+        <div class="ps-who">Koordinator</div>
+      </div>
+    </div>
+
+    <div class="callout callout-warn">
+      <div class="callout-icon">⚠️</div>
+      <div class="callout-body">
+        <h4>Fristen ernst nehmen</h4>
+        <p>Läuft ein Dokument ab, ohne dass eine Erneuerung vorliegt, kann der Betreuer rechtlich nicht eingesetzt werden. Der Koordinator sollte spätestens 14 Tage nach der ersten Erinnerung beim Betreuer nachhaken.</p>
+      </div>
+    </div>
+
+    <div class="callout callout-info">
+      <div class="callout-icon">⚙️</div>
+      <div class="callout-body">
+        <h4>Technisch (für Admins)</h4>
+        <p>Die tägliche Prüfung läuft als Background-Task: <code>python manage.py check_document_renewals</code>. In der Produktion wird das per Cron im Docker-Container ausgeführt. Erinnerungen werden nur einmal pro Dokument gesendet (Flag <code>renewal_reminder_sent</code>).</p>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════ -->
     <!-- BETREUER BEREICH                                      -->
     <!-- ══════════════════════════════════════════════════════ -->
     <h2 id="betreuer-registrierung">Betreuer – Registrierung</h2>
     <div class="role-badge role-betreuer">🎒 Für Betreuer</div>
 
-    <p>Als neuer Betreuer erhalten Sie per E-Mail oder direkt vom Koordinator einen Registrierungslink. Klicken Sie auf diesen Link, um das Registrierungsformular zu öffnen.</p>
+    <div class="callout callout-info">
+      <div class="callout-icon">👋</div>
+      <div class="callout-body">
+        <h4>Hallo!</h4>
+        <p>Du leitest eine AG, machst Hausaufgabenbetreuung oder hilfst sonst an der Schule mit? Dann bist Du hier richtig. In den nächsten Abschnitten reden wir Dich direkt mit <strong>„Du"</strong> an – damit es leichter zu lesen ist.</p>
+      </div>
+    </div>
+
+    <p>Du hast vom Koordinator Deiner Schule einen Einladungslink bekommen – per E-Mail oder direkt persönlich. Klick auf diesen Link, dann öffnet sich das Registrierungsformular.</p>
 
     <div class="screenshot">
       <img src="screenshots/registrierung_oben.png" alt="Registrierung oben" onerror="this.parentElement.innerHTML='<div style=\'padding:60px;text-align:center;background:#f5f5f5;color:#999;font-size:14px\'>📷 Screenshot: Registrierungsformular oben (registrierung_oben.png)</div>'">
@@ -956,8 +1142,8 @@
 
     <h4>1. Persönliche Daten</h4>
     <ul>
-      <li><strong>Vorname &amp; Nachname</strong> – wie im Personalausweis</li>
-      <li><strong>E-Mail-Adresse</strong> – wird für den Login verwendet; bitte sorgfältig prüfen</li>
+      <li><strong>Vorname &amp; Nachname</strong> – so wie es in Deinem Ausweis steht</li>
+      <li><strong>E-Mail-Adresse</strong> – mit der meldest Du Dich später an. Bitte sorgfältig prüfen, ein Tippfehler hier macht später Ärger.</li>
       <li><strong>Anrede</strong> – Herr / Frau / Divers</li>
       <li><strong>Geburtsdatum</strong> – TT.MM.JJJJ</li>
       <li><strong>Geschlecht &amp; Staatsangehörigkeit</strong></li>
@@ -965,15 +1151,23 @@
 
     <h4>2. Adresse</h4>
     <ul>
-      <li>Straße, Hausnummer, PLZ und Ort (Wohnanschrift)</li>
+      <li>Straße, Hausnummer, PLZ und Ort – Deine Wohnadresse, an die später die Lohnsteuerbescheinigung geschickt wird.</li>
     </ul>
 
     <h4>3. Bankverbindung</h4>
     <ul>
-      <li><strong>Kontoinhaber</strong> – Name des Kontoinhabers (darf auch eine andere Person sein)</li>
-      <li><strong>IBAN</strong> – Deutsche IBAN beginnt mit DE (22 Stellen)</li>
-      <li><strong>BIC</strong> – Optional, nur für ausländische Konten nötig</li>
+      <li><strong>Kontoinhaber</strong> – der Name auf dem Konto. Darf auch ein Elternteil sein.</li>
+      <li><strong>IBAN</strong> – Deutsche IBAN beginnt mit DE und hat 22 Stellen. Steht auf Deiner EC-Karte.</li>
+      <li><strong>BIC</strong> – nur nötig, wenn Dein Konto im Ausland ist. Sonst leer lassen.</li>
     </ul>
+
+    <div class="callout callout-info">
+      <div class="callout-icon">🔒</div>
+      <div class="callout-body">
+        <h4>Deine IBAN ist sicher</h4>
+        <p>Die IBAN wird in der Datenbank <strong>verschlüsselt</strong> gespeichert. Auch der Admin sieht sie auf seinen Übersichten nur teilweise (z.B. <code>DE12 **** **** **** **34</code>). Niemand kann sie versehentlich kopieren oder weitergeben.</p>
+      </div>
+    </div>
 
     <div class="screenshot">
       <img src="screenshots/registrierung_unten.png" alt="Registrierung unten" onerror="this.parentElement.innerHTML='<div style=\'padding:60px;text-align:center;background:#f5f5f5;color:#999;font-size:14px\'>📷 Screenshot: Registrierungsformular unten (registrierung_unten.png)</div>'">
@@ -982,22 +1176,33 @@
 
     <h4>4. Vertrag &amp; Tätigkeit</h4>
     <ul>
-      <li><strong>Einsatzschule</strong> – An welcher Schule leiten Sie die AG?</li>
-      <li><strong>Projekt / Förderprogramm</strong> – Wird nach Schulwahl automatisch geladen</li>
-      <li><strong>Tätigkeit</strong> – z.B. AG-Leitung, Hausaufgabenbetreuung</li>
-      <li><strong>Betreuer-Typ</strong> – Schüler/in oder Externe Person</li>
-      <li><strong>Stundendauer</strong> – 60 Minuten oder 45 Minuten pro Einheit</li>
-      <li>Der <strong>Stundensatz</strong> wird automatisch berechnet und angezeigt</li>
+      <li><strong>Einsatzschule</strong> – an welcher Schule machst Du die AG?</li>
+      <li><strong>Projekt / Förderprogramm</strong> – die Liste füllt sich, sobald Du die Schule ausgewählt hast.</li>
+      <li><strong>Tätigkeit</strong> – z.B. AG-Leitung, Hausaufgabenbetreuung, Pausenbegleitung</li>
+      <li><strong>Betreuer-Typ</strong> – „Schüler/in" oder „Externe Person"</li>
+      <li><strong>Stundendauer</strong> – 60 Minuten (volle Stunde) oder 45 Minuten (Schulstunde) pro Einheit</li>
+      <li>Den <strong>Stundensatz</strong> brauchst Du nicht eintragen – das System berechnet ihn automatisch aus Tätigkeit und Betreuer-Typ.</li>
     </ul>
 
     <h4>5. Freibetrag-Erklärung</h4>
-    <p>Der Übungsleiterfreibetrag beträgt <strong>3.300 € pro Kalenderjahr</strong>. Geben Sie an, ob Sie diesen Freibetrag bereits bei einem anderen Verein nutzen. Falls ja, erscheinen zusätzliche Felder für den Betrag und den Vereinsnamen.</p>
+
+    <div class="callout callout-tip">
+      <div class="callout-icon">💡</div>
+      <div class="callout-body">
+        <h4>Was ist der Übungsleiterfreibetrag?</h4>
+        <p>Der Staat sagt: Wer ehrenamtlich oder nebenberuflich Kinder und Jugendliche betreut, ausbildet oder unterrichtet, darf bis zu <strong>3.300 € pro Jahr</strong> verdienen, <strong>ohne Steuern zu zahlen</strong>. Das ist der „Übungsleiterfreibetrag" (§ 3 Nr. 26 EStG).</p>
+        <p>Solange Du unter 3.300 € im Kalenderjahr bleibst, bekommst Du den vollen Betrag ausgezahlt. Darüber fallen Steuern und Sozialabgaben an.</p>
+      </div>
+    </div>
+
+    <p>Im Formular wirst Du gefragt: <em>„Nutzt Du den Freibetrag bereits bei einem anderen Verein?"</em> Wichtig: Der Freibetrag gilt <strong>insgesamt</strong>, nicht pro Verein. Wenn Du z.B. schon 1.000 € bei der Sportjugend abrechnest, bleiben Dir hier nur noch 2.300 €.</p>
+    <p>Wenn Du „Ja" anklickst, erscheinen zwei zusätzliche Felder: <strong>Betrag</strong> (wie viel Du beim anderen Verein abrechnest) und <strong>Vereinsname</strong>.</p>
 
     <div class="callout callout-warn">
       <div class="callout-icon">⚠️</div>
       <div class="callout-body">
-        <h4>Wichtig: Freibetrag-Erklärung</h4>
-        <p>Die Angabe zum Freibetrag ist rechtlich relevant. Bitte machen Sie wahrheitsgemäße Angaben. Bei Überschreitung des Freibetrags fallen Steuern und Sozialabgaben an.</p>
+        <h4>Bitte ehrlich antworten</h4>
+        <p>Die Angabe ist rechtlich verbindlich. Wenn Du den Freibetrag versehentlich doppelt nutzt, kann das Finanzamt das Geld später zurückfordern. Wenn Du unsicher bist, frag Deine Eltern oder den Koordinator.</p>
       </div>
     </div>
 
@@ -1006,35 +1211,35 @@
         <div class="step-num">✓</div>
         <div class="step-body">
           <strong>„Registrierung absenden" klicken</strong>
-          <p>Nach dem Absenden erhalten Sie eine Bestätigungsseite. Der Koordinator prüft nun Ihre Daten und sendet Ihnen die Vertragsdokumente zu.</p>
+          <p>Es kommt eine Bestätigungsseite. Danach prüft der Koordinator Deine Daten und schickt Dir die Vertragsdokumente (kommen als PDF per E-Mail).</p>
         </div>
       </div>
     </div>
 
     <!-- ── Betreuer: Passwort ── -->
     <h3 id="betreuer-passwort">Passwort setzen (nach der Registrierung)</h3>
-    <p>Nach Ihrer Registrierung erhalten Sie eine automatische E-Mail von N8N mit einem <strong>Link zum Passwort setzen</strong>. Dieser Link ist einmalig verwendbar und 72 Stunden gültig.</p>
+    <p>Kurz nach Deiner Registrierung bekommst Du automatisch eine E-Mail mit einem <strong>Link zum Passwort setzen</strong>. Der Link ist nur <strong>einmal</strong> verwendbar und <strong>72 Stunden</strong> gültig.</p>
 
     <div class="steps">
       <div class="step">
         <div class="step-num">1</div>
         <div class="step-body">
           <strong>E-Mail öffnen</strong>
-          <p>Betreff: „Willkommen bei der BetreuerApp – Passwort setzen". Klicken Sie auf den enthaltenen Link.</p>
+          <p>Betreff: „Willkommen bei der BetreuerApp – Passwort setzen". Schau auch im Spam-Ordner nach, falls Du nichts findest. Klick auf den Link in der E-Mail.</p>
         </div>
       </div>
       <div class="step">
         <div class="step-num">2</div>
         <div class="step-body">
           <strong>Passwort eingeben</strong>
-          <p>Wählen Sie ein sicheres Passwort (mindestens 8 Zeichen, Groß- und Kleinbuchstaben empfohlen). Wiederholen Sie die Eingabe zur Bestätigung.</p>
+          <p>Wähle ein sicheres Passwort: mindestens <strong>8 Zeichen</strong>, gemischt aus Groß-/Kleinbuchstaben und Zahlen. Tipp: Nimm einen Satz, den nur Du kennst, z.B. „MeinHund2017Bello!" – leicht zu merken, schwer zu raten.</p>
         </div>
       </div>
       <div class="step">
         <div class="step-num">3</div>
         <div class="step-body">
           <strong>„Passwort speichern" klicken</strong>
-          <p>Sie werden zur Bestätigungsseite weitergeleitet. Anschließend können Sie sich mit Ihrem Benutzernamen (E-Mail-Präfix) und dem neuen Passwort anmelden.</p>
+          <p>Du landest auf einer Bestätigungsseite. Ab jetzt kannst Du Dich anmelden – Dein Benutzername ist der Teil Deiner E-Mail vor dem @-Zeichen. Beispiel: aus <code>max.muster@web.de</code> wird der Benutzername <code>max.muster</code>.</p>
         </div>
       </div>
     </div>
@@ -1042,14 +1247,14 @@
     <div class="callout callout-warn">
       <div class="callout-icon">⚠️</div>
       <div class="callout-body">
-        <h4>Link abgelaufen?</h4>
-        <p>Falls der Link nicht mehr gültig ist, wenden Sie sich an Ihren Koordinator. Er kann über den Admin einen neuen Link anfordern.</p>
+        <h4>Link abgelaufen oder nicht angekommen?</h4>
+        <p>Melde Dich beim Koordinator. Der kann beim Admin einen neuen Link anfordern – das dauert nur kurz.</p>
       </div>
     </div>
 
     <!-- ── Betreuer: Dashboard ── -->
-    <h3 id="betreuer-dashboard">Betreuer – Dashboard</h3>
-    <p>Nach der Anmeldung sehen Sie Ihr persönliches Dashboard mit einem Überblick über Ihre aktuelle Situation:</p>
+    <h3 id="betreuer-dashboard">Dein Dashboard</h3>
+    <p>Nach der Anmeldung landest Du auf <strong>Deinem Dashboard</strong>. Hier siehst Du auf einen Blick, wo Du gerade stehst:</p>
 
     <div class="screenshot">
       <img src="screenshots/betreuer_dashboard.png" alt="Betreuer Dashboard" onerror="this.parentElement.innerHTML='<div style=\'padding:60px;text-align:center;background:#f5f5f5;color:#999;font-size:14px\'>📷 Screenshot: Betreuer-Dashboard (betreuer_dashboard.png)</div>'">
@@ -1057,77 +1262,92 @@
     </div>
 
     <table>
-      <thead><tr><th>Kachel</th><th>Was wird angezeigt?</th></tr></thead>
+      <thead><tr><th>Kachel</th><th>Was siehst Du dort?</th></tr></thead>
       <tbody>
-        <tr><td><strong>Meine Stunden</strong></td><td>Stunden im aktuellen Monat – klicken führt zur Stundenübersicht</td></tr>
-        <tr><td><strong>Freibetrag</strong></td><td>Verbrauchter Betrag im Kalenderjahr im Verhältnis zum Limit (3.300 €), mit farbigem Balken</td></tr>
-        <tr><td><strong>Meine Dokumente</strong></td><td>Gesamtanzahl der Dokumente und wie viele noch ausstehend sind</td></tr>
-        <tr><td><strong>Meine Verträge</strong></td><td>Anzahl aktiver Verträge</td></tr>
-        <tr><td><strong>Nächster Stichtag</strong></td><td>Immer der 17. des Folgemonats – bis dahin müssen die Stunden eingereicht sein</td></tr>
-        <tr><td><strong>Offene Nachweise</strong></td><td>Monate, für die noch kein Nachweis eingereicht wurde</td></tr>
+        <tr><td><strong>Meine Stunden</strong></td><td>Wie viele Stunden Du diesen Monat schon eingetragen hast. Klick drauf, um zur Stunden-Seite zu kommen.</td></tr>
+        <tr><td><strong>Freibetrag</strong></td><td>Wie viel von Deinen 3.300 € Du dieses Jahr schon verbraucht hast. Farbiger Balken zeigt den Stand.</td></tr>
+        <tr><td><strong>Meine Dokumente</strong></td><td>Wie viele Unterlagen Du insgesamt hast und wie viele noch fehlen.</td></tr>
+        <tr><td><strong>Meine Verträge</strong></td><td>Anzahl Deiner aktiven Verträge (Du kannst auch mehrere haben, z.B. an zwei Schulen).</td></tr>
+        <tr><td><strong>Nächster Stichtag</strong></td><td>Immer der <strong>17. des nächsten Monats</strong> – bis dahin müssen die Stunden eingereicht sein, sonst gibt's keine Auszahlung in der Runde.</td></tr>
+        <tr><td><strong>Offene Nachweise</strong></td><td>Monate, für die Du noch keinen Nachweis eingereicht hast.</td></tr>
       </tbody>
     </table>
 
     <div class="callout callout-info">
-      <div class="callout-icon">ℹ️</div>
+      <div class="callout-icon">🚦</div>
       <div class="callout-body">
-        <h4>Freibetrag-Ampel</h4>
-        <p>Der Freibetrag-Balken zeigt: <span style="color:#6BAA24">■ grün</span> = noch viel Spielraum, <span style="color:#FBC900">■ gelb</span> = 80 % verbraucht, <span style="color:#FF8C00">■ orange</span> = 90 % verbraucht, <span style="color:#E2001A">■ rot</span> = Freibetrag ausgeschöpft!</p>
+        <h4>Die Freibetrag-Ampel verstehen</h4>
+        <p>Der Balken färbt sich automatisch:</p>
+        <ul>
+          <li><span style="color:#6BAA24">■ grün</span> – Du hast noch viel Spielraum.</li>
+          <li><span style="color:#FBC900">■ gelb</span> – 80 % erreicht. Augen auf.</li>
+          <li><span style="color:#FF8C00">■ orange</span> – 90 % erreicht. Bald ist Schluss für dieses Jahr.</li>
+          <li><span style="color:#E2001A">■ rot</span> – 100 % verbraucht. Weitere Stunden werden steuerpflichtig.</li>
+        </ul>
+        <p>Der Freibetrag wird jedes Jahr am <strong>1. Januar</strong> zurückgesetzt – nicht zum Schuljahresbeginn!</p>
       </div>
     </div>
 
     <!-- ── Betreuer: Stunden ── -->
     <h3 id="betreuer-stunden">Stunden erfassen</h3>
-    <p>Klicken Sie im Dashboard auf <strong>„Meine Stunden"</strong> oder in der Navigationsleiste auf <strong>„Stunden"</strong>.</p>
+    <p>Klick im Dashboard auf <strong>„Meine Stunden"</strong> oder oben in der Navigation auf <strong>„Stunden"</strong>.</p>
 
     <div class="screenshot">
       <img src="screenshots/stunden_erfassen.png" alt="Stunden erfassen" onerror="this.parentElement.innerHTML='<div style=\'padding:60px;text-align:center;background:#f5f5f5;color:#999;font-size:14px\'>📷 Screenshot: Stunden erfassen (stunden_erfassen.png)</div>'">
       <div class="screenshot-caption">Stundenerfassung für den aktuellen Monat – vorhandene Einträge und Eingabeformular</div>
     </div>
 
-    <p>Die Seite zeigt den aktuellen Monat mit allen bereits eingetragenen Stunden. Mit den Pfeilen ← Vormonat / Folgemonat → wechseln Sie den Monat.</p>
+    <p>Die Seite zeigt den <strong>aktuellen Monat</strong> mit allen Stunden, die Du schon eingetragen hast. Mit den Pfeilen <strong>← Vormonat</strong> / <strong>Folgemonat →</strong> wechselst Du zu anderen Monaten.</p>
+
+    <div class="callout callout-info">
+      <div class="callout-icon">📋</div>
+      <div class="callout-body">
+        <h4>Mehrere Verträge?</h4>
+        <p>Wenn Du an mehreren Schulen oder in mehreren Programmen arbeitest, hast Du auch <strong>mehrere Verträge</strong>. Pro Vertrag gibt es einen eigenen Monatsnachweis. Du kannst oben auf der Seite zwischen den Verträgen umschalten.</p>
+      </div>
+    </div>
 
     <div class="steps">
       <div class="step">
         <div class="step-num">1</div>
         <div class="step-body">
           <strong>„+ Stunde eintragen" klicken</strong>
-          <p>Ein Eingabeformular klappt direkt unterhalb auf.</p>
+          <p>Ein kleines Formular klappt direkt darunter auf.</p>
         </div>
       </div>
       <div class="step">
         <div class="step-num">2</div>
         <div class="step-body">
           <strong>Datum, Von und Bis eingeben</strong>
-          <p>Wählen Sie das genaue Datum und die Start- sowie Endzeit der AG-Einheit.</p>
+          <p>Genaues Datum sowie Start- und Endzeit der AG-Einheit. Beispiel: 14.03.2026, 14:00 bis 15:30 Uhr.</p>
         </div>
       </div>
       <div class="step">
         <div class="step-num">3</div>
         <div class="step-body">
           <strong>Pause eingeben (optional)</strong>
-          <p>Falls eine Pause stattfand, tragen Sie die Minuten ein. Standard ist 0.</p>
+          <p>Falls Du Pause gemacht hast, trag die Minuten ein. Sonst auf 0 lassen.</p>
         </div>
       </div>
       <div class="step">
         <div class="step-num">4</div>
         <div class="step-body">
           <strong>Förderprogramm wählen</strong>
-          <p>Das Programm, dem diese Stunde zugeordnet wird. Wird bei mehreren Programmen im Vertrag angezeigt.</p>
+          <p>Die Liste zeigt nur die Programme, die zu Deinem Vertrag passen. Wenn nur eins zur Auswahl steht, ist es automatisch ausgewählt.</p>
         </div>
       </div>
       <div class="step">
         <div class="step-num">5</div>
         <div class="step-body">
           <strong>Beschreibung (optional)</strong>
-          <p>Kurze Notiz zur AG-Einheit, z.B. „Schach-Turniervorbereitung".</p>
+          <p>Kurze Notiz zur Einheit, z.B. „Schach-Turniervorbereitung" oder „Mathe-Hilfe Klasse 6". Hilft Dir und dem Koordinator beim Nachvollziehen.</p>
         </div>
       </div>
       <div class="step">
         <div class="step-num">6</div>
         <div class="step-body">
           <strong>„Speichern" klicken</strong>
-          <p>Der Eintrag erscheint sofort in der Tabelle. Sie können ihn über „Bearb." bearbeiten oder über „Löschen" entfernen – solange der Monat noch nicht eingereicht wurde.</p>
+          <p>Der Eintrag taucht sofort in der Tabelle auf. Du kannst ihn jederzeit über <strong>„Bearb."</strong> ändern oder mit <strong>„Löschen"</strong> entfernen – aber nur solange Du den Monat noch nicht eingereicht hast.</p>
         </div>
       </div>
     </div>
@@ -1135,35 +1355,35 @@
     <div class="callout callout-tip">
       <div class="callout-icon">💡</div>
       <div class="callout-body">
-        <h4>Stunden können jederzeit nachgetragen werden</h4>
-        <p>Sie können Stunden für vergangene Monate nachtragen, solange der Monat noch nicht eingereicht wurde. Nach dem Einreichen sind keine Änderungen mehr möglich.</p>
+        <h4>Stunden nachtragen ist okay</h4>
+        <p>Du musst nicht jeden Tag eintragen. Auch sammeln und am Monatsende eingeben ist möglich. Solange der Monat nicht eingereicht ist, kannst Du alles anpassen.</p>
       </div>
     </div>
 
     <!-- ── Betreuer: Einreichen ── -->
     <h3 id="betreuer-einreichen">Monat einreichen</h3>
-    <p>Am Ende des Monats (Frist: <strong>17. des Folgemonats</strong>) müssen Sie Ihre Stunden einreichen:</p>
+    <p>Am Ende des Monats musst Du Deine Stunden „einreichen" – das ist quasi das digitale Abschicken Deines Stundenzettels. Frist: <strong>17. des Folgemonats</strong>.</p>
 
     <div class="steps">
       <div class="step">
         <div class="step-num">1</div>
         <div class="step-body">
-          <strong>Alle Stunden prüfen</strong>
-          <p>Schauen Sie nochmals alle Einträge durch. Korrekturen sind nach dem Einreichen nicht mehr möglich.</p>
+          <strong>Alle Stunden noch einmal prüfen</strong>
+          <p>Bist Du sicher, dass alle Termine drin sind? Stimmen die Zeiten? <strong>Nach dem Einreichen kannst Du nichts mehr ändern.</strong></p>
         </div>
       </div>
       <div class="step">
         <div class="step-num">2</div>
         <div class="step-body">
           <strong>„Monat einreichen" klicken</strong>
-          <p>Der Button befindet sich rechts unterhalb der Stundentabelle.</p>
+          <p>Der grüne Button steht rechts unter der Tabelle. Es kommt eine Sicherheitsabfrage – mit „Ja, einreichen" bestätigen.</p>
         </div>
       </div>
       <div class="step">
         <div class="step-num">3</div>
         <div class="step-body">
           <strong>Warten auf Genehmigung</strong>
-          <p>Der Koordinator prüft den Nachweis. Bei der Genehmigung oder Ablehnung werden Sie per E-Mail informiert.</p>
+          <p>Jetzt schaut sich der Koordinator den Nachweis an. Du bekommst eine E-Mail, sobald er genehmigt oder abgelehnt hat.</p>
         </div>
       </div>
     </div>
@@ -1171,23 +1391,23 @@
     <div class="callout callout-danger">
       <div class="callout-icon">🚨</div>
       <div class="callout-body">
-        <h4>Frist beachten!</h4>
-        <p>Reichen Sie Ihre Stunden <strong>bis zum 17. des Folgemonats</strong> ein. Verspätete Einreichungen können zu verzögerter Auszahlung führen.</p>
+        <h4>Frist nicht verpassen!</h4>
+        <p>Bis zum <strong>17. des Folgemonats</strong> muss der Monat eingereicht sein. Wer später dran ist, wartet einen Monat länger auf die Auszahlung – das System macht keine Ausnahmen.</p>
       </div>
     </div>
 
     <!-- ── Betreuer: Dokumente ── -->
-    <h3 id="betreuer-dokumente">Dokumente</h3>
-    <p>Im Dashboard-Abschnitt <strong>„Meine Dokumente"</strong> sehen Sie alle erforderlichen Unterlagen mit ihrem aktuellen Status:</p>
+    <h3 id="betreuer-dokumente">Deine Dokumente</h3>
+    <p>Im Dashboard-Abschnitt <strong>„Meine Dokumente"</strong> siehst Du alle Unterlagen, die Du brauchst, mit ihrem aktuellen Status. Welche Dokumente Du genau brauchst, hängt davon ab, ob Du Schüler/in oder externe Person bist.</p>
 
     <table>
-      <thead><tr><th>Status</th><th>Symbol</th><th>Bedeutung / Was tun?</th></tr></thead>
+      <thead><tr><th>Status</th><th>Symbol</th><th>Bedeutung / Was kannst Du tun?</th></tr></thead>
       <tbody>
-        <tr><td>Ausstehend</td><td>⚪ Grau</td><td>Dokument noch nicht generiert. Warten Sie auf den Koordinator.</td></tr>
-        <tr><td>Generiert / Versendet</td><td>🔵 Blau</td><td>PDF wurde erstellt und Ihnen zugesandt. Bitte ausdrucken, unterschreiben und hochladen.</td></tr>
-        <tr><td>Hochgeladen</td><td>🟡 Gelb</td><td>Dokument hochgeladen, wartet auf Prüfung durch den Koordinator.</td></tr>
-        <tr><td>Geprüft</td><td>🟢 Grün</td><td>Dokument akzeptiert. Kein Handlungsbedarf.</td></tr>
-        <tr><td>Abgelehnt</td><td>🔴 Rot</td><td>Dokument wurde abgelehnt. Ablehnungsgrund wird angezeigt. Bitte erneut hochladen.</td></tr>
+        <tr><td>Ausstehend</td><td>⚪ Grau</td><td>Dokument ist noch nicht erstellt. Warte auf den Koordinator.</td></tr>
+        <tr><td>Generiert / Versendet</td><td>🔵 Blau</td><td>Das PDF ist da. Lade es runter, drucke es aus, unterschreibe es und lade es wieder hoch.</td></tr>
+        <tr><td>Hochgeladen</td><td>🟡 Gelb</td><td>Du hast es abgegeben, der Koordinator schaut es sich an.</td></tr>
+        <tr><td>Geprüft</td><td>🟢 Grün</td><td>Alles gut, fertig.</td></tr>
+        <tr><td>Abgelehnt</td><td>🔴 Rot</td><td>Etwas hat nicht gepasst (z.B. Unterschrift fehlt, Foto unscharf). Der Grund steht dabei – einfach neu hochladen.</td></tr>
       </tbody>
     </table>
 
@@ -1197,48 +1417,63 @@
         <div class="step-num">1</div>
         <div class="step-body">
           <strong>PDF herunterladen (falls vorhanden)</strong>
-          <p>Klicken Sie auf <strong>„PDF"</strong> neben dem Dokument, um es herunterzuladen und auszudrucken.</p>
+          <p>Klick auf <strong>„PDF"</strong> neben dem Dokument. Es wird heruntergeladen.</p>
         </div>
       </div>
       <div class="step">
         <div class="step-num">2</div>
         <div class="step-body">
           <strong>Unterschreiben</strong>
-          <p>Drucken Sie das Dokument aus, unterschreiben Sie es handschriftlich und scannen Sie es ein (oder fotografieren Sie es ab).</p>
+          <p>Drucke das Dokument aus, unterschreibe es mit der Hand und scanne es ein. Wenn Du keinen Scanner hast: einfach mit dem Handy abfotografieren. Wichtig: gut lesbar, hell und gerade.</p>
         </div>
       </div>
       <div class="step">
         <div class="step-num">3</div>
         <div class="step-body">
           <strong>„Hochladen" klicken</strong>
-          <p>Klicken Sie auf den blauen Button neben dem Dokument. Wählen Sie die Datei aus (PDF, JPG oder PNG, max. empfohlen 5 MB).</p>
+          <p>Klick auf den blauen Button neben dem Dokument. Wähle die Datei aus (PDF, JPG oder PNG, maximal <strong>10 MB</strong>). Größere Dateien lehnt das System ab.</p>
         </div>
       </div>
       <div class="step">
         <div class="step-num">4</div>
         <div class="step-body">
           <strong>„Absenden" klicken</strong>
-          <p>Das Dokument wird hochgeladen und wartet nun auf die Prüfung durch den Koordinator.</p>
+          <p>Fertig. Der Status wechselt auf gelb und der Koordinator prüft.</p>
         </div>
+      </div>
+    </div>
+
+    <div class="callout callout-info">
+      <div class="callout-icon">🔁</div>
+      <div class="callout-body">
+        <h4>Manche Dokumente müssen erneuert werden</h4>
+        <p>Die <strong>Infektionsschutzbelehrung</strong> ist 2 Jahre gültig, das <strong>Führungszeugnis</strong> (nur für externe Betreuer) muss alle 3 Monate frisch sein. Keine Sorge – das System erinnert Dich automatisch per E-Mail, bevor etwas abläuft. Details unter <a href="#dok-erneuerung">„Dokumente erneuern"</a>.</p>
       </div>
     </div>
 
     <!-- ── Betreuer: Profil ── -->
     <h3 id="betreuer-profil">Profil verwalten</h3>
-    <p>Über das Dropdown oben rechts (Ihr Name) → <strong>„Profil"</strong> oder im Schnellzugriff des Dashboards gelangen Sie zu Ihrer Profilseite.</p>
+    <p>Oben rechts neben Deinem Namen ist ein kleines Dropdown. Klick dort auf <strong>„Profil"</strong> (oder im Dashboard auf den Schnellzugriff).</p>
 
     <div class="screenshot">
       <img src="screenshots/betreuer_profil.png" alt="Betreuer Profil" onerror="this.parentElement.innerHTML='<div style=\'padding:60px;text-align:center;background:#f5f5f5;color:#999;font-size:14px\'>📷 Screenshot: Betreuer-Profil (betreuer_profil.png)</div>'">
       <div class="screenshot-caption">Profilseite mit Kontoinformationen, Adresse und (geschwärzter) Bankverbindung</div>
     </div>
 
-    <p>Auf der Profilseite sehen Sie Ihre hinterlegten Daten. Mit <strong>„Profil bearbeiten"</strong> können Sie Adresse, Telefonnummer und andere Angaben aktualisieren. Mit <strong>„Passwort ändern"</strong> setzen Sie ein neues Passwort.</p>
+    <p>Auf der Profilseite siehst Du alles, was über Dich hinterlegt ist. Mit <strong>„Profil bearbeiten"</strong> kannst Du folgendes selbst ändern:</p>
+    <ul>
+      <li>Adresse (z.B. wenn Du umziehst)</li>
+      <li>Telefonnummer</li>
+      <li>Bankverbindung (IBAN, Kontoinhaber)</li>
+      <li>Freibetrag-Angabe (wenn sich Deine Situation bei einem anderen Verein ändert)</li>
+    </ul>
+    <p>Mit <strong>„Passwort ändern"</strong> setzt Du jederzeit ein neues Passwort.</p>
 
     <div class="callout callout-info">
-      <div class="callout-icon">ℹ️</div>
+      <div class="callout-icon">📝</div>
       <div class="callout-body">
-        <h4>Bankverbindung geändert?</h4>
-        <p>Änderungen der Bankverbindung müssen über den Koordinator oder Admin vorgenommen werden, da diese Daten für die Auszahlung relevant sind und verifiziert werden müssen.</p>
+        <h4>Jede Änderung wird protokolliert</h4>
+        <p>Aus rechtlichen Gründen merkt sich das System: <em>Wer hat wann was geändert?</em> – z.B. wenn Du Deine IBAN aktualisierst. Das ist nichts Schlimmes, sondern Standard für Personalverwaltung. Eltern und Lehrkräfte können das beruhigen.</p>
       </div>
     </div>
 
@@ -1375,32 +1610,47 @@
     <!-- ══════════════════════════════════════════════════════ -->
     <h2 id="faq">Häufige Fragen (FAQ)</h2>
 
-    <h3>Ich habe mein Passwort vergessen – was nun?</h3>
-    <p>Wenden Sie sich an Ihren Koordinator. Der Admin kann über die Django-Verwaltung einen neuen Passwort-Reset-Link für Sie generieren und Ihnen zusenden.</p>
+    <h3>Ich habe mein Passwort vergessen – was tun?</h3>
+    <p>Melde Dich beim Koordinator Deiner Schule. Der kann beim Admin einen neuen Passwort-Reset-Link für Dich anfordern. Du bekommst den Link dann per E-Mail.</p>
 
     <h3>Ich sehe keine „Monat einreichen"-Schaltfläche.</h3>
-    <p>Die Schaltfläche erscheint nur, wenn mindestens ein Stundeneintrag im Monat vorhanden ist und der Monat noch nicht eingereicht wurde. Prüfen Sie, ob Sie im richtigen Monat sind.</p>
+    <p>Der Button erscheint nur, wenn (1) mindestens ein Stundeneintrag im Monat existiert <em>und</em> (2) der Monat noch nicht eingereicht wurde. Prüfe, ob Du auf der richtigen Seite bist – manchmal landet man versehentlich im Folgemonat.</p>
 
-    <h3>Mein Stundeneintrag wurde abgelehnt – was passiert?</h3>
-    <p>Der Koordinator hat den gesamten Monatsnachweis mit einem Ablehnungsgrund zurückgeschickt. Sie werden per E-Mail benachrichtigt. Korrigieren Sie die betreffenden Einträge und reichen Sie den Monat erneut ein.</p>
+    <h3>Mein Stundennachweis wurde abgelehnt – was jetzt?</h3>
+    <p>Der Koordinator hat den gesamten Monatsnachweis mit einem Ablehnungsgrund zurückgeschickt. Du bekommst eine E-Mail mit dem Grund (z.B. „Datum stimmt nicht mit Stundenplan überein"). Korrigiere die Einträge und reiche den Monat noch einmal ein.</p>
 
-    <h3>Wie wechsle ich zwischen Vormonat und aktuellem Monat?</h3>
-    <p>Auf der Stunden-Seite gibt es oben links den Pfeil „← Vormonat" und rechts „Folgemonat →". Sie können bis zu 12 Monate zurückgehen, um nachzutragen.</p>
+    <h3>Wie wechsle ich zwischen Monaten?</h3>
+    <p>Auf der Stunden-Seite findest Du oben die Pfeile <strong>„← Vormonat"</strong> und <strong>„Folgemonat →"</strong>. Du kannst bis zu 12 Monate zurückgehen, um etwas nachzutragen.</p>
 
     <h3>Ich habe mich an einer falschen Schule registriert.</h3>
-    <p>Wenden Sie sich an den Koordinator. Er kann über die Django-Verwaltung die Schule im Vertrag korrigieren.</p>
+    <p>Melde Dich beim Koordinator – der kann die Schule im Vertrag korrigieren. <strong>Nicht</strong> noch einmal registrieren! Das gibt sonst doppelte Datensätze.</p>
 
-    <h3>Wann erhalte ich meine Auszahlung?</h3>
-    <p>Das System informiert die Buchhaltung automatisch nach der Genehmigung des Stundennachweises. Die tatsächliche Auszahlung erfolgt gemäß dem internen Auszahlungsrhythmus des CSFV – in der Regel einmal monatlich.</p>
+    <h3>Wann bekomme ich mein Geld?</h3>
+    <p>Sobald der Koordinator Deinen Stundennachweis genehmigt, geht eine Info an die Buchhaltung. Diese rechnet meist <strong>einmal pro Monat</strong> ab – also typischerweise zum Monatsende nach der Genehmigung. Frist für die Einreichung: bis zum 17. des Folgemonats.</p>
 
-    <h3>Was ist die Kostenstelle?</h3>
-    <p>Die Kostenstelle ist ein Buchungsschlüssel für die interne Finanzbuchhaltung (z.B. KST-4711). Sie wird vom Admin dem jeweiligen Förderprogramm zugeordnet und erscheint automatisch auf den Stundennachweisen und in der zentralen Auswertung.</p>
+    <h3>Was ist überhaupt eine „Kostenstelle"?</h3>
+    <p>Stell Dir die Kostenstelle wie eine <strong>kleine Schublade in der Buchhaltung</strong> vor: Jedes Förderprogramm hat seine eigene Schublade (z.B. „KST-4711" für „OGS Hausaufgabenhilfe"). Wenn Deine Stunden ausgezahlt werden, weiß die Buchhaltung damit genau, aus welcher Schublade das Geld kommt. Du musst Dich darum nicht kümmern – das System trägt die richtige Kostenstelle automatisch ein.</p>
 
-    <h3>Was bedeutet „Freibetrag bei anderem Verein genutzt"?</h3>
-    <p>Wenn Sie bereits bei einem anderen Verein den Übungsleiterfreibetrag beanspruchen, müssen Sie das angeben. Das System berücksichtigt dann nur den verbleibenden Restbetrag, damit Sie steuerlich korrekt abgerechnet werden.</p>
+    <h3>Was heißt „Freibetrag bei anderem Verein genutzt"?</h3>
+    <p>Der Übungsleiterfreibetrag (3.300 €/Jahr) gilt für Dich <strong>insgesamt</strong>, nicht pro Verein. Wenn Du z.B. zusätzlich beim Sportverein als Trainer/in 1.000 € im Jahr verdienst, sind hier nur noch 2.300 € steuerfrei möglich. Deshalb fragt das Formular Dich danach – damit die Berechnung stimmt und es später keine Steuer-Nachzahlung gibt.</p>
 
     <h3>Wie ändere ich meine E-Mail-Adresse?</h3>
-    <p>Über Profil → Profil bearbeiten. Die neue E-Mail wird für zukünftige Benachrichtigungen verwendet.</p>
+    <p>Im Menü oben rechts → <strong>Profil → Profil bearbeiten</strong>. Die neue Adresse wird ab sofort für alle Benachrichtigungen verwendet. Dein <em>Benutzername</em> bleibt allerdings gleich (der ändert sich nicht automatisch).</p>
+
+    <h3>Ich habe mehrere Verträge – sehe ich alle?</h3>
+    <p>Ja. Im Dashboard zeigt die Kachel <strong>„Meine Verträge"</strong> die Anzahl. Auf der Stunden-Seite kannst Du oben zwischen den Verträgen umschalten – jeder bekommt einen eigenen Monatsnachweis. Wichtig: Deine Stunden zählen <strong>gemeinsam</strong> auf den Freibetrag, egal wo Du sie machst.</p>
+
+    <h3>Wann muss ich mein Führungszeugnis erneuern?</h3>
+    <p>Nur externe Betreuer/innen (also <em>keine</em> Schüler/innen der Schule) brauchen ein erweitertes Führungszeugnis, und das darf maximal <strong>3 Monate alt</strong> sein. Das System erinnert Dich rechtzeitig per E-Mail, bevor die Frist abläuft. Das Zeugnis bekommst Du beim Bürgeramt – Schülerinnen und Schüler müssen sich darum gar nicht kümmern.</p>
+
+    <h3>Wann muss ich die Infektionsschutzbelehrung erneuern?</h3>
+    <p>Alle 2 Jahre. Das System erinnert Dich automatisch und erstellt ein neues Formular. Du musst es nur unterschreiben und wieder hochladen – wie beim ersten Mal.</p>
+
+    <h3>Ich habe einen Stundeneintrag falsch gespeichert – kann ich das korrigieren?</h3>
+    <p>Ja, solange der Monat noch nicht eingereicht ist. Klick auf <strong>„Bearb."</strong> neben dem Eintrag in der Tabelle, ändere die Werte und speichere erneut. Mit <strong>„Löschen"</strong> entfernst Du den Eintrag komplett.</p>
+
+    <h3>Sind meine Bankdaten sicher?</h3>
+    <p>Ja. Deine IBAN wird <strong>verschlüsselt</strong> in der Datenbank gespeichert (Standard-Verschlüsselung „Fernet"). Selbst der Admin sieht in den Übersichten meist nur die letzten 4 Stellen – die vollständige IBAN ist nur für die Auszahlung sichtbar.</p>
 
 
     <!-- ══════════════════════════════════════════════════════ -->
@@ -1433,7 +1683,7 @@
 </main>
 
 <footer class="footer">
-  © 2026 Christlicher Schulförderverein Minden e.V. &nbsp;·&nbsp; BetreuerApp Handbuch v1.0 &nbsp;·&nbsp; Stand: Februar 2026
+  © 2026 Christlicher Schulförderverein Minden e.V. &nbsp;·&nbsp; BetreuerApp Handbuch v1.1 &nbsp;·&nbsp; Stand: 25. Februar 2026
 </footer>
 <div class="footer-bar">
   <span style="background:#575756;flex:4"></span>
