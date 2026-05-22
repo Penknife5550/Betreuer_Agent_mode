@@ -252,3 +252,19 @@ def test_health_check():
     assert response.status_code == 200
     data = response.json()
     assert data == {'status': 'ok'}
+
+
+@pytest.mark.django_db
+def test_health_check_bypasses_allowed_hosts(settings):
+    """
+    /health/ muss auch dann 200 liefern, wenn der Host-Header nicht in
+    ALLOWED_HOSTS steht -- der Docker-Healthcheck spricht den Container
+    per 'localhost:8000' an, waehrend ALLOWED_HOSTS in Prod nur die
+    oeffentliche Domain enthaelt. Diese Absicherung steht und faellt
+    mit der HealthCheckMiddleware vor der CommonMiddleware.
+    """
+    settings.ALLOWED_HOSTS = ['betreuer.fes-credo.de']
+    client = Client(HTTP_HOST='localhost:8000')
+    response = client.get('/health/')
+    assert response.status_code == 200
+    assert response.json() == {'status': 'ok'}

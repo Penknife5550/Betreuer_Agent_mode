@@ -7,9 +7,14 @@ Add ``'apps.core.middleware.AuditLogMiddleware'`` to MIDDLEWARE
 **after** ``AuthenticationMiddleware``.
 """
 
+import logging
 import threading
 
+from django.db import OperationalError, connection
+from django.http import JsonResponse
+
 _thread_locals = threading.local()
+_logger = logging.getLogger(__name__)
 
 
 def get_current_user():
@@ -47,3 +52,39 @@ class AuditLogMiddleware:
         if x_forwarded_for:
             return x_forwarded_for.split(",")[0].strip()
         return request.META.get("REMOTE_ADDR")
+
+
+class HealthCheckMiddleware:
+    """
+    Beantwortet /health/ vor dem Host-Check der CommonMiddleware.
+
+    Der Docker-Healthcheck ruft den Container per "localhost:8000" auf --
+    "localhost" steht in Produktion aber nicht in ALLOWED_HOSTS (dort
+    nur die oeffentliche Domain). Ohne diesen Shortcut wuerde Django
+    jeden Healthcheck mit DisallowedHost 400 ablehnen und der Container
+    schluepfte in den "unhealthy"-Status.
+
+    Position: ganz oben in MIDDLEWARE, vor SecurityMiddleware.
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        if request.path == "/health/":
+            return self._health()
+        return self.get_response(request)
+
+    @staticmethod
+    def _health():
+        try:
+            with connection.cursor() as cur:
+                cur.execute("SELECT 1")
+                cur.fetchone()
+        except OperationalError as exc:
+            _logger.error("Healthcheck DB failure: %s", exc)
+            return JsonResponse({"status": "db_down"}, status=503)
+        except Exception as exc:  # pragma: no cover - safety net
+            _logger.exception("Healthcheck unexpected failure: %s", exc)
+            return JsonResponse({"status": "error"}, status=503)
+        return JsonResponse({"status": "ok"})

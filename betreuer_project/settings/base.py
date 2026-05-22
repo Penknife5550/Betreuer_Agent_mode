@@ -64,6 +64,10 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    # Vor SecurityMiddleware/CommonMiddleware: /health/ darf den
+    # Host-Check umgehen, damit der Docker-Healthcheck (curl localhost)
+    # nicht an ALLOWED_HOSTS scheitert.
+    "apps.core.middleware.HealthCheckMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
