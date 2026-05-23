@@ -2,10 +2,12 @@ import logging
 
 from django.contrib import messages
 from django.contrib.auth import logout
+from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib.auth.views import LoginView, PasswordChangeView
 from django.shortcuts import redirect
 from django.urls import reverse_lazy
+from django.views.decorators.http import require_POST
 from django.views.generic import TemplateView
 
 from apps.documents.services import mask_iban
@@ -81,8 +83,11 @@ class CustomLoginView(LoginView):
         return "/login/"
 
 
+@require_POST
+@login_required
 def logout_view(request):
-    """Log the user out and redirect to the login page."""
+    """Logout via POST (CSRF-geschuetzt). Verhindert Forced-Logout durch
+    Prefetcher/Image-Tags. Django 5+ erlaubt nur noch POST fuer Logout."""
     logout(request)
     return redirect("accounts:login")
 

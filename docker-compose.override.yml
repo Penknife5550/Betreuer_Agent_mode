@@ -4,24 +4,22 @@
 # Wird automatisch von "docker compose up" zusaetzlich zu
 # docker-compose.yml geladen. In Prod NICHT verwenden:
 #   docker compose -f docker-compose.yml up -d
-# -- ohne -f laed docker-compose.override.yml automatisch dazu.
+#
+# Hinweis macOS: Der frueher hier verwendete Bind-Mount ".:/app"
+# fuehrte auf macOS Docker Desktop (VirtioFS/gRPC-FUSE) reproduzierbar
+# zu "Resource deadlock avoided" Crashes im Django-Container. Daher
+# wird der Code-Mount weggelassen; Aenderungen am Code erfordern auf
+# diesen Systemen ein "docker compose build django".
+#
+# Linux-Hosts: Falls ueberhaupt kein Mount-Problem auftritt, kann
+# der Block volumes/command lokal in einer .override.local.yml
+# (per -f) ergaenzt werden.
 # =====================================================================
 
 services:
   django:
-    command: python manage.py runserver 0.0.0.0:8000
-    volumes:
-      - .:/app
-      - static_files:/app/staticfiles
-      - media_files:/app/media
     ports:
       - "127.0.0.1:8000:8000"
-
   postgres:
     ports:
       - "127.0.0.1:5432:5432"
-
-  django_q:
-    volumes:
-      - .:/app
-      - media_files:/app/media

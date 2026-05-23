@@ -1,4 +1,4 @@
-{% load static %}<!DOCTYPE html>
+{% load static ui_extras %}<!DOCTYPE html>
 <html lang="de">
 <head>
     <meta charset="UTF-8">
@@ -14,142 +14,103 @@
       hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
     <a href="#main-content" class="skip-link">Zum Inhalt springen</a>
 
+    {# htmx-Ladeindikator als duenner Top-Balken, ueber dem Sticky-Header. #}
+    <div class="htmx-indicator fixed top-0 left-0 right-0 h-0.5 bg-credo-dark z-50"
+         role="status" aria-label="Laedt"></div>
+
     {# ------------------------------------------------------------------ #}
-    {# Navigation (nur fuer eingeloggte Benutzer)                         #}
+    {# App-Shell-Navigation (nur fuer eingeloggte Benutzer)                #}
     {# ------------------------------------------------------------------ #}
     {% if user.is_authenticated %}
-    <nav class="bg-credo-dark shadow-sm" x-data="{ mobileOpen: false }">
+    {# Sentinel oberhalb des Headers: scrollt er aus dem Viewport, setzt app-shell.js data-stuck="true". #}
+    <div id="header-sentinel" class="h-px" aria-hidden="true"></div>
+
+    <header data-app-header class="header-shell" x-data="{ mobileOpen: false }"
+            @keydown.escape.window="mobileOpen = false">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex items-center justify-between h-16">
+            <div class="flex items-center gap-6 h-16">
 
-                {# Logo + App-Name #}
-                <div class="flex items-center">
+                {# Logo links: Ziel ist das Rollen-Dashboard = erstes Nav-Item aus app_shell. #}
+                <a href="{{ main_nav_items.0.url|default:'/' }}"
+                   class="flex items-center shrink-0 -m-2 p-2 rounded-lg
+                          focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-credo-dark">
                     <img src="{% static 'img/logo_foerderverein.svg' %}"
-                         alt="CSFV Logo"
-                         class="h-10 w-auto">
-                    <span class="ml-3 text-white text-lg font-semibold hidden sm:block">BetreuerApp</span>
-                </div>
+                         alt=""
+                         width="144" height="36"
+                         class="h-9 w-auto"
+                         aria-hidden="true">
+                    <span class="sr-only">BetreuerApp — Christlicher Schulfoerderverein Minden</span>
+                </a>
 
-                {# Desktop Navigation #}
-                <div class="hidden md:flex items-center space-x-4">
-                    {% if user.is_superuser and not user.profile %}
-                    <a href="{% url 'dashboards:admin_dashboard' %}"
-                       class="text-gray-300 hover:text-white px-3 py-2 text-sm font-medium">
-                        Dashboard
-                    </a>
-                    <a href="{% url 'contracts:betreuer_list' %}"
-                       class="text-gray-300 hover:text-white px-3 py-2 text-sm font-medium">
-                        Betreuer
-                    </a>
-                    <a href="{% url 'timetracking:timesheet_list' %}"
-                       class="text-gray-300 hover:text-white px-3 py-2 text-sm font-medium">
-                        Nachweise
-                    </a>
-                    <a href="{% url 'contracts:registration_link_list' %}"
-                       class="text-gray-300 hover:text-white px-3 py-2 text-sm font-medium">
-                        Reg.-Links
-                    </a>
-                    <a href="{% url 'reports:monthly_overview' %}"
-                       class="text-gray-300 hover:text-white px-3 py-2 text-sm font-medium">
-                        Berichte
-                    </a>
-                    <a href="{% url 'admin:index' %}"
-                       class="text-gray-300 hover:text-white px-3 py-2 text-sm font-medium">
-                        Verwaltung
-                    </a>
-                    {% elif user.profile.is_admin %}
-                    <a href="{% url 'dashboards:admin_dashboard' %}"
-                       class="text-gray-300 hover:text-white px-3 py-2 text-sm font-medium">
-                        Dashboard
-                    </a>
-                    <a href="{% url 'contracts:betreuer_list' %}"
-                       class="text-gray-300 hover:text-white px-3 py-2 text-sm font-medium">
-                        Betreuer
-                    </a>
-                    <a href="{% url 'timetracking:timesheet_list' %}"
-                       class="text-gray-300 hover:text-white px-3 py-2 text-sm font-medium">
-                        Nachweise
-                    </a>
-                    <a href="{% url 'contracts:registration_link_list' %}"
-                       class="text-gray-300 hover:text-white px-3 py-2 text-sm font-medium">
-                        Reg.-Links
-                    </a>
-                    <a href="{% url 'reports:monthly_overview' %}"
-                       class="text-gray-300 hover:text-white px-3 py-2 text-sm font-medium">
-                        Berichte
-                    </a>
-                    <a href="{% url 'admin:index' %}"
-                       class="text-gray-300 hover:text-white px-3 py-2 text-sm font-medium">
-                        Verwaltung
-                    </a>
-                    {% elif user.profile.is_koordinator %}
-                    <a href="{% url 'dashboards:koordinator_dashboard' %}"
-                       class="text-gray-300 hover:text-white px-3 py-2 text-sm font-medium">
-                        Dashboard
-                    </a>
-                    <a href="{% url 'contracts:betreuer_list' %}"
-                       class="text-gray-300 hover:text-white px-3 py-2 text-sm font-medium">
-                        Betreuer
-                    </a>
-                    <a href="{% url 'timetracking:timesheet_list' %}"
-                       class="text-gray-300 hover:text-white px-3 py-2 text-sm font-medium">
-                        Nachweise
-                    </a>
-                    <a href="{% url 'contracts:registration_link_list' %}"
-                       class="text-gray-300 hover:text-white px-3 py-2 text-sm font-medium">
-                        Reg.-Links
-                    </a>
-                    <a href="{% url 'reports:monthly_overview' %}"
-                       class="text-gray-300 hover:text-white px-3 py-2 text-sm font-medium">
-                        Berichte
-                    </a>
-                    {% elif user.profile.is_betreuer %}
-                    <a href="{% url 'dashboards:betreuer_dashboard' %}"
-                       class="text-gray-300 hover:text-white px-3 py-2 text-sm font-medium">
-                        Dashboard
-                    </a>
-                    <a href="{% url 'timetracking:time_entry_list' %}"
-                       class="text-gray-300 hover:text-white px-3 py-2 text-sm font-medium">
-                        Stunden
-                    </a>
-                    {% endif %}
+                {# Desktop-Navigation mittig #}
+                <nav class="hidden lg:flex flex-1 items-center justify-center"
+                     aria-label="Hauptnavigation">
+                    {% for item in main_nav_items %}
+                        <a href="{{ item.url }}" class="nav-link"
+                           {% if nav_active == item.key %}aria-current="page"{% endif %}>{{ item.label }}</a>
+                    {% endfor %}
+                </nav>
 
-                    {# User-Dropdown #}
-                    <div class="relative" x-data="{ open: false }">
-                        <button @click="open = !open"
-                                :aria-expanded="open.toString()"
-                                aria-haspopup="true"
-                                class="flex items-center text-gray-300 hover:text-white text-sm font-medium">
-                            <span>{{ user.get_full_name|default:user.username }}</span>
-                            <svg class="ml-1 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                      d="M19 9l-7 7-7-7"/>
-                            </svg>
-                        </button>
-                        {# shadow-xl + ring: Dropdown klar als Overlay sichtbar,
-                           damit darunterliegende Buttons nicht "abgeschnitten" wirken. #}
-                        <div x-show="open"
-                             @click.away="open = false"
-                             x-transition
-                             class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-xl ring-1 ring-black ring-opacity-5 py-1 z-50">
-                            <a href="{% url 'accounts:profile' %}"
-                               class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                                Mein Profil
-                            </a>
-                            <a href="{% url 'accounts:logout' %}"
-                               class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                                Abmelden
-                            </a>
+                {# User-Dropdown rechts (Desktop) #}
+                <div class="hidden lg:block relative shrink-0"
+                     x-data="{ open: false }"
+                     @keydown.escape="if (open) { open = false; $refs.userBtn.focus() }">
+                    {# Disclosure-Pattern (kein role=menu); aria-expanded + aria-controls reichen. #}
+                    <button x-ref="userBtn"
+                            @click="open = !open"
+                            :aria-expanded="open.toString()"
+                            aria-controls="user-menu-panel"
+                            class="flex items-center gap-2 rounded-full pl-1 pr-2 py-1
+                                   hover:bg-neutral-100 transition-colors duration-150
+                                   focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-credo-dark">
+                        <span class="avatar-circle" aria-hidden="true">{{ user|initials }}</span>
+                        <span class="hidden xl:inline max-w-[160px] truncate text-sm font-medium text-credo-dark"
+                              title="{{ user.get_full_name|default:user.username }}">
+                            {{ user.get_full_name|default:user.username }}
+                        </span>
+                        <svg class="h-4 w-4 text-neutral-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                    </button>
+
+                    <div id="user-menu-panel"
+                         x-show="open"
+                         @click.away="open = false"
+                         x-transition.origin.top.right
+                         class="absolute right-0 mt-2 w-60 rounded-xl bg-white
+                                shadow-lg ring-1 ring-black/5 p-1.5 z-50"
+                         x-cloak>
+                        <div class="px-3 py-2">
+                            <p class="text-sm font-medium text-credo-dark break-words">
+                                {{ user.get_full_name|default:user.username }}
+                            </p>
+                            {% if user.email %}
+                            <p class="text-xs text-neutral-500 truncate">{{ user.email }}</p>
+                            {% endif %}
                         </div>
+                        <div class="user-menu-divider"></div>
+                        <a href="{% url 'accounts:profile' %}" class="user-menu-item">Mein Profil</a>
+                        {% if user.is_superuser or user.profile.is_admin %}
+                        <div class="user-menu-divider"></div>
+                        <a href="{% url 'admin:index' %}" class="user-menu-item">Verwaltung</a>
+                        {% endif %}
+                        <div class="user-menu-divider"></div>
+                        <form method="post" action="{% url 'accounts:logout' %}" class="block">
+                            {% csrf_token %}
+                            <button type="submit" class="user-menu-item w-full text-left">Abmelden</button>
+                        </form>
                     </div>
                 </div>
 
-                {# Mobile-Menu-Button #}
+                {# Mobile-Burger ganz rechts #}
                 <button @click="mobileOpen = !mobileOpen"
                         :aria-expanded="mobileOpen.toString()"
-                        aria-label="Navigationsmenue oeffnen"
+                        :aria-label="mobileOpen ? 'Navigationsmenue schliessen' : 'Navigationsmenue oeffnen'"
                         aria-controls="mobile-navigation"
-                        class="md:hidden text-gray-300 hover:text-white">
+                        class="lg:hidden ml-auto inline-flex items-center justify-center
+                               h-11 w-11 rounded-lg text-credo-dark
+                               hover:bg-neutral-100 transition-colors
+                               focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-credo-dark">
                     <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                         <path x-show="!mobileOpen"
                               stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -162,92 +123,32 @@
             </div>
         </div>
 
-        {# Mobile Navigation #}
+        {# Mobile-Panel: schliesst automatisch bei Linkklick #}
         <div id="mobile-navigation"
              x-show="mobileOpen"
              x-transition
-             class="md:hidden bg-credo-dark border-t border-gray-600">
-            <div class="px-4 pt-2 pb-3 space-y-1">
-                {% if user.is_superuser and not user.profile %}
-                <a href="{% url 'dashboards:admin_dashboard' %}"
-                   class="block text-gray-300 hover:text-white px-3 py-2 text-base font-medium">
-                    Dashboard
-                </a>
-                <a href="{% url 'contracts:betreuer_list' %}"
-                   class="block text-gray-300 hover:text-white px-3 py-2 text-base font-medium">
-                    Betreuer
-                </a>
-                <a href="{% url 'timetracking:timesheet_list' %}"
-                   class="block text-gray-300 hover:text-white px-3 py-2 text-base font-medium">
-                    Stundennachweise
-                </a>
-                <a href="{% url 'contracts:registration_link_list' %}"
-                   class="block text-gray-300 hover:text-white px-3 py-2 text-base font-medium">
-                    Registrierungslinks
-                </a>
-                <a href="{% url 'admin:index' %}"
-                   class="block text-gray-300 hover:text-white px-3 py-2 text-base font-medium">
-                    Verwaltung
-                </a>
-                {% elif user.profile.is_admin %}
-                <a href="{% url 'dashboards:admin_dashboard' %}"
-                   class="block text-gray-300 hover:text-white px-3 py-2 text-base font-medium">
-                    Dashboard
-                </a>
-                <a href="{% url 'contracts:betreuer_list' %}"
-                   class="block text-gray-300 hover:text-white px-3 py-2 text-base font-medium">
-                    Betreuer
-                </a>
-                <a href="{% url 'timetracking:timesheet_list' %}"
-                   class="block text-gray-300 hover:text-white px-3 py-2 text-base font-medium">
-                    Stundennachweise
-                </a>
-                <a href="{% url 'contracts:registration_link_list' %}"
-                   class="block text-gray-300 hover:text-white px-3 py-2 text-base font-medium">
-                    Registrierungslinks
-                </a>
-                <a href="{% url 'admin:index' %}"
-                   class="block text-gray-300 hover:text-white px-3 py-2 text-base font-medium">
-                    Verwaltung
-                </a>
-                {% elif user.profile.is_koordinator %}
-                <a href="{% url 'dashboards:koordinator_dashboard' %}"
-                   class="block text-gray-300 hover:text-white px-3 py-2 text-base font-medium">
-                    Dashboard
-                </a>
-                <a href="{% url 'contracts:betreuer_list' %}"
-                   class="block text-gray-300 hover:text-white px-3 py-2 text-base font-medium">
-                    Betreuer
-                </a>
-                <a href="{% url 'timetracking:timesheet_list' %}"
-                   class="block text-gray-300 hover:text-white px-3 py-2 text-base font-medium">
-                    Stundennachweise
-                </a>
-                <a href="{% url 'contracts:registration_link_list' %}"
-                   class="block text-gray-300 hover:text-white px-3 py-2 text-base font-medium">
-                    Registrierungslinks
-                </a>
-                {% elif user.profile.is_betreuer %}
-                <a href="{% url 'dashboards:betreuer_dashboard' %}"
-                   class="block text-gray-300 hover:text-white px-3 py-2 text-base font-medium">
-                    Dashboard
-                </a>
-                <a href="{% url 'timetracking:time_entry_list' %}"
-                   class="block text-gray-300 hover:text-white px-3 py-2 text-base font-medium">
-                    Stunden
-                </a>
+             @click="if ($event.target.tagName === 'A') mobileOpen = false"
+             class="lg:hidden border-t border-neutral-200 bg-white"
+             x-cloak>
+            <nav class="py-2" aria-label="Mobile Hauptnavigation">
+                {% for item in main_nav_items %}
+                    <a href="{{ item.url }}" class="nav-link-mobile"
+                       {% if nav_active == item.key %}aria-current="page"{% endif %}>{{ item.label }}</a>
+                {% endfor %}
+
+                <div class="my-2 h-px bg-neutral-100" aria-hidden="true"></div>
+
+                <a href="{% url 'accounts:profile' %}" class="nav-link-mobile">Mein Profil</a>
+                {% if user.is_superuser or user.profile.is_admin %}
+                <a href="{% url 'admin:index' %}" class="nav-link-mobile">Verwaltung</a>
                 {% endif %}
-                <a href="{% url 'accounts:profile' %}"
-                   class="block text-gray-300 hover:text-white px-3 py-2 text-base font-medium">
-                    Mein Profil
-                </a>
-                <a href="{% url 'accounts:logout' %}"
-                   class="block text-gray-300 hover:text-white px-3 py-2 text-base font-medium">
-                    Abmelden
-                </a>
-            </div>
+                <form method="post" action="{% url 'accounts:logout' %}">
+                    {% csrf_token %}
+                    <button type="submit" class="nav-link-mobile w-full text-left">Abmelden</button>
+                </form>
+            </nav>
         </div>
-    </nav>
+    </header>
     {% endif %}
 
     {# ------------------------------------------------------------------ #}
@@ -287,21 +188,20 @@
     </main>
 
     {# ------------------------------------------------------------------ #}
-    {# Footer mit CREDO-Linie                                              #}
+    {# Footer: CREDO-Linie oben als Brand-Signatur, dann Copyright          #}
     {# ------------------------------------------------------------------ #}
-    <footer class="mt-auto">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-            <div class="text-center text-xs text-gray-400 mb-2">
-                &copy; {{ current_year|default:"2026" }} Christlicher Schulf&ouml;rderverein Minden e.V.
-            </div>
-        </div>
-        {# CREDO-Linie via wiederverwendbarer Klasse #}
+    <footer class="mt-12">
         <div class="credo-linie" role="presentation" aria-hidden="true">
             <span class="c-grau" style="flex:4;"></span>
             <span class="c-gelb"></span>
             <span class="c-gruen"></span>
             <span class="c-rot"></span>
             <span class="c-blau"></span>
+        </div>
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <p class="text-center text-xs text-neutral-500">
+                &copy; {{ current_year|default:"2026" }} Christlicher Schulf&ouml;rderverein Minden e.V.
+            </p>
         </div>
     </footer>
 
@@ -310,6 +210,7 @@
     {# ------------------------------------------------------------------ #}
     <script src="{% static 'js/htmx.min.js' %}"></script>
     <script defer src="{% static 'js/alpine.min.js' %}"></script>
+    <script defer src="{% static 'js/app-shell.js' %}"></script>
 
     {% block extra_js %}{% endblock %}
 </body>

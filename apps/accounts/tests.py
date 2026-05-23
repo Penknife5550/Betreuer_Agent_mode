@@ -103,10 +103,16 @@ def test_betreuer_redirected_to_betreuer_dashboard(betreuer_user):
 
 @pytest.mark.django_db
 def test_logout_redirects_to_login(admin_user):
-    """GET /logout/ should log the user out and redirect to /login/."""
+    """POST /logout/ should log the user out and redirect to /login/.
+    GET ist seit Django 5 / Security-Hardening nicht mehr erlaubt (405)."""
     client = Client()
     client.force_login(admin_user)
-    response = client.get('/logout/')
+
+    # GET ist verboten (CSRF/Forced-Logout-Schutz)
+    assert client.get('/logout/').status_code == 405
+
+    # POST funktioniert und redirected
+    response = client.post('/logout/')
     assert response.status_code == 302
     assert '/login/' in response.url
 

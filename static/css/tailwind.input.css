@@ -93,9 +93,77 @@
   .htmx-request.htmx-indicator {
     opacity: 1;
   }
+
+  /* Alpine.js x-cloak: verhindert Flackern vor Hydration. */
+  [x-cloak] { display: none !important; }
 }
 
 @layer components {
+  /* ==========================================================================
+   * App-Shell (Header, Mobile-Nav, User-Dropdown)
+   * ========================================================================== */
+
+  /* Heller Sticky-Header mit dezenter Bottom-Border. Shadow erst,
+     wenn data-stuck="true" (gesetzt von app-shell.js via Sentinel). */
+  .header-shell {
+    @apply sticky top-0 z-40 bg-white/85
+           border-b border-neutral-200/70
+           transition-shadow duration-150;
+  }
+  @supports (backdrop-filter: blur(8px)) {
+    .header-shell { backdrop-filter: blur(8px); }
+  }
+  .header-shell[data-stuck="true"] {
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.04);
+  }
+
+  /* Nav-Link mit Underline-Active-State (Single-Source via aria-current). */
+  .nav-link {
+    @apply relative inline-flex items-center h-16 px-3
+           text-[15px] font-medium text-neutral-600
+           hover:text-credo-dark hover:bg-neutral-50
+           transition-colors duration-150;
+  }
+  .nav-link[aria-current="page"] {
+    @apply text-credo-dark;
+  }
+  .nav-link[aria-current="page"]::after {
+    content: "";
+    position: absolute;
+    left: 0.75rem;
+    right: 0.75rem;
+    bottom: -1px; /* ueberlappt den Header-border-b, damit der Strich klar sichtbar bleibt */
+    height: 2px;
+    background-color: theme("colors.credo.dark");
+  }
+
+  /* Mobile-Nav-Link (gleiche Logik, mehr Padding, linke Akzentlinie statt Underline). */
+  .nav-link-mobile {
+    @apply block px-4 py-3 text-[15px] font-medium text-neutral-700
+           hover:bg-neutral-50 border-l-2 border-transparent;
+  }
+  .nav-link-mobile[aria-current="page"] {
+    @apply text-credo-dark border-credo-dark bg-neutral-50;
+  }
+
+  /* User-Dropdown-Item */
+  .user-menu-item {
+    @apply flex items-center gap-2 rounded-md px-3 py-2
+           text-sm text-neutral-700
+           hover:bg-neutral-50 hover:text-credo-dark
+           transition-colors duration-150;
+  }
+  .user-menu-divider {
+    @apply my-1 h-px bg-neutral-100;
+  }
+
+  /* Avatar-Kreis (im Trigger-Button) */
+  .avatar-circle {
+    @apply inline-flex items-center justify-center
+           h-9 w-9 rounded-full bg-credo-dark text-white
+           text-xs font-semibold tracking-wide;
+  }
+
   /* ---- CREDO-Linie ---- */
   .credo-linie {
     display: flex;
