@@ -54,6 +54,7 @@
                 {# User-Dropdown rechts (Desktop) #}
                 <div class="hidden lg:block relative shrink-0"
                      x-data="{ open: false }"
+                     @click.outside="open = false"
                      @keydown.escape="if (open) { open = false; $refs.userBtn.focus() }">
                     {# Disclosure-Pattern (kein role=menu); aria-expanded + aria-controls reichen. #}
                     <button x-ref="userBtn"
@@ -75,7 +76,6 @@
 
                     <div id="user-menu-panel"
                          x-show="open"
-                         @click.away="open = false"
                          x-transition.origin.top.right
                          class="absolute right-0 mt-2 w-60 rounded-xl bg-white
                                 shadow-lg ring-1 ring-black/5 p-1.5 z-50"
