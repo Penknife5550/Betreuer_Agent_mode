@@ -28,6 +28,10 @@ services:
     env_file: .env
     environment:
       - DB_HOST=postgres
+      # collectstatic beim Start -> haelt das Manifest im static_files-Volume
+      # aktuell (verhindert "Missing staticfiles manifest entry" nach Rebuild).
+      # Nur der Web-Container braucht das; der django_q-Worker setzt es nicht.
+      - RUN_COLLECTSTATIC=1
     volumes:
       - static_files:/app/staticfiles
       - media_files:/app/media

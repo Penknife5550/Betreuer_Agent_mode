@@ -46,6 +46,11 @@ COPY . /app/
 RUN mkdir -p /app/staticfiles /app/media \
     && chown -R app:app /app
 
+# Entrypoint ausfuehrbar machen; CRLF entfernen, falls auf einem Windows-Host
+# ausgecheckt (sonst "no such file or directory: /bin/sh^M").
+RUN sed -i 's/\r$//' /app/docker-entrypoint.sh \
+    && chmod +x /app/docker-entrypoint.sh
+
 # Tailwind-CSS bauen (ersetzt das bisherige CDN-Einbinden im Template).
 # Fail-fast: gescheiterter Tailwind-Build muss den Image-Build stoppen,
 # sonst landet eine stale CSS im Container -- UI-Aenderungen wie Schatten
@@ -72,6 +77,10 @@ RUN DATABASE_URL=sqlite:///tmp/build.db \
 # Healthcheck wird in docker-compose.yml definiert (war hier doppelt).
 
 EXPOSE 8000
+
+# Entrypoint faehrt (nur wenn RUN_COLLECTSTATIC=1) collectstatic und startet
+# dann das jeweilige CMD (waitress bzw. qcluster im django_q-Service).
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
 
 # Run with Waitress WSGI server. Threads & Connections bewusst gesetzt,
 # damit gelegentliche PDF-/n8n-Wartezeiten nicht alle Worker blocken.

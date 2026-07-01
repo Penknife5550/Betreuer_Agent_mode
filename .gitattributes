@@ -1,0 +1,4 @@
+# Shell-Skripte MUESSEN LF behalten, sonst scheitert der Container-Start
+# ("no such file or directory: /bin/sh^M"), auch wenn auf Windows ausgecheckt.
+*.sh text eol=lf
+docker-entrypoint.sh text eol=lf
