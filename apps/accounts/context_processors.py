@@ -78,7 +78,11 @@ def _main_nav_items(user) -> list[NavItem]:
         return []
 
     profile = _profile(user)
-    is_admin = user.is_superuser or (profile and profile.is_admin)
+    # Deckungsgleich mit AdminDashboardView.test_func und root_redirect:
+    # NUR ein Superuser OHNE Profil ist Admin. Ein Superuser mit Koordinator-/
+    # Betreuer-Profil folgt seiner Profilrolle -- sonst zeigt die Nav aufs
+    # Admin-Dashboard, das ihm 403 wirft.
+    is_admin = (user.is_superuser and not profile) or bool(profile and profile.is_admin)
     is_koord = bool(profile and profile.is_koordinator)
     is_betreuer = bool(profile and profile.is_betreuer)
 

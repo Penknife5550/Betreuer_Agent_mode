@@ -339,8 +339,14 @@ def check_and_notify_renewals():
             warned += 1
 
     # ---- 2. Fuehrungszeugnis for betreuers aged 18+ (3-month rule) ----
-    # Age >= 18 means born on or before today minus 18 years
-    cutoff_date = today.replace(year=today.year - 18)
+    # Age >= 18 means born on or before today minus 18 years.
+    # Schaltjahr-Guard: am 29.02. existiert der 29.02. im Zieljahr (year-18)
+    # nicht -> ValueError. Fallback auf 28.02., damit der taegliche
+    # Django-Q-Task nicht failt.
+    try:
+        cutoff_date = today.replace(year=today.year - 18)
+    except ValueError:
+        cutoff_date = today.replace(year=today.year - 18, day=28)
 
     fz_docs = Document.objects.filter(
         status="verified",

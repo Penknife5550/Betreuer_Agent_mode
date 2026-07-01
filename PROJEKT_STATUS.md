@@ -79,7 +79,7 @@ Alle Phasen 1–5 sind vollstaendig implementiert und getestet.
 - Koordinator: nur eigene Schulen / Admin: alle mit Filter
 
 ### API & Webhooks
-- Ausgehend: N8N-Benachrichtigungen (13 Event-Typen)
+- Ausgehend: N8N-Benachrichtigungen (9 Event-Typen)
 - Eingehend: Webhook-Endpoint `/api/webhook/n8n/`
 - Bearer-Token-Authentifizierung
 - Events: email_sent_confirmation, document_received_confirmation
@@ -155,8 +155,11 @@ betreuer_app/
 | schools | 7 | School, SchoolYear |
 | timetracking | 54 | TimeEntry, Timesheet, PDF, Approve |
 | api | 17 | Webhook Auth, Events, Payloads |
-| notifications | 3 | Platzhalter (Services via Integration getestet) |
+| notifications | 19 | send_notification, alle 9 Wrapper, Mock-Tests |
 | **Gesamt** | **245** | |
+
+> **Hinweis (01.07.2026):** Diese Tabelle ist veraltet. Statischer Stand: ~381 Test-Methoden
+> (u.a. contracts ~146, documents ~55). Zahlen bei naechstem `pytest`-Lauf aktualisieren.
 
 ---
 
@@ -223,11 +226,9 @@ docker compose restart django
    - Tests fuer Notification-Logging
    - **Warum:** Aktuell fire-and-forget, kein Audit-Trail fuer E-Mails
 
-2. **Notifications-Tests** (~1h)
-   - `apps/notifications/tests.py` ist aktuell nur ein Platzhalter
-   - Unit-Tests fuer alle 13 Notification-Wrapper
-   - Mock-Tests fuer send_notification()
-   - **Warum:** Luecke in der Test-Coverage
+2. ~~**Notifications-Tests** (~1h)~~ — **ERLEDIGT**
+   - `apps/notifications/tests.py` enthaelt 19 Testmethoden (TestSendNotification + TestNotifyWrappers)
+   - Unit-Tests fuer alle 9 Notification-Wrapper + Mock-Tests fuer send_notification()
 
 ### Mittlere Prioritaet
 
@@ -237,10 +238,9 @@ docker compose restart django
    - Betreuer: Freibetrag-Fortschrittsbalken, naechste Erneuerungstermine
    - **Warum:** Dashboards zeigen noch wenig actionable Informationen
 
-4. **N+1 Query-Optimierung** (~1h)
-   - `AdminDashboardView` und `KoordinatorDashboardView` iterieren ueber alle Betreuer
-   - Bei 50-80 Betreuern akzeptabel, aber mit `prefetch_related` optimierbar
-   - **Warum:** Performance-Verbesserung fuer Wachstum
+4. ~~**N+1 Query-Optimierung** (~1h)~~ — **ERLEDIGT**
+   - Freibetrag-Warnungen werden per `count_freibetrag_warnings` in EINER aggregierten
+     Query gezaehlt (kein O(n)-Python-Loop mehr); Budgets per `get_budget_statuses_bulk`
 
 ### Niedrige Prioritaet
 
@@ -265,7 +265,14 @@ Diese Regeln muessen bei allen Aenderungen eingehalten werden:
 5. Fat Models, Thin Views
 6. Jede App eigenstaendig (keine zirkulaeren Abhaengigkeiten)
 7. Signals vermeiden (Ausnahme: Audit-Log)
-8. IBAN verschluesseln (Fernet, Key in .env)
+8. ~~IBAN verschluesseln (Fernet, Key in .env)~~ **AUSNAHME seit V2:** IBAN
+   wird bewusst als Klartext gespeichert (Migrationen 0004/0006 haben die
+   Fernet-Verschluesselung entfernt). Begruendung: Vereinfachung im V2-Umbau.
+   Mitigation: (a) IBAN wird ueberall nur maskiert angezeigt (`mask_iban`),
+   (b) IBAN/BIC werden NICHT im Klartext ins Audit-Log geschrieben
+   (`AUDIT_SENSITIVE_FIELDS`). DB-/Backup-Zugriff muss organisatorisch
+   abgesichert sein. Re-Encryption ist bei Bedarf moeglich (Feld zurueck auf
+   `EncryptedCharField` + Daten-Migration).
 9. Audit-Log fuer alles (Wer, Was, Wann, Vorher/Nachher)
 10. Deutsche Feldnamen nur wo fachlich noetig
 

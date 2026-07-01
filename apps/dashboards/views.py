@@ -7,7 +7,7 @@ einzigen aggregierten Query gezaehlt. Foerderprogramm-Budgets werden per
 ``get_budget_statuses_bulk`` ermittelt.
 """
 
-from datetime import date
+from datetime import date, timedelta
 
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.db.models import Count, Q, Sum
@@ -48,9 +48,14 @@ class AdminDashboardView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
         context["contract_count"] = Contract.objects.exclude(
             status="terminated"
         ).count()
+        # Tatsaechlich ablaufende Dokumente: expires_at innerhalb der naechsten
+        # 30 Tage (inkl. bereits abgelaufener), abgelehnte ausgenommen.
+        # Frueher wurde faelschlich status='sent' gezaehlt -- das ist ein
+        # Lifecycle-Status, kein Ablauf, und lieferte eine irrefuehrende KPI.
         context["expiring_documents"] = Document.objects.filter(
-            status="sent"
-        ).count()
+            expires_at__isnull=False,
+            expires_at__lte=date.today() + timedelta(days=30),
+        ).exclude(status="rejected").count()
 
         # Freibetrag-Warnungen: 1 aggregierte Query statt Python-Loop
         active_betreuers = BetreuerProfile.objects.filter(onboarding_status="active")
