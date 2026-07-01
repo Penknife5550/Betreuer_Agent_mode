@@ -36,6 +36,10 @@ if not _allowed or set(_allowed) <= {"localhost", "127.0.0.1"}:
     )
 ALLOWED_HOSTS = _allowed
 
+# Basis-URL fuer E-Mail-Links: explizit via ENV, sonst https://<erste Domain>.
+SITE_BASE_URL = (os.environ.get("SITE_BASE_URL", "").rstrip("/")
+                 or f"https://{ALLOWED_HOSTS[0]}")
+
 if not os.environ.get("FERNET_KEY"):
     # Wird vom System-Check in apps/core/apps.py bereits als Warning gemeldet;
     # in production ist das Pflicht.

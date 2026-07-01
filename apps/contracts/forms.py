@@ -353,8 +353,18 @@ class BetreuerRegistrationForm(forms.Form):
 
 
 class RegistrationLinkForm(forms.Form):
-    """Form for Koordinator to create a new registration link."""
+    """Formular fuer den Koordinator: Registrierungslink erstellen + einladen."""
 
+    recipient_name = forms.CharField(
+        max_length=200,
+        label="Name der eingeladenen Person",
+        widget=forms.TextInput(attrs={"class": INPUT_CSS, "placeholder": "z.B. Anna Beispiel"}),
+    )
+    email = forms.EmailField(
+        label="E-Mail-Adresse",
+        help_text="An diese Adresse wird die Einladung direkt verschickt.",
+        widget=forms.EmailInput(attrs={"class": INPUT_CSS, "placeholder": "person@example.org"}),
+    )
     school = forms.ModelChoiceField(
         queryset=School.objects.filter(is_active=True),
         label="Schule",

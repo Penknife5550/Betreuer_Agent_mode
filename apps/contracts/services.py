@@ -161,6 +161,8 @@ def _create_betreuer_profile(user, form_data, hash_value):
 
 def _create_contract(betreuer_profile, form_data):
     """Contract (draft) mit generierter Vertragsnummer anlegen."""
+    from django.db import IntegrityError, transaction
+
     from apps.rates.models import HourlyRate
 
     school_year = SchoolYear.objects.filter(is_current=True).first()
@@ -169,24 +171,47 @@ def _create_contract(betreuer_profile, form_data):
         betreuer_type=form_data["betreuer_type"],
         school_year=school_year,
     )
-    # select_for_update in generate_contract_number verhindert Race
-    contract_number = Contract.generate_contract_number(
-        school_code=form_data["school"].code,
-        school_year=school_year,
-    )
-    contract = Contract.objects.create(
-        contract_number=contract_number,
-        betreuer=betreuer_profile,
-        school=form_data["school"],
-        school_year=school_year,
-        activity_type=form_data["activity_type"],
-        hourly_rate=hourly_rate,
-        hour_duration=int(form_data["hour_duration"]),
-        ag_name=form_data.get("ag_name", ""),
-        start_date=None,  # wird erst bei Approval gesetzt
-        end_date=school_year.end_date,
-        status="draft",
-    )
+
+    # Race-Absicherung: generate_contract_number sperrt zwar die letzte Zeile
+    # (select_for_update), aber bei LEEREM Prefix (erste zwei parallelen
+    # Registrierungen fuer Schule+Schuljahr) gibt es nichts zu sperren
+    # (PostgreSQL kennt keine Gap-Locks) -> beide ziehen Nummer 001 -> der
+    # zweite create() verletzt unique(contract_number). Wir kapseln jeden
+    # Versuch in einen Savepoint und ziehen bei IntegrityError eine neue
+    # Nummer. Der Savepoint ist noetig, weil _create_contract innerhalb der
+    # aeusseren transaction.atomic() von register_betreuer_from_form laeuft
+    # und ein IntegrityError die Transaktion sonst vergiftet.
+    contract = None
+    last_exc = None
+    for _attempt in range(5):
+        contract_number = Contract.generate_contract_number(
+            school_code=form_data["school"].code,
+            school_year=school_year,
+        )
+        try:
+            with transaction.atomic():
+                contract = Contract.objects.create(
+                    contract_number=contract_number,
+                    betreuer=betreuer_profile,
+                    school=form_data["school"],
+                    school_year=school_year,
+                    activity_type=form_data["activity_type"],
+                    hourly_rate=hourly_rate,
+                    hour_duration=int(form_data["hour_duration"]),
+                    ag_name=form_data.get("ag_name", ""),
+                    start_date=None,  # wird erst bei Approval gesetzt
+                    end_date=school_year.end_date,
+                    status="draft",
+                )
+            break
+        except IntegrityError as exc:
+            last_exc = exc
+            continue
+    else:
+        # Alle Versuche kollidiert -- Fehler nach oben reichen (der aeussere
+        # atomic-Block rollt dann sauber zurueck).
+        raise last_exc
+
     if form_data.get("foerderprogramm"):
         contract.foerderprogramme.add(form_data["foerderprogramm"])
     return contract
@@ -384,3 +409,44 @@ def approve_betreuer(betreuer_profile, cleaned_data):
         transaction.on_commit(_notify)
 
     return True
+
+
+def send_registration_invite(link):
+    """
+    Verschickt den Registrierungslink DIREKT per E-Mail (SMTP) an
+    ``link.sent_to``. Setzt bei Erfolg ``sent_at``. Gibt True/False zurueck.
+    """
+    from django.utils import timezone
+
+    from apps.core.email import send_credo_email
+
+    if not link.sent_to:
+        return False
+
+    name = link.recipient_name or ""
+    gueltig = ""
+    if link.expires_at:
+        gueltig = f" (gueltig bis {link.expires_at:%d.%m.%Y})"
+
+    ok = send_credo_email(
+        to=link.sent_to,
+        kind="registration_invite",
+        subject="Einladung zur Registrierung als Betreuer/in",
+        greeting=f"Guten Tag {name}," if name else "Guten Tag,",
+        paragraphs=[
+            f"Sie wurden eingeladen, sich als Betreuer/in fuer "
+            f"{link.school.name} zu registrieren.",
+            "Bitte fuellen Sie das Registrierungsformular ueber den folgenden "
+            "Button aus. Ihre Schule ist bereits vorausgewaehlt.",
+        ],
+        cta_label="Jetzt registrieren",
+        cta_url=link.registration_url,
+        outro_paragraphs=[
+            f"Der Link ist personalisiert{gueltig}. Bei Fragen wenden Sie sich "
+            "an Ihre Koordination.",
+        ],
+    )
+    if ok:
+        link.sent_at = timezone.now()
+        link.save(update_fields=["sent_at", "updated_at"])
+    return ok

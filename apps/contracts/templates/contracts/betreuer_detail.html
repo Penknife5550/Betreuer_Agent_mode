@@ -54,7 +54,7 @@
                     <dt class="text-gray-500">Kontoinhaber</dt>
                     <dd>{{ betreuer.kontoinhaber }}</dd>
                     <dt class="text-gray-500">IBAN</dt>
-                    <dd><code class="bg-gray-100 px-2 py-0.5 rounded text-xs">{{ betreuer.iban }}</code></dd>
+                    <dd><code class="bg-gray-100 px-2 py-0.5 rounded text-xs">{{ iban_masked }}</code></dd>
                     {% if betreuer.bic %}
                     <dt class="text-gray-500">BIC</dt>
                     <dd>{{ betreuer.bic }}</dd>

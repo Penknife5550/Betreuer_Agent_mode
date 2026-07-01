@@ -1,0 +1,13 @@
+{% autoescape off %}{{ greeting }}
+
+{% for para in paragraphs %}{{ para }}
+
+{% endfor %}{% if cta_url and cta_label %}{{ cta_label }}:
+{{ cta_url }}
+
+{% endif %}{% for para in outro_paragraphs %}{{ para }}
+
+{% endfor %}--
+Christlicher Schulfoerderverein Minden e.V. | BetreuerApp
+Diese E-Mail wurde automatisch erzeugt.
+{% endautoescape %}

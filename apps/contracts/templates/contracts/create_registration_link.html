@@ -1,10 +1,14 @@
 {% extends "base.html" %}
 
-{% block title %}Registrierungslink erstellen{% endblock %}
+{% block title %}Betreuer einladen{% endblock %}
 
 {% block content %}
 <div class="max-w-xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    <h1 class="text-2xl font-bold text-credo-dark mb-6">Registrierungslink erstellen</h1>
+    <h1 class="text-2xl font-bold text-credo-dark mb-2">Betreuer einladen</h1>
+    <p class="text-sm text-gray-500 mb-6">
+        Es wird ein persönlicher Registrierungslink erstellt und direkt per E-Mail
+        an die angegebene Adresse verschickt.
+    </p>
 
     <form method="post" class="bg-white shadow rounded-lg p-6 space-y-4">
         {% csrf_token %}
@@ -31,7 +35,7 @@
             </a>
             <button type="submit"
                     class="bg-credo-dark hover:bg-gray-700 text-white font-semibold py-2 px-6 rounded-md transition-colors">
-                Link erstellen
+                Link erstellen &amp; senden
             </button>
         </div>
     </form>
