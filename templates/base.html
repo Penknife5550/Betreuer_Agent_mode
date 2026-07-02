@@ -14,10 +14,6 @@
       hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
     <a href="#main-content" class="skip-link">Zum Inhalt springen</a>
 
-    {# htmx-Ladeindikator als duenner Top-Balken, ueber dem Sticky-Header. #}
-    <div class="htmx-indicator fixed top-0 left-0 right-0 h-0.5 bg-credo-dark z-50"
-         role="status" aria-label="Laedt"></div>
-
     {# ------------------------------------------------------------------ #}
     {# App-Shell-Navigation (nur fuer eingeloggte Benutzer)                #}
     {# ------------------------------------------------------------------ #}
@@ -200,7 +196,7 @@
         </div>
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
             <p class="text-center text-xs text-neutral-500">
-                &copy; {{ current_year|default:"2026" }} Christlicher Schulf&ouml;rderverein Minden e.V.
+                &copy; {% now "Y" %} Christlicher Schulf&ouml;rderverein Minden e.V.
             </p>
         </div>
     </footer>

@@ -32,6 +32,11 @@ ALLOWED_HOSTS = [
     if host.strip()
 ]
 
+# Oeffentliche Basis-URL fuer Links in E-Mails (Einladung, Passwort-Setzen).
+# Wird gebraucht, wenn kein Request-Kontext vorhanden ist. Pro Umgebung
+# ueberschrieben (development/production).
+SITE_BASE_URL = os.environ.get("SITE_BASE_URL", "").rstrip("/")
+
 # ---------------------------------------------------------------------------
 # Application definition
 # ---------------------------------------------------------------------------

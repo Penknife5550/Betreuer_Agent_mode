@@ -78,7 +78,10 @@ def get_freibetrag_status(betreuer_profile, year=None):
         "total_used": total_used,
         "remaining": remaining,
         "percentage": round(percentage, 1),
-        "warning_level": _warning_level(percentage),
+        # Warnstufe auf der GERUNDETEN Prozentzahl bestimmen -- sonst weicht
+        # das Dashboard an den Schwellen (80/90/100 %) vom Report ab, obwohl
+        # beide denselben Wert anzeigen (get_freibetrag_overview rundet zuerst).
+        "warning_level": _warning_level(round(percentage, 1)),
     }
 
 

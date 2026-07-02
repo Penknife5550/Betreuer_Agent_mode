@@ -101,13 +101,16 @@ class TimeEntry(TimeStampedModel, AuditLogMixin):
                 errors["end_time"] = "Endzeit muss nach der Startzeit liegen."
 
         # date must be within contract period
+        # Guard gegen None: draft-Vertraege (z.B. Zweit-Registrierung eines
+        # bereits aktiven Betreuers) haben noch kein start_date/end_date.
+        # Ohne Guard wirft der Vergleich TypeError -> HTTP 500 statt Formfehler.
         if self.date and self.contract_id:
             contract = self.contract
-            if self.date < contract.start_date:
+            if contract.start_date and self.date < contract.start_date:
                 errors["date"] = (
                     f"Datum liegt vor dem Vertragsstart ({contract.start_date})."
                 )
-            if self.date > contract.end_date:
+            if contract.end_date and self.date > contract.end_date:
                 errors["date"] = (
                     f"Datum liegt nach dem Vertragsende ({contract.end_date})."
                 )

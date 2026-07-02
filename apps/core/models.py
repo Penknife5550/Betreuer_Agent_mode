@@ -39,6 +39,12 @@ class AuditLogMixin(models.Model):
     (e.g. UserProfile).  For those, call ``AuditLog.log()`` manually.
     """
 
+    # Feldnamen, deren Werte NICHT im Klartext ins Audit-Log geschrieben werden
+    # duerfen (PII/Finanzdaten). Subklassen ueberschreiben das. Der Trail haelt
+    # weiterhin fest, DASS sich das Feld geaendert hat -- nur der Wert wird
+    # redigiert (siehe _redact).
+    AUDIT_SENSITIVE_FIELDS: frozenset = frozenset()
+
     class Meta:
         abstract = True
 
@@ -67,7 +73,10 @@ class AuditLogMixin(models.Model):
                 if field.name in ("created_at", "updated_at"):
                     continue
                 new_val = getattr(self, field.attname)
-                changes[field.name] = {"old": None, "new": _serialize(new_val)}
+                if field.name in self.AUDIT_SENSITIVE_FIELDS:
+                    changes[field.name] = {"old": None, "new": _redact(new_val)}
+                else:
+                    changes[field.name] = {"old": None, "new": _serialize(new_val)}
         else:
             action = "update"
             for field in self._meta.concrete_fields:
@@ -76,10 +85,16 @@ class AuditLogMixin(models.Model):
                 old_val = old_values.get(field.name)
                 new_val = getattr(self, field.attname)
                 if old_val != new_val:
-                    changes[field.name] = {
-                        "old": _serialize(old_val),
-                        "new": _serialize(new_val),
-                    }
+                    if field.name in self.AUDIT_SENSITIVE_FIELDS:
+                        changes[field.name] = {
+                            "old": _redact(old_val),
+                            "new": _redact(new_val),
+                        }
+                    else:
+                        changes[field.name] = {
+                            "old": _serialize(old_val),
+                            "new": _serialize(new_val),
+                        }
             if not changes:
                 return  # nothing changed, skip log entry
 
@@ -103,10 +118,14 @@ class AuditLogMixin(models.Model):
         for field in self._meta.concrete_fields:
             if field.name in ("created_at", "updated_at"):
                 continue
-            changes[field.name] = {
-                "old": _serialize(getattr(self, field.attname)),
-                "new": None,
-            }
+            val = getattr(self, field.attname)
+            if field.name in self.AUDIT_SENSITIVE_FIELDS:
+                changes[field.name] = {"old": _redact(val), "new": None}
+            else:
+                changes[field.name] = {
+                    "old": _serialize(val),
+                    "new": None,
+                }
 
         user = get_current_user()
         if user and not user.is_authenticated:
@@ -135,6 +154,18 @@ def _serialize(value):
     if isinstance(value, (int, float, bool)):
         return value
     return str(value)
+
+
+def _redact(value):
+    """
+    Maskiert sensible Werte fuers Audit-Log: festgehalten wird nur, OB ein Wert
+    gesetzt war ("[redigiert]") oder leer (None) -- nie der Klartext. So bleibt
+    nachvollziehbar, DASS sich z.B. die IBAN geaendert hat, ohne die Finanzdaten
+    dauerhaft im Log zu akkumulieren (DSGVO-Datenminimierung).
+    """
+    if value is None or value == "":
+        return None
+    return "[redigiert]"
 
 
 # ---------------------------------------------------------------------------
@@ -186,23 +217,20 @@ class AuditLog(models.Model):
 
 # ---------------------------------------------------------------------------
 # EncryptedCharField – Fernet encryption at rest
-# DEPRECATED: This field is no longer used for new columns.  The IBAN field
-# in BetreuerProfile has been migrated to a plain CharField.  This class is
-# kept temporarily so that existing migrations referencing it can still be
-# applied.  It will be removed after the IBAN data migration is complete.
+# Aktiv genutzt fuer das SMTP-Passwort (apps.notifications.SmtpConfig).
+# (Fuer IBAN wird es seit V2 bewusst NICHT mehr verwendet -- IBAN ist Klartext,
+#  siehe PROJEKT_STATUS.md Architektur-Regel 8.)
 # ---------------------------------------------------------------------------
 
 
 class EncryptedCharField(models.CharField):
     """
-    DEPRECATED -- will be removed after IBAN data migration.
+    CharField, das Werte transparent per Fernet (symmetrisch) ver- und
+    entschluesselt. Der Key kommt aus ``settings.FERNET_KEY``.
 
-    CharField that transparently encrypts / decrypts values using
-    Fernet symmetric encryption.  The key is read from
-    ``settings.FERNET_KEY``.
-
-    Stored value in the database is the Fernet token (up to ~255 chars
-    for typical short inputs like IBANs).
+    In der DB steht der Fernet-Token (fuer kurze Eingaben wie Passwoerter
+    < ~255 Zeichen). ``None`` bleibt ``None`` (kein Key noetig, solange kein
+    Wert gesetzt ist).
     """
 
     def __init__(self, *args, **kwargs):

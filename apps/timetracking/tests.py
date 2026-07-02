@@ -727,42 +727,29 @@ class TestTimesheetPDFDownloadView:
 
 @pytest.mark.django_db
 class TestNotifyTimesheetApproved:
-    """Tests for the notify_timesheet_approved notification function."""
+    """notify_timesheet_approved sendet eine Abrechnungs-Mail an die Buchhaltung."""
 
-    def test_sends_correct_payload(self, contract, time_entry, koordinator_user, betreuer_profile, settings):
-        """notify_timesheet_approved sends correct event type and payload."""
-        from unittest.mock import patch
+    def test_sends_email_to_buchhaltung(self, contract, time_entry, koordinator_user, betreuer_profile, mailoutbox):
+        from apps.notifications.models import SmtpConfig
         from apps.notifications.services import notify_timesheet_approved
 
-        ts = MonthlyTimesheet.objects.create(
-            contract=contract, month=2, year=2026,
-        )
+        # Rollen-Adresse (inaktive Config -> Versand bleibt beim locmem-Backend).
+        SmtpConfig.objects.create(buchhaltung_email="buchhaltung@test.de", is_active=False)
+
+        ts = MonthlyTimesheet.objects.create(contract=contract, month=2, year=2026)
         ts.submit()
         ts.approve(koordinator_user)
 
-        # WebhookEndpoint fuer diesen Event anlegen -- services.py liest
-        # die URL aus der DB, nicht mehr aus .env.
-        from apps.notifications.models import WebhookEndpoint
-        from apps.notifications.services import invalidate_webhook_cache
-        WebhookEndpoint.objects.create(
-            event_type="timesheet_approved",
-            url="http://test-n8n:5678/webhook/betreuer-events",
-            is_active=True,
-        )
-        invalidate_webhook_cache()
+        # approve() kann bereits eine Mail ausgeloest haben -> Outbox leeren.
+        mailoutbox.clear()
+        result = notify_timesheet_approved(ts)
 
-        from apps.notifications import services as notif_services
-        with patch.object(notif_services._session, "post") as mock_post:
-            mock_post.return_value.status_code = 200
-            mock_post.return_value.raise_for_status = lambda: None
-            result = notify_timesheet_approved(ts)
-            assert result is True
-            call_args = mock_post.call_args
-            payload = call_args[1]["json"]
-            assert payload["event_type"] == "timesheet_approved"
-            assert payload["contract_number"] == "CSFV-GSH-2526-001"
-            assert payload["total_hours"] == str(ts.total_hours)
-            assert payload["total_amount"] == str(ts.total_amount)
+        assert result is True
+        assert len(mailoutbox) == 1
+        m = mailoutbox[0]
+        assert m.to == ["buchhaltung@test.de"]
+        assert contract.contract_number in m.body
+        assert str(ts.total_amount) in m.body
 
 
 # ---------------------------------------------------------------------------

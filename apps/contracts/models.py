@@ -46,6 +46,9 @@ class BetreuerProfile(TimeStampedModel, AuditLogMixin):
     Relationship chain: User --(1:1)--> UserProfile (role) + BetreuerProfile (data).
     """
 
+    # IBAN/BIC nicht im Klartext ins Audit-Log schreiben (AuditLogMixin).
+    AUDIT_SENSITIVE_FIELDS = frozenset({"iban", "bic"})
+
     ANREDE_CHOICES = [
         ("herr", "Herr"),
         ("frau", "Frau"),
@@ -292,16 +295,12 @@ class BetreuerProfile(TimeStampedModel, AuditLogMixin):
 
 class RegistrationLink(TimeStampedModel):
     """
-    DEPRECATED -- This model will be removed in a future migration block.
+    Token-basierter Registrierungslink, den ein Koordinator erstellt und per
+    E-Mail an einen Betreuer schickt (Direktversand via SMTP).
 
-    In V2 the registration uses a fixed URL (/registrierung/) instead of
-    per-school token links.  The model is kept temporarily so that existing
-    data and migrations remain intact.
-
-    Original purpose: Token-based registration link created by a Koordinator.
-    The link format was: /registrierung/<token>/
-    Exempt from LoginRequiredMiddleware.
-    Supports single-use (default) and multi-use links with optional expiry.
+    Link-Format: /registrierung/<token>/ (von der LoginRequiredMiddleware
+    ausgenommen). Die Schule ist ueber den Token vorbelegt. Unterstuetzt
+    Einmal- (Default) und Mehrfach-Links mit optionalem Ablaufdatum.
     """
 
     token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
@@ -337,6 +336,19 @@ class RegistrationLink(TimeStampedModel):
         related_name="used_registration_link",
     )
     notes = models.CharField(max_length=500, blank=True, default="")
+    # Direktversand: an wen und wann die Einladung zuletzt gemailt wurde.
+    sent_to = models.EmailField(
+        blank=True,
+        default="",
+        help_text="E-Mail-Adresse, an die die Einladung verschickt wurde.",
+    )
+    recipient_name = models.CharField(
+        max_length=200,
+        blank=True,
+        default="",
+        help_text="Name der eingeladenen Person (fuer die Anrede in der Mail).",
+    )
+    sent_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         verbose_name = "Registrierungslink"
@@ -356,6 +368,18 @@ class RegistrationLink(TimeStampedModel):
         if self.expires_at and timezone.now() > self.expires_at:
             return False
         return True
+
+    @property
+    def registration_url(self):
+        """Vollstaendige Registrierungs-URL inkl. Domain (fuer Anzeige/Mail)."""
+        from django.conf import settings
+        from django.urls import reverse
+
+        base = (getattr(settings, "SITE_BASE_URL", "") or "").rstrip("/")
+        path = reverse(
+            "contracts:token_registration", kwargs={"token": self.token}
+        )
+        return f"{base}{path}" if base else path
 
     def mark_used(self, user):
         """Mark the link as used by a specific user."""

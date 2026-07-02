@@ -128,6 +128,30 @@ class TestBetreuerProfile:
         )
         assert log.exists()
 
+    def test_audit_log_redacts_iban(self, betreuer_profile):
+        """IBAN/BIC duerfen NICHT im Klartext ins Audit-Log (AUDIT_SENSITIVE_FIELDS)."""
+        betreuer_profile.iban = "DE11111111111111111111"
+        betreuer_profile.save()
+        betreuer_profile.iban = "DE22222222222222222222"
+        betreuer_profile.save()
+
+        log = (
+            AuditLog.objects
+            .filter(
+                model_name="contracts.BetreuerProfile",
+                object_id=str(betreuer_profile.pk),
+                action="update",
+            )
+            .order_by("-timestamp")
+            .first()
+        )
+        assert log is not None
+        assert "iban" in log.changes
+        # Werte redigiert, Klartext taucht nirgends im Log-Eintrag auf.
+        assert log.changes["iban"]["old"] == "[redigiert]"
+        assert log.changes["iban"]["new"] == "[redigiert]"
+        assert "DE22222222222222222222" not in str(log.changes)
+
 
 # ---------------------------------------------------------------------------
 # Contract – Model tests
@@ -515,12 +539,14 @@ class TestKoordinatorViews:
         betreuer_profile.refresh_from_db()
         assert betreuer_profile.onboarding_status == "active"
 
-    def test_create_registration_link(self, koordinator_user, school):
-        """Koordinator can create a registration link."""
+    def test_create_registration_link_sends_invite(self, koordinator_user, school, mailoutbox):
+        """Koordinator erstellt einen Link -> Einladung wird direkt gemailt."""
         client = Client()
         client.force_login(koordinator_user)
         url = reverse("contracts:create_registration_link")
         data = {
+            "recipient_name": "Max Mustermann",
+            "email": "max@example.de",
             "school": school.pk,
             "is_single_use": True,
             "expires_in_days": 30,
@@ -528,7 +554,44 @@ class TestKoordinatorViews:
         }
         response = client.post(url, data)
         assert response.status_code == 302
-        assert RegistrationLink.objects.filter(school=school).exists()
+
+        link = RegistrationLink.objects.get(school=school)
+        assert link.sent_to == "max@example.de"
+        assert link.recipient_name == "Max Mustermann"
+        assert link.sent_at is not None
+
+        # Einladung wurde direkt per E-Mail (SMTP/locmem) verschickt.
+        assert len(mailoutbox) == 1
+        m = mailoutbox[0]
+        assert m.to == ["max@example.de"]
+        assert str(link.token) in m.body  # voller Registrierungslink enthalten
+
+    def test_create_registration_link_requires_email(self, koordinator_user, school):
+        """Ohne E-Mail ist das Formular ungueltig -> kein Link, kein 302."""
+        client = Client()
+        client.force_login(koordinator_user)
+        url = reverse("contracts:create_registration_link")
+        response = client.post(url, {
+            "school": school.pk, "is_single_use": True, "expires_in_days": 30,
+        })
+        assert response.status_code == 200  # Formular mit Fehlern
+        assert not RegistrationLink.objects.filter(school=school).exists()
+
+    def test_resend_registration_link(self, koordinator_user, school, mailoutbox):
+        """Erneuter Versand einer bestehenden Einladung."""
+        link = RegistrationLink.objects.create(
+            school=school, created_by=koordinator_user,
+            sent_to="max@example.de", recipient_name="Max Mustermann",
+        )
+        client = Client()
+        client.force_login(koordinator_user)
+        url = reverse("contracts:resend_registration_link", kwargs={"pk": link.pk})
+        response = client.post(url)
+        assert response.status_code == 302
+        assert len(mailoutbox) == 1
+        assert mailoutbox[0].to == ["max@example.de"]
+        link.refresh_from_db()
+        assert link.sent_at is not None
 
     def test_registration_link_list(self, koordinator_user, registration_link):
         """Koordinator can view registration link list."""

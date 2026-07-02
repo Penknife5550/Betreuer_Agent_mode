@@ -39,6 +39,7 @@ from apps.contracts.services import (
     check_duplicate_registration,
     generate_unique_hash,
     register_betreuer_from_form,
+    send_registration_invite,
 )
 from apps.core.middleware import get_current_ip
 from apps.core.permissions import (
@@ -50,6 +51,7 @@ from apps.core.permissions import (
 )
 from apps.core.utils import safe_get_by_id
 from apps.documents.models import Document
+from apps.documents.services import mask_iban
 from apps.rates.models import ActivityType, HourlyRate
 from apps.schools.models import Foerderprogramm, School, SchoolYear
 
@@ -193,14 +195,23 @@ class CreateRegistrationLinkView(KoordinatorOrAdminMixin, FormView):
             is_single_use=cd["is_single_use"],
             expires_at=timezone.now() + timedelta(days=cd["expires_in_days"]),
             notes=cd.get("notes", ""),
+            sent_to=cd["email"],
+            recipient_name=cd["recipient_name"],
         )
-        messages.success(
-            self.request,
-            "Registrierungslink wurde erstellt. "
-            "Den Link finden Sie in der Uebersicht.",
-        )
-        # Absichtlich KEIN Token in der Flash-Message -- landet sonst
-        # im Session-Cookie / Shoulder-Surfing-Risiko.
+        sent = send_registration_invite(link)
+        if sent:
+            messages.success(
+                self.request,
+                f"Registrierungslink wurde erstellt und an {link.sent_to} "
+                f"verschickt.",
+            )
+        else:
+            messages.warning(
+                self.request,
+                f"Link erstellt, aber die E-Mail an {link.sent_to} konnte nicht "
+                f"versendet werden. Bitte SMTP-Konfiguration pruefen und in der "
+                f"Uebersicht erneut senden.",
+            )
         return redirect("contracts:registration_link_list")
 
 
@@ -218,6 +229,37 @@ class RegistrationLinkListView(KoordinatorOrAdminMixin, ListView):
         return RegistrationLink.objects.filter(
             school__in=profile.schools.all()
         ).select_related("school", "created_by")
+
+
+class ResendRegistrationLinkView(KoordinatorOrAdminMixin, View):
+    """Verschickt die Einladung eines bestehenden Links erneut (Direktversand)."""
+
+    def post(self, request, pk):
+        user = request.user
+        if has_admin_role(user):
+            link = get_object_or_404(RegistrationLink, pk=pk)
+        else:
+            # Koordinator: nur Links der eigenen Schulen (Scope via Query -> 404).
+            profile = user.profile
+            link = get_object_or_404(
+                RegistrationLink, pk=pk, school__in=profile.schools.all()
+            )
+
+        if not link.sent_to:
+            messages.error(
+                request, "Fuer diesen Link ist keine E-Mail-Adresse hinterlegt."
+            )
+        elif send_registration_invite(link):
+            messages.success(
+                request, f"Einladung wurde erneut an {link.sent_to} verschickt."
+            )
+        else:
+            messages.warning(
+                request,
+                f"Erneuter Versand an {link.sent_to} fehlgeschlagen. "
+                f"Bitte SMTP-Konfiguration pruefen.",
+            )
+        return redirect("contracts:registration_link_list")
 
 
 # ---------------------------------------------------------------------------
@@ -286,6 +328,8 @@ class BetreuerDetailView(KoordinatorScopedMixin, DetailView):
         ctx["documents"] = documents
         ctx["has_pending_documents"] = documents.filter(status="pending").exists()
         ctx["has_generated_documents"] = documents.filter(status="generated").exists()
+        # IBAN nur maskiert anzeigen -- konsistent mit Profil-Seite und PDFs.
+        ctx["iban_masked"] = mask_iban(self.object.iban)
         return ctx
 
 

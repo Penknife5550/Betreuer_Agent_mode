@@ -16,6 +16,7 @@ from apps.contracts.views import (
     RegistrationLinkListView,
     RegistrationSuccessView,
     RegistrationView,
+    ResendRegistrationLinkView,
 )
 
 app_name = "contracts"
@@ -71,6 +72,11 @@ urlpatterns = [
         "koordinator/registrierungslinks/",
         RegistrationLinkListView.as_view(),
         name="registration_link_list",
+    ),
+    path(
+        "koordinator/registrierungslink/<int:pk>/erneut-senden/",
+        ResendRegistrationLinkView.as_view(),
+        name="resend_registration_link",
     ),
     # --- Betreuer management ---
     path(

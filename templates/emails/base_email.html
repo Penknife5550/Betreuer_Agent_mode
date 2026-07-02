@@ -1,0 +1,76 @@
+{% autoescape on %}<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ subject }}</title>
+</head>
+<body style="margin:0; padding:0; background-color:#f3f4f6; font-family:Calibri,Arial,Helvetica,sans-serif; color:#575756;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f3f4f6; padding:24px 0;">
+        <tr>
+            <td align="center">
+                <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px; max-width:600px; background-color:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 1px 3px rgba(0,0,0,0.08);">
+                    {# CREDO-Farbleiste als Brand-Signatur #}
+                    <tr>
+                        <td style="height:6px; line-height:6px; font-size:0;">
+                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+                                <td style="width:60%; background-color:#575756; height:6px; line-height:6px; font-size:0;">&nbsp;</td>
+                                <td style="width:10%; background-color:#FBC900; height:6px; line-height:6px; font-size:0;">&nbsp;</td>
+                                <td style="width:10%; background-color:#6BAA24; height:6px; line-height:6px; font-size:0;">&nbsp;</td>
+                                <td style="width:10%; background-color:#E2001A; height:6px; line-height:6px; font-size:0;">&nbsp;</td>
+                                <td style="width:10%; background-color:#009AC6; height:6px; line-height:6px; font-size:0;">&nbsp;</td>
+                            </tr></table>
+                        </td>
+                    </tr>
+
+                    {# Header #}
+                    <tr>
+                        <td style="padding:28px 40px 8px 40px;">
+                            <p style="margin:0; font-size:18px; font-weight:bold; color:#575756;">BetreuerApp</p>
+                            <p style="margin:2px 0 0 0; font-size:12px; color:#9ca3af;">Christlicher Schulf&ouml;rderverein Minden e.&nbsp;V.</p>
+                        </td>
+                    </tr>
+
+                    {# Inhalt #}
+                    <tr>
+                        <td style="padding:16px 40px 8px 40px;">
+                            <p style="margin:0 0 16px 0; font-size:15px; color:#575756;">{{ greeting }}</p>
+                            {% for para in paragraphs %}
+                            <p style="margin:0 0 14px 0; font-size:15px; line-height:1.55; color:#575756;">{{ para|linebreaksbr }}</p>
+                            {% endfor %}
+
+                            {% if cta_url and cta_label %}
+                            <table role="presentation" cellpadding="0" cellspacing="0" style="margin:22px 0;">
+                                <tr>
+                                    <td style="border-radius:8px; background-color:#575756;">
+                                        <a href="{{ cta_url }}" style="display:inline-block; padding:12px 28px; font-size:15px; font-weight:bold; color:#ffffff; text-decoration:none; border-radius:8px;">{{ cta_label }}</a>
+                                    </td>
+                                </tr>
+                            </table>
+                            <p style="margin:0 0 14px 0; font-size:12px; line-height:1.5; color:#9ca3af; word-break:break-all;">
+                                Falls der Button nicht funktioniert, kopieren Sie diesen Link in Ihren Browser:<br>
+                                <a href="{{ cta_url }}" style="color:#009AC6;">{{ cta_url }}</a>
+                            </p>
+                            {% endif %}
+
+                            {% for para in outro_paragraphs %}
+                            <p style="margin:0 0 14px 0; font-size:15px; line-height:1.55; color:#575756;">{{ para|linebreaksbr }}</p>
+                            {% endfor %}
+                        </td>
+                    </tr>
+
+                    {# Footer #}
+                    <tr>
+                        <td style="padding:16px 40px 28px 40px; border-top:1px solid #f0f0f0;">
+                            <p style="margin:14px 0 0 0; font-size:11px; color:#9ca3af;">
+                                &copy; {% now "Y" %} Christlicher Schulf&ouml;rderverein Minden e.&nbsp;V. &middot;
+                                Diese E-Mail wurde automatisch erzeugt.
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>{% endautoescape %}

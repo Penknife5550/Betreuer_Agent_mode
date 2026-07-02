@@ -40,6 +40,8 @@ ALLOWED_HOSTS = [
     "*.localhost",
 ]
 
+SITE_BASE_URL = os.environ.get("SITE_BASE_URL", "").rstrip("/") or "http://localhost:8000"
+
 # ---------------------------------------------------------------------------
 # CSRF trusted origins (required for Django 4.0+)
 # ---------------------------------------------------------------------------
