@@ -611,3 +611,72 @@ class TestSmtpConfig:
             cur.execute("SELECT password FROM notifications_smtpconfig WHERE id=1")
             raw = cur.fetchone()[0]
         assert raw != "geheim123"
+
+
+# ---------------------------------------------------------------------------
+# Testmail-Funktion (SMTP pruefen) + Admin-View
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+class TestSendTestEmail:
+    """send_test_email: prueft die gespeicherte SMTP-Config, wirft nie."""
+
+    def test_empty_recipient(self):
+        from apps.core.email import send_test_email
+
+        ok, detail = send_test_email("")
+        assert ok is False
+        assert "Empfaenger" in detail or "Empf" in detail
+
+    def test_fallback_success(self, mailoutbox):
+        """Ohne SmtpConfig -> .env-/Default-Backend (locmem in Tests) -> Erfolg."""
+        from apps.core.email import send_test_email
+
+        ok, detail = send_test_email("ziel@test.de")
+        assert ok is True
+        assert len(mailoutbox) == 1
+        assert mailoutbox[0].to == ["ziel@test.de"]
+
+    def test_failure_is_caught(self, mailoutbox):
+        """SMTP-Fehler -> (False, Fehlertext), keine Exception, EmailLog=failed."""
+        from apps.core.email import send_test_email
+        from apps.notifications.models import EmailLog
+
+        with patch(
+            "apps.core.email.EmailMultiAlternatives.send",
+            side_effect=Exception("SMTP auth failed"),
+        ):
+            ok, detail = send_test_email("ziel@test.de")
+
+        assert ok is False
+        assert "SMTP auth failed" in detail
+        assert EmailLog.objects.filter(status=EmailLog.STATUS_FAILED).exists()
+
+
+@pytest.mark.django_db
+class TestTestmailAdminView:
+    """Der Testmail-Button/-View im SmtpConfig-Admin."""
+
+    def test_get_requires_staff(self, betreuer_user):
+        from django.test import Client
+        from django.urls import reverse
+
+        client = Client()
+        client.force_login(betreuer_user)  # kein Staff
+        resp = client.get(reverse("admin:notifications_smtpconfig_testmail"))
+        # Admin leitet Nicht-Staff auf den Login um (302).
+        assert resp.status_code == 302
+
+    def test_admin_can_send(self, admin_user, mailoutbox):
+        from django.test import Client
+        from django.urls import reverse
+
+        client = Client()
+        client.force_login(admin_user)
+        url = reverse("admin:notifications_smtpconfig_testmail")
+        assert client.get(url).status_code == 200
+        resp = client.post(url, {"test_email": "ziel@test.de"})
+        assert resp.status_code == 302  # Erfolg -> Redirect
+        assert len(mailoutbox) == 1
+        assert mailoutbox[0].to == ["ziel@test.de"]
