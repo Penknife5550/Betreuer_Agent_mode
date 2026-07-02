@@ -40,6 +40,7 @@ from apps.contracts.services import (
     generate_unique_hash,
     register_betreuer_from_form,
     send_registration_invite,
+    RegistrationUnavailable,
 )
 from apps.core.middleware import get_current_ip
 from apps.core.permissions import (
@@ -65,6 +66,11 @@ logger = logging.getLogger(__name__)
 REG_RATE_LIMIT_PER_HOUR = 5
 REG_RATE_LIMIT_WINDOW_S = 3600
 HASH_CHECK_LIMIT_PER_HOUR = 20  # weniger als Registrierungen, da billiger
+
+_REGISTRATION_UNAVAILABLE_MSG = (
+    "Die Registrierung ist derzeit nicht moeglich (Grundkonfiguration "
+    "unvollstaendig). Bitte wenden Sie sich an Ihre Koordination."
+)
 
 
 def _client_ip_for_rate_limit(request):
@@ -113,7 +119,11 @@ class RegistrationView(FormView):
         return ctx
 
     def form_valid(self, form):
-        user, betreuer_profile, contract, is_duplicate = register_betreuer_from_form(form)
+        try:
+            user, betreuer_profile, contract, is_duplicate = register_betreuer_from_form(form)
+        except RegistrationUnavailable:
+            messages.error(self.request, _REGISTRATION_UNAVAILABLE_MSG)
+            return self.form_invalid(form)
         self.reg_link.mark_used(user)
         if is_duplicate:
             messages.info(
@@ -154,7 +164,11 @@ class PublicRegistrationView(FormView):
         return super().dispatch(request, *args, **kwargs)
 
     def form_valid(self, form):
-        user, betreuer_profile, contract, is_duplicate = register_betreuer_from_form(form)
+        try:
+            user, betreuer_profile, contract, is_duplicate = register_betreuer_from_form(form)
+        except RegistrationUnavailable:
+            messages.error(self.request, _REGISTRATION_UNAVAILABLE_MSG)
+            return self.form_invalid(form)
         if is_duplicate:
             messages.info(
                 self.request,

@@ -30,6 +30,14 @@ from apps.schools.models import Foerderprogramm, SchoolYear
 logger = logging.getLogger(__name__)
 
 
+class RegistrationUnavailable(Exception):
+    """
+    Registrierung ist wegen fehlender Grundkonfiguration nicht moeglich
+    (z.B. kein Schuljahr als 'aktuell' markiert). Die Views fangen das ab
+    und zeigen dem Nutzer eine verstaendliche Meldung statt eines 500.
+    """
+
+
 # ---------------------------------------------------------------------------
 # Hash-basierte Duplikat-Erkennung
 # ---------------------------------------------------------------------------
@@ -166,6 +174,15 @@ def _create_contract(betreuer_profile, form_data):
     from apps.rates.models import HourlyRate
 
     school_year = SchoolYear.objects.filter(is_current=True).first()
+    if school_year is None:
+        # Ohne aktuelles Schuljahr kann keine Vertragsnummer/kein Vertrag
+        # gebildet werden -> saubere Meldung statt AttributeError/500.
+        logger.error(
+            "Registrierung fehlgeschlagen: kein Schuljahr mit is_current=True."
+        )
+        raise RegistrationUnavailable(
+            "Kein aktuelles Schuljahr konfiguriert."
+        )
     hourly_rate = HourlyRate.get_current_rate(
         activity_type=form_data["activity_type"],
         betreuer_type=form_data["betreuer_type"],
