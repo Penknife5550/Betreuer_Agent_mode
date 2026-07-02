@@ -42,6 +42,10 @@
                     <td class="px-4 py-3 text-sm">
                         {% if bp.onboarding_status == 'registered' %}
                         <span aria-label="Status: Registriert" class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700">Registriert</span>
+                        {% elif bp.onboarding_status == 'pending_approval' %}
+                        <span aria-label="Status: Warte auf Genehmigung" class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">Warte auf Genehmigung</span>
+                        {% elif bp.onboarding_status == 'approved' %}
+                        <span aria-label="Status: Genehmigt" class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">Genehmigt</span>
                         {% elif bp.onboarding_status == 'documents_pending' %}
                         <span aria-label="Status: Dokumente ausstehend" class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">Dokumente ausstehend</span>
                         {% elif bp.onboarding_status == 'documents_complete' %}
@@ -61,6 +65,9 @@
                         {% if bp.onboarding_status == 'registered' %}
                         <a href="{% url 'contracts:betreuer_review' bp.pk %}"
                            class="ml-3 text-yellow-600 hover:underline text-sm">Pruefen</a>
+                        {% elif bp.onboarding_status == 'pending_approval' %}
+                        <a href="{% url 'contracts:betreuer_approve' bp.pk %}"
+                           class="ml-3 text-credo-dark font-medium hover:underline text-sm">Genehmigen</a>
                         {% endif %}
                     </td>
                 </tr>
