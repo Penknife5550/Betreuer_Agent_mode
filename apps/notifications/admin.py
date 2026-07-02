@@ -3,7 +3,9 @@ Admin fuer die Webhook-Konfiguration.
 """
 
 from django import forms
-from django.contrib import admin
+from django.contrib import admin, messages
+from django.shortcuts import redirect, render
+from django.urls import path, reverse
 
 from apps.notifications.models import (
     EmailLog,
@@ -88,6 +90,7 @@ class SmtpConfigAdmin(admin.ModelAdmin):
     """Singleton -- SMTP-Zugangsdaten und Rollen-Adressen fuer den Direktversand."""
 
     form = SmtpConfigAdminForm
+    change_form_template = "admin/notifications/smtpconfig_change_form.html"
     list_display = ("host", "port", "is_active", "from_email", "updated_at")
     readonly_fields = ("updated_at",)
     fieldsets = (
@@ -113,6 +116,41 @@ class SmtpConfigAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return False
+
+    # --- Testmail-Funktion ---------------------------------------------------
+
+    def get_urls(self):
+        urls = super().get_urls()
+        custom = [
+            path(
+                "testmail/",
+                self.admin_site.admin_view(self.test_email_view),
+                name="notifications_smtpconfig_testmail",
+            ),
+        ]
+        return custom + urls
+
+    def test_email_view(self, request):
+        """Sendet eine Testmail an eine eingegebene Adresse und zeigt das
+        Ergebnis (inkl. exaktem SMTP-Fehler)."""
+        from apps.core.email import send_test_email
+
+        if request.method == "POST":
+            to = request.POST.get("test_email", "").strip()
+            ok, detail = send_test_email(to)
+            if ok:
+                self.message_user(request, detail, level=messages.SUCCESS)
+                return redirect("admin:notifications_smtpconfig_testmail")
+            self.message_user(request, detail, level=messages.ERROR)
+
+        context = {
+            **self.admin_site.each_context(request),
+            "title": "SMTP-Testmail senden",
+            "opts": self.model._meta,
+            "prefill": (SmtpConfig.objects.filter(pk=1).first().admin_email
+                        if SmtpConfig.objects.filter(pk=1).exists() else ""),
+        }
+        return render(request, "admin/notifications/smtpconfig_testmail.html", context)
 
 
 @admin.register(EmailLog)

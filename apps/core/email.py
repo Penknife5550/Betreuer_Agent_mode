@@ -144,3 +144,74 @@ def send_credo_email(*, to, subject, greeting, paragraphs, cta_label=None,
     logger.info("E-Mail gesendet: %s -> %s", kind or "generic", primary)
     _log_email(primary, subject, kind, EmailLog.STATUS_SENT, "gesendet")
     return True
+
+
+def send_test_email(to):
+    """
+    Verschickt eine Testmail, um die SMTP-Einstellungen zu pruefen.
+
+    Nutzt bewusst die GESPEICHERTE SmtpConfig (pk=1) -- auch wenn sie noch
+    NICHT aktiv ist -- damit man die Zugangsdaten testen kann, bevor man sie
+    scharf schaltet. Ist keine Config mit Host hinterlegt, greift der
+    .env-Fallback.
+
+    Gibt (ok: bool, detail: str) zurueck. Wirft NIE -- der exakte SMTP-Fehler
+    steht im detail-String (und im EmailLog).
+    """
+    from apps.notifications.models import EmailLog, SmtpConfig
+
+    to = (to or "").strip()
+    if not to:
+        return False, "Bitte eine Empfaengeradresse eingeben."
+
+    ctx = {
+        "subject": "Testmail – BetreuerApp",
+        "greeting": "Hallo,",
+        "paragraphs": [
+            "das ist eine Testmail aus der BetreuerApp.",
+            "Wenn Sie diese Nachricht erhalten, ist der SMTP-Versand korrekt "
+            "konfiguriert.",
+        ],
+        "outro_paragraphs": [],
+        "cta_label": None,
+        "cta_url": None,
+    }
+
+    try:
+        cfg = SmtpConfig.objects.filter(pk=1).first()
+        if cfg and cfg.host:
+            connection = get_connection(
+                backend="django.core.mail.backends.smtp.EmailBackend",
+                host=cfg.host,
+                port=cfg.port,
+                username=cfg.username or "",
+                password=cfg.password or "",
+                use_tls=cfg.use_tls,
+                use_ssl=cfg.use_ssl,
+                timeout=_CONNECT_TIMEOUT,
+            )
+            from_address = cfg.from_address or settings.DEFAULT_FROM_EMAIL
+            quelle = f"SmtpConfig ({cfg.host}:{cfg.port})"
+        else:
+            connection = get_connection(timeout=_CONNECT_TIMEOUT)
+            from_address = settings.DEFAULT_FROM_EMAIL
+            quelle = ".env-Fallback"
+
+        html_body = render_to_string("emails/base_email.html", ctx)
+        text_body = render_to_string("emails/base_email.txt", ctx)
+        msg = EmailMultiAlternatives(
+            subject=ctx["subject"],
+            body=text_body,
+            from_email=from_address,
+            to=[to],
+            connection=connection,
+        )
+        msg.attach_alternative(html_body, "text/html")
+        msg.send(fail_silently=False)
+    except Exception as exc:
+        logger.warning("Testmail an %s fehlgeschlagen: %s", to, exc)
+        _log_email(to, ctx["subject"], "test", EmailLog.STATUS_FAILED, str(exc))
+        return False, f"Fehler beim Versand: {exc}"
+
+    _log_email(to, ctx["subject"], "test", EmailLog.STATUS_SENT, f"gesendet via {quelle}")
+    return True, f"Testmail an {to} verschickt (via {quelle})."

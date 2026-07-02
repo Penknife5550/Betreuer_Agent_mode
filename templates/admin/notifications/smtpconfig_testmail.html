@@ -1,0 +1,43 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+    <a href="{% url 'admin:index' %}">Start</a>
+    &rsaquo; <a href="{% url 'admin:notifications_smtpconfig_changelist' %}">SMTP-Konfiguration</a>
+    &rsaquo; Testmail senden
+</div>
+{% endblock %}
+
+{% block content %}
+<div id="content-main">
+    <p>
+        Verschickt eine Testmail mit den aktuell <strong>gespeicherten</strong>
+        SMTP-Einstellungen &mdash; auch wenn die Konfiguration noch nicht auf
+        &bdquo;aktiv&ldquo; steht. So koennen Sie die Zugangsdaten pruefen,
+        bevor Sie sie scharf schalten. Bei einem Fehler wird die genaue
+        SMTP-Meldung angezeigt.
+    </p>
+
+    <form method="post">
+        {% csrf_token %}
+        <fieldset class="module aligned">
+            <div class="form-row">
+                <div>
+                    <label for="test_email" class="required">Empf&auml;nger-E-Mail:</label>
+                    <input type="email" name="test_email" id="test_email"
+                           value="{{ prefill }}" required
+                           style="width: 320px; max-width: 100%;">
+                    <p class="help">An diese Adresse wird die Testmail gesendet.</p>
+                </div>
+            </div>
+        </fieldset>
+
+        <div class="submit-row">
+            <input type="submit" value="Testmail senden" class="default">
+            <a href="{% url 'admin:notifications_smtpconfig_changelist' %}"
+               class="closelink" style="margin-left: 12px;">Zur&uuml;ck</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
