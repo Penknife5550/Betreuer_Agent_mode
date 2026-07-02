@@ -26,7 +26,7 @@
                 </svg>
                 <div>
                     <p class="font-medium">Anmeldung fehlgeschlagen</p>
-                    <p class="mt-0.5 text-red-700">Benutzername oder Passwort ist nicht korrekt.</p>
+                    <p class="mt-0.5 text-red-700">E-Mail-Adresse oder Passwort ist nicht korrekt.</p>
                 </div>
             </div>
             {% endif %}
@@ -44,16 +44,16 @@
                 {% csrf_token %}
 
                 <div>
-                    <label for="id_username" class="form-label">Benutzername</label>
+                    <label for="id_username" class="form-label">E-Mail-Adresse</label>
                     <input type="text"
                            name="username"
                            id="id_username"
-                           autocomplete="username"
+                           autocomplete="username email"
                            required
                            aria-invalid="{% if form.username.errors %}true{% else %}false{% endif %}"
                            {% if form.username.errors %}aria-describedby="id_username_error"{% endif %}
                            class="form-input"
-                           placeholder="z.B. admin">
+                           placeholder="name@beispiel.de">
                     {% if form.username.errors %}
                     <p id="id_username_error" role="alert" class="mt-1 text-xs text-red-600">{{ form.username.errors.0 }}</p>
                     {% endif %}
@@ -85,9 +85,17 @@
             </form>
         </div>
 
-        <p class="mt-6 text-center text-xs text-neutral-500">
-            Passwort vergessen? Bitte wenden Sie sich an Ihren Koordinator.
+        <p class="mt-6 text-center text-sm">
+            <a href="{% url 'accounts:password_reset' %}" class="text-schule-gsh hover:underline font-medium">
+                Passwort vergessen?
+            </a>
         </p>
+        {% if support_email %}
+        <p class="mt-2 text-center text-xs text-neutral-500">
+            Probleme bei der Anmeldung?
+            <a href="mailto:{{ support_email }}" class="text-schule-gsh hover:underline">{{ support_email }}</a>
+        </p>
+        {% endif %}
 
         <p class="mt-8 text-center text-xs text-neutral-400">
             &copy; {% now "Y" %} Christlicher Schulfoerderverein Minden e.&nbsp;V.

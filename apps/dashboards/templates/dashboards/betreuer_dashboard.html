@@ -208,7 +208,7 @@
                        aria-label="PDF fuer Dokument {{ doc.requirement.name }} herunterladen"
                        class="text-xs text-schule-gsh hover:underline focus-visible:ring-2 focus-visible:ring-credo-dark rounded">PDF</a>
                     {% endif %}
-                    {% if doc.status == 'sent' or doc.status == 'rejected' %}
+                    {% if doc.status == 'sent' or doc.status == 'rejected' or doc.status == 'pending' and not doc.requirement.is_generated %}
                     <form method="post" action="{% url 'documents:document_upload' doc.pk %}"
                           enctype="multipart/form-data"
                           class="inline" x-data="{ showUp: false, uploading: false }"
@@ -221,7 +221,9 @@
                             Hochladen
                         </button>
                         <div x-show="showUp" x-transition class="absolute mt-1 bg-white shadow-lg rounded p-3 z-10">
-                            <input type="file" name="file" accept=".pdf,.jpg,.jpeg,.png" required class="text-xs">
+                            {# accept=image/* + PDF: am Handy waehlbar zwischen Kamera, Fotos und Dateien #}
+                            <input type="file" name="file" accept="image/*,application/pdf" required class="text-xs">
+                            <p class="text-[11px] text-gray-500 mt-1">Foto oder PDF, max. 10 MB</p>
                             <button type="submit" class="mt-1 text-xs bg-credo-dark text-white px-2 py-1 rounded disabled:opacity-50"
                                     x-bind:disabled="uploading">
                                 <span x-show="!uploading">Absenden</span>

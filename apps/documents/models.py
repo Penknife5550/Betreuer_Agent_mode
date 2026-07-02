@@ -177,7 +177,10 @@ class Document(TimeStampedModel, AuditLogMixin):
     # ------------------------------------------------------------------
 
     VALID_STATUS_TRANSITIONS = {
-        "pending": ["generated"],
+        # 'uploaded' direkt aus 'pending' erlaubt: reine Upload-Dokumente
+        # (is_generated=False, z.B. Masernschutz) werden nie generiert/versendet
+        # und muessen vom Betreuer direkt hochgeladen werden koennen.
+        "pending": ["generated", "uploaded"],
         "generated": ["sent"],
         "sent": ["uploaded"],
         "uploaded": ["verified", "rejected"],

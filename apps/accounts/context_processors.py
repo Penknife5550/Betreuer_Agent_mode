@@ -127,3 +127,23 @@ def app_shell(request) -> dict:
     except Exception:
         logger.exception("app_shell context processor failed -- fallback leere Nav.")
         return {"main_nav_items": [], "nav_active": None}
+
+
+def support_contact(request) -> dict:
+    """
+    Zentrale Support-/Kontakt-E-Mail fuer Fehler-, Login- und Passwort-Seiten.
+    Quelle: SmtpConfig.admin_email, sonst DEFAULT_FROM_EMAIL. Laeuft auf jedem
+    Render (auch Error-Pages) -> defensiv, wirft nie.
+    """
+    from django.conf import settings
+
+    try:
+        from apps.notifications.models import SmtpConfig
+
+        cfg = SmtpConfig.objects.filter(pk=1).first()
+        email = (cfg.admin_email if cfg and cfg.admin_email else "") or getattr(
+            settings, "DEFAULT_FROM_EMAIL", ""
+        )
+        return {"support_email": email}
+    except Exception:
+        return {"support_email": getattr(settings, "DEFAULT_FROM_EMAIL", "")}

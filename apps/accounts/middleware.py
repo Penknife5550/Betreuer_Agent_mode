@@ -29,6 +29,8 @@ class LoginRequiredMiddleware:
         # und muss ohne Login erreichbar sein.
         "/accounts/passwort-setzen/",
         "/accounts/passwort-gesetzt/",
+        # Self-Service "Passwort vergessen" (anonym erreichbar).
+        "/passwort-vergessen/",
         "/health/",
         "/django-admin/",  # hat eigene Auth
         "/static/",

@@ -101,6 +101,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "apps.accounts.context_processors.app_shell",
+                "apps.accounts.context_processors.support_contact",
             ],
         },
     },
@@ -133,7 +134,13 @@ DATABASES = {
 AUTHENTICATION_BACKENDS = [
     "axes.backends.AxesStandaloneBackend",
     "django.contrib.auth.backends.ModelBackend",
+    # Erlaubt zusaetzlich Login per E-Mail (v.a. fuer Schueler-Betreuer, die
+    # ihren generierten Benutzernamen nicht kennen).
+    "apps.accounts.backends.EmailBackend",
 ]
+
+# Passwort-Reset-Link laenger gueltig (Schueler pruefen Mails unregelmaessig).
+PASSWORD_RESET_TIMEOUT = 60 * 60 * 24 * 14  # 14 Tage
 
 AUTH_PASSWORD_VALIDATORS = [
     {

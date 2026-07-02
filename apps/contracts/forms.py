@@ -113,14 +113,9 @@ class BetreuerRegistrationForm(forms.Form):
             attrs={"class": INPUT_CSS, "placeholder": "DE89 3704 0044 0532 0130 00"}
         ),
     )
-    bic = forms.CharField(
-        max_length=11,
-        label="BIC",
-        required=False,
-        widget=forms.TextInput(
-            attrs={"class": INPUT_CSS, "placeholder": "COBADEFFXXX"}
-        ),
-    )
+    # BIC wird nicht erhoben: bei deutschen IBANs eindeutig ableitbar und fuer
+    # Schueler nur ein weiteres verwirrendes Pflichtfeld. Das Modell behaelt das
+    # bic-Feld (blank) fuer evtl. spaetere Nutzung/Auslandskonten.
 
     # --- Section 4: Contract / Activity ---
     school = forms.ModelChoiceField(

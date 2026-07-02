@@ -1531,3 +1531,55 @@ class TestDocumentRequirementUI:
         assert not Document.objects.filter(
             requirement=document_requirement_vertrag
         ).exists()
+
+
+# ---------------------------------------------------------------------------
+# Upload-Deadlock (Upload-Dokumente) + Redirect nach Upload
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+class TestUploadDeadlockAndRedirect:
+    """Reine Upload-Dokumente (is_generated=False) muessen aus 'pending'
+    hochladbar sein; nach Upload landet der Betreuer auf seinem Dashboard."""
+
+    def _upload_req(self, code="masern_test"):
+        return DocumentRequirement.objects.create(
+            name="Masernschutz", code=code, is_generated=False,
+            is_required_internal=True, is_required_external=True, sort_order=9,
+        )
+
+    def test_pending_upload_document_can_be_uploaded(
+        self, betreuer_user, betreuer_profile, contract,
+    ):
+        doc = Document.objects.create(
+            contract=contract, requirement=self._upload_req(),
+            betreuer=betreuer_profile, status="pending",
+        )
+        client = Client()
+        client.force_login(betreuer_user)
+        url = reverse("documents:document_upload", kwargs={"pk": doc.pk})
+        f = SimpleUploadedFile("m.pdf", b"%PDF-1.4 x", content_type="application/pdf")
+        resp = client.post(url, {"file": f})
+        assert resp.status_code == 302
+        assert resp.url == reverse("dashboards:betreuer_dashboard")  # kein 403 mehr
+        doc.refresh_from_db()
+        assert doc.status == "uploaded"
+
+    def test_pending_generated_document_has_no_direct_upload(
+        self, betreuer_user, betreuer_profile, contract, document_requirement_vertrag,
+    ):
+        """Generierte Dokumente werden NICHT direkt aus pending hochgeladen
+        (sie durchlaufen erst generate/send). Statusmaschine erlaubt zwar den
+        Uebergang generisch, aber der Button erscheint dafuer nicht."""
+        doc = Document.objects.create(
+            contract=contract, requirement=document_requirement_vertrag,
+            betreuer=betreuer_profile, status="pending",
+        )
+        client = Client()
+        client.force_login(betreuer_user)
+        resp = client.get(reverse("dashboards:betreuer_dashboard"))
+        assert resp.status_code == 200
+        upload_url = reverse("documents:document_upload", kwargs={"pk": doc.pk})
+        # generiertes Dok bei pending -> KEIN Upload-Formular
+        assert upload_url.encode() not in resp.content
