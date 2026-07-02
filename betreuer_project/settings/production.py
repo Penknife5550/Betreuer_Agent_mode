@@ -96,6 +96,16 @@ CSRF_TRUSTED_ORIGINS = [f"https://{h}" for h in ALLOWED_HOSTS]
 # Eingeklinkt frueh im Stack, damit jede Response Header bekommt.
 # ---------------------------------------------------------------------------
 
+# Alpine.js wertet seine Attribut-Ausdruecke (x-data, @click, x-show, ...)
+# intern per new Function()/eval aus und benoetigt daher 'unsafe-eval' im
+# script-src. Ohne dieses Flag blockiert die CSP saemtliche Alpine-Direktiven
+# -> die interaktive UI (User-Dropdown, mobiles Menue, ausblendbare Messages)
+# funktioniert nicht. Vertretbar hier: App ist login-geschuetzt, server-seitig
+# gerendert (Autoescaping), und script-src bleibt ansonsten auf 'self'
+# (keine fremden/inline <script>). Extras werden vom Header-Builder an
+# script-src angehaengt (siehe apps/core/security_headers.py).
+CSP_EXTRA_SCRIPT_SRC = ["'unsafe-eval'"]
+
 if "apps.core.security_headers.SecurityHeadersMiddleware" not in MIDDLEWARE:
     # Direkt hinter SecurityMiddleware einhaengen
     idx = (
