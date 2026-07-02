@@ -44,8 +44,9 @@ mit anderen Services (siehe `CREDO_Finance_Portal`-Pattern).
 python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
 
 # Fernet-Key (44 Zeichen, urlsafe-base64)
-# Aktuell nur fuer Migration 0006 noetig; trotzdem setzen, weil
-# production.py den Key als Pflicht erzwingt.
+# Verschluesselt das im Admin gepflegte SMTP-Passwort (SmtpConfig) at rest.
+# production.py erzwingt den Key als Pflicht. NICHT rotieren, solange eine
+# SmtpConfig mit gesetztem Passwort aktiv ist (sonst Decrypt-Fehler).
 python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
 
 # Postgres-Passwort (24 Zeichen, alphanumerisch)
@@ -122,9 +123,12 @@ In `.env` in Produktion unbedingt setzen:
 - `DEBUG=False`
 - `DJANGO_SETTINGS_MODULE=betreuer_project.settings.production`
 - `ALLOWED_HOSTS=betreuer.fes-credo.de`
+- `SITE_BASE_URL=https://betreuer.fes-credo.de` (Basis-URL fuer Links in E-Mails
+  -- Einladung/Passwort-Setzen; explizit setzen, damit auch der `django_q`-Worker
+  korrekte Links baut, siehe Abschnitt 9)
 - `POSTGRES_PASSWORD` (generiert)
-- `FERNET_KEY` (generiert; auch wenn aktuell unverschluesselt -- production.py erzwingt ihn)
-- `EMAIL_HOST` + Zugangsdaten
+- `FERNET_KEY` (generiert; verschluesselt das SMTP-Passwort -- production.py erzwingt ihn)
+- `EMAIL_HOST` + Zugangsdaten (SMTP-Fallback, falls keine aktive `SmtpConfig` im Admin)
 - `DJANGO_ADMINS="Dimitri Riesen:dimitri.riesen@fes-minden.de"`
 
 ### 4.3 Container starten
@@ -203,6 +207,11 @@ sudo systemctl reload caddy
    - Token: `openssl rand -hex 32`
    - In n8n im HTTP-Request-Node unter
      `Authorization: Bearer <gleicher-Token>` eintragen.
+4. **SMTP-Konfiguration** anlegen (Direktversand aller Mails, siehe Abschnitt 9):
+   `Notifications -> SMTP-Konfiguration -> Hinzufuegen`
+   - Host / Port / TLS **oder** SSL / Benutzer / Passwort (wird Fernet-verschluesselt)
+   - Absender (Name + Adresse), Admin-Adresse, Buchhaltungs-Adresse
+   - Haken **"aktiv"** setzen. Ohne aktive Config greift der `.env`-SMTP-Fallback.
 
 ### 4.6 Verifikation
 
@@ -228,11 +237,15 @@ docker compose -f docker-compose.yml logs -f django_q
 ```bash
 cd /vol/container/betreuer-fes
 git pull
-docker compose -f docker-compose.yml build
-docker compose -f docker-compose.yml up -d
+docker compose -f docker-compose.yml up -d --build
 docker compose -f docker-compose.yml exec django python manage.py migrate
-docker compose -f docker-compose.yml exec django python manage.py collectstatic --noinput
 ```
+
+> `collectstatic` muss beim Update **nicht** mehr manuell laufen: der
+> Container-Entrypoint fuehrt es bei jedem Start automatisch aus
+> (`RUN_COLLECTSTATIC=1` am `django`-Service). Das haelt das
+> `staticfiles.json`-Manifest im persistenten Volume aktuell und
+> verhindert `Missing staticfiles manifest entry`-500er nach einem Rebuild.
 
 Rollback auf vorherigen Commit:
 
@@ -297,6 +310,68 @@ Container-Namen `betreuer-${MANDANT}-django`.
 | `ImproperlyConfigured: FERNET_KEY ...` | FERNET_KEY in `.env` setzen (siehe Abschnitt 2 Generator). |
 | 404 auf `/static/...` | `collectstatic` nach `up -d` ausgefuehrt? WhiteNoise im MIDDLEWARE-Stack? |
 | `permission denied "/app/media"` | `docker compose down && docker volume inspect betreuer_${MANDANT}_media_files` pruefen. |
-| n8n-Events kommen nicht an | Django-Admin -> Webhook-Endpoints: `is_active=True`? URL erreichbar? `django_q`-Container laeuft? |
-| Password-Reset-Mail kommt nicht | `EMAIL_HOST` gesetzt? Mit `docker compose exec django python manage.py sendtestemail ...` pruefen. |
+| n8n-Events kommen nicht an | Django-Admin -> Webhook-Endpoints: `is_active=True`? URL erreichbar? `django_q`-Container laeuft? (Hinweis: E-Mails laufen seit dem SMTP-Umbau NICHT mehr ueber n8n, siehe Abschnitt 9.) |
+| Mail kommt nicht an | Admin -> SMTP-Konfiguration aktiv & korrekt? Andernfalls `.env`-`EMAIL_HOST` gesetzt? Versuche im Admin unter **E-Mail-Logs** einsehen (Status `failed` + Fehlertext). |
+| Mail-Links zeigen `localhost` | `SITE_BASE_URL` in `.env` gesetzt und Container neu gestartet? Betrifft v.a. den `django_q`-Worker (Abschnitt 9). |
+| Doppelte Mails | Alte n8n-Mail-Steps noch aktiv? In n8n deaktivieren (Abschnitt 9). |
 | Dashboard sehr langsam | Index-Migrationen angewendet? `docker compose exec django python manage.py showmigrations`. |
+
+---
+
+## 9. Release-Hinweise: E-Mail-Direktversand per SMTP
+
+Ab diesem Release verschickt die App **alle** E-Mails (Registrierungs-Einladung,
+Passwort-Setzen-Link, Benachrichtigungen) **direkt per SMTP** -- nicht mehr ueber
+n8n. SMTP-Zugangsdaten und Rollen-Adressen werden im Django-Admin gepflegt
+(`SmtpConfig`, Passwort Fernet-verschluesselt), Fallback ist die `.env`-SMTP-Config.
+
+### 9.1 Deploy-Checkliste fuer dieses Update
+
+```bash
+cd /vol/container/betreuer-fes
+git checkout main && git pull origin main
+
+# .env: SITE_BASE_URL ergaenzen (Pflicht fuer korrekte Mail-Links)
+grep -q '^SITE_BASE_URL=' .env || echo 'SITE_BASE_URL=https://betreuer.fes-credo.de' >> .env
+
+# Neu bauen & starten (Entrypoint fuehrt collectstatic automatisch aus)
+docker compose -f docker-compose.yml up -d --build
+
+# Neue Migrationen: notifications 0004/0005 (NotificationLog, SmtpConfig, EmailLog),
+# contracts 0009 (RegistrationLink-Felder + Index-Renames) -- alle additiv.
+docker compose -f docker-compose.yml exec django python manage.py migrate
+```
+
+### 9.2 SMTP im Admin einrichten
+
+Django-Admin -> `Notifications -> SMTP-Konfiguration`:
+
+- **Server:** Host, Port (587 = TLS, 465 = SSL), **entweder** TLS **oder** SSL
+  (nicht beides -- wird per `clean()` erzwungen), Benutzer, Passwort.
+- **Absender:** Name + Adresse (z.B. `noreply@fes-credo.de`).
+- **Rollen-Empfaenger:** Admin-Adresse (Duplikat, Ablauf, Freibetrag-Warnung) und
+  Buchhaltungs-Adresse (genehmigte Stundennachweise).
+- **"aktiv"** anhaken. Leer/inaktiv -> `.env`-SMTP-Fallback.
+
+### 9.3 n8n-Mailversand deaktivieren
+
+In den n8n-Workflows die **E-Mail-Sende-Nodes deaktivieren** -- sonst gehen Mails
+doppelt raus (App + n8n). Der **eingehende** Webhook (`/api/webhook/n8n/`,
+Inbound-Token) bleibt unveraendert aktiv.
+
+### 9.4 Verifikation
+
+- Als Koordinator einen Test-Registrierungslink an eine eigene Adresse senden.
+- Zustellung pruefen; im Admin unter **E-Mail-Logs** erscheint ein Eintrag mit
+  Status `sent` (bzw. `failed` + Fehlertext bei Problemen).
+- Empfaengt der Betreuer nach der Genehmigung die Mail mit Passwort-Setzen-Link?
+
+### 9.5 Wichtige Hinweise
+
+- **`SITE_BASE_URL`** muss gesetzt sein, sonst baut besonders der `django_q`-Worker
+  (asynchroner Mailversand) evtl. `localhost`-Links.
+- **`FERNET_KEY`** nicht rotieren, solange eine `SmtpConfig` mit Passwort aktiv ist
+  -- sonst schlaegt die Entschluesselung fehl (Versand faellt dann sauber auf
+  `failed` zurueck, aber es gehen keine Mails raus).
+- Der `EmailLog` protokolliert jeden Versand (sent/failed/skipped) -- erste
+  Anlaufstelle bei Zustellproblemen.
