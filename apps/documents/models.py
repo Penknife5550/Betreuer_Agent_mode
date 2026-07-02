@@ -54,6 +54,11 @@ class DocumentRequirement(TimeStampedModel):
         help_text="Django template path for PDF generation.",
     )
     sort_order = models.PositiveIntegerField(default=0)
+    is_active = models.BooleanField(
+        default=True,
+        help_text="Inaktive Anforderungen erzeugen bei neuen Registrierungen "
+        "keine Pflicht-Dokumente mehr (bestehende bleiben unveraendert).",
+    )
 
     class Meta:
         verbose_name = "Dokumentanforderung"

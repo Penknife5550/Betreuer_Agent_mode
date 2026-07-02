@@ -1430,3 +1430,104 @@ class TestFileUploadSecurity:
         assert doc.status == "sent", (
             ".exe-Upload darf Dokument NICHT in 'uploaded' versetzen."
         )
+
+
+# ---------------------------------------------------------------------------
+# Dokumentanforderungen-UI (Admin-only CRUD + Deaktivieren)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+class TestDocumentRequirementUI:
+    """Admin verwaltet Dokumenttypen ueber die App-UI."""
+
+    def _valid_data(self, **over):
+        data = {
+            "name": "Test-Dok",
+            "code": "testdok",
+            "description": "",
+            "is_generated": False,
+            "template_name": "",
+            "is_required_internal": True,
+            "is_required_external": True,
+            "renewal_interval_months": "",
+            "sort_order": 10,
+            "is_active": True,
+        }
+        data.update(over)
+        # Checkbox-Felder: nur mitsenden, wenn True (HTML-Semantik).
+        for key in ("is_generated", "is_required_internal",
+                    "is_required_external", "is_active"):
+            if not data.get(key):
+                data.pop(key, None)
+        return data
+
+    def test_list_requires_admin(self, koordinator_user, betreuer_user):
+        for user in (koordinator_user, betreuer_user):
+            client = Client()
+            client.force_login(user)
+            resp = client.get(reverse("documents:requirement_list"))
+            assert resp.status_code == 403
+
+    def test_admin_can_open_list(self, admin_user):
+        client = Client()
+        client.force_login(admin_user)
+        assert client.get(reverse("documents:requirement_list")).status_code == 200
+
+    def test_admin_creates_upload_requirement(self, admin_user):
+        client = Client()
+        client.force_login(admin_user)
+        resp = client.post(reverse("documents:requirement_create"), self._valid_data())
+        assert resp.status_code == 302
+        req = DocumentRequirement.objects.get(code="testdok")
+        assert req.is_active is True
+        assert req.template_name == ""
+
+    def test_generated_requires_template(self, admin_user):
+        client = Client()
+        client.force_login(admin_user)
+        resp = client.post(
+            reverse("documents:requirement_create"),
+            self._valid_data(is_generated=True, template_name=""),
+        )
+        assert resp.status_code == 200  # Formular mit Fehler
+        assert not DocumentRequirement.objects.filter(code="testdok").exists()
+
+    def test_generated_with_template_ok(self, admin_user):
+        client = Client()
+        client.force_login(admin_user)
+        resp = client.post(
+            reverse("documents:requirement_create"),
+            self._valid_data(
+                is_generated=True, template_name="documents/pdf/vertrag.html"
+            ),
+        )
+        assert resp.status_code == 302
+        assert DocumentRequirement.objects.get(code="testdok").is_generated is True
+
+    def test_toggle_deactivates(self, admin_user, document_requirement_vertrag):
+        client = Client()
+        client.force_login(admin_user)
+        assert document_requirement_vertrag.is_active is True
+        resp = client.post(
+            reverse("documents:requirement_toggle",
+                    kwargs={"pk": document_requirement_vertrag.pk})
+        )
+        assert resp.status_code == 302
+        document_requirement_vertrag.refresh_from_db()
+        assert document_requirement_vertrag.is_active is False
+
+    def test_inactive_requirement_creates_no_document(
+        self, betreuer_profile, contract, document_requirement_vertrag,
+    ):
+        """Deaktivierte Anforderung erzeugt bei Registrierung kein Dokument."""
+        from apps.contracts.services import _create_pending_documents
+
+        document_requirement_vertrag.is_active = False
+        document_requirement_vertrag.save(update_fields=["is_active"])
+        Document.objects.all().delete()
+
+        _create_pending_documents(contract, betreuer_profile)
+        assert not Document.objects.filter(
+            requirement=document_requirement_vertrag
+        ).exists()

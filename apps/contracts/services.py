@@ -242,7 +242,8 @@ def _create_pending_documents(contract, betreuer_profile):
     """
     from apps.documents.models import Document, DocumentRequirement
 
-    requirements = DocumentRequirement.objects.all()
+    # Nur aktive Anforderungen erzeugen Pflicht-Dokumente.
+    requirements = DocumentRequirement.objects.filter(is_active=True)
     documents = [
         Document(
             contract=contract,
