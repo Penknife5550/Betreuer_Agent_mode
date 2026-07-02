@@ -244,6 +244,32 @@ def test_seed_command_idempotent():
 # ---------------------------------------------------------------------------
 
 
+# ---------------------------------------------------------------------------
+# Content-Security-Policy Header
+# ---------------------------------------------------------------------------
+
+
+def test_csp_default_script_src_is_self_only():
+    """Ohne Extra bleibt script-src strikt auf 'self'."""
+    from apps.core.security_headers import _build_csp_header
+
+    csp = _build_csp_header()
+    assert "script-src 'self'" in csp
+    assert "unsafe-eval" not in csp
+
+
+def test_csp_extra_script_src_appends_unsafe_eval(settings):
+    """CSP_EXTRA_SCRIPT_SRC haengt Werte an script-src an (Alpine braucht
+    'unsafe-eval') -- ohne andere Direktiven zu lockern."""
+    from apps.core.security_headers import _build_csp_header
+
+    settings.CSP_EXTRA_SCRIPT_SRC = ["'unsafe-eval'"]
+    csp = _build_csp_header()
+    assert "script-src 'self' 'unsafe-eval'" in csp
+    # default-src bleibt unveraendert strikt
+    assert "default-src 'self'" in csp
+
+
 @pytest.mark.django_db
 def test_health_check():
     """GET /health/ should return HTTP 200 with JSON {'status': 'ok'}."""
