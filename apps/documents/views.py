@@ -53,7 +53,10 @@ class DocumentUploadView(LoginRequiredMixin, UserPassesTestMixin, View):
         else:
             for error in form.errors.values():
                 messages.error(request, error[0])
-        return redirect("contracts:betreuer_detail", pk=document.betreuer.pk)
+        # Der Uploader ist immer der Betreuer selbst (test_func) -> zurueck aufs
+        # eigene Dashboard. contracts:betreuer_detail ist koordinator-scoped und
+        # wuerde dem Betreuer sonst einen 403 zeigen.
+        return redirect("dashboards:betreuer_dashboard")
 
 
 class DocumentVerifyView(LoginRequiredMixin, UserPassesTestMixin, View):
