@@ -71,21 +71,10 @@ class BetreuerRegistrationForm(forms.Form):
         ),
     )
 
-    # --- Password (V2: Betreuer sets own password) ---
-    password = forms.CharField(
-        min_length=8,
-        label="Passwort",
-        widget=forms.PasswordInput(
-            attrs={"class": INPUT_CSS, "placeholder": "Mindestens 8 Zeichen"}
-        ),
-    )
-    password_confirm = forms.CharField(
-        min_length=8,
-        label="Passwort bestaetigen",
-        widget=forms.PasswordInput(
-            attrs={"class": INPUT_CSS, "placeholder": "Passwort wiederholen"}
-        ),
-    )
+    # Kein Passwort-Feld bei der Registrierung: In V2 setzt der Betreuer sein
+    # Passwort erst NACH der Genehmigung ueber den per E-Mail verschickten
+    # Link (notify_betreuer_approved -> _password_setup_url). _create_user legt
+    # das Konto mit set_unusable_password() an, bis der Link genutzt wird.
 
     # --- Section 2: Address ---
     street = forms.CharField(
@@ -314,20 +303,9 @@ class BetreuerRegistrationForm(forms.Form):
         Hier nur Abhaengigkeiten zwischen mehreren Feldern.
         """
         cleaned = super().clean()
-        self._validate_password_match(cleaned)
         self._validate_school_foerderprogramm(cleaned)
         self._validate_foerderprogramm_activity(cleaned)
         return cleaned
-
-    def _validate_password_match(self, cleaned):
-        """Passwort und Bestaetigung muessen uebereinstimmen."""
-        password = cleaned.get("password")
-        password_confirm = cleaned.get("password_confirm")
-        if password and password_confirm and password != password_confirm:
-            self.add_error(
-                "password_confirm",
-                "Die Passwoerter stimmen nicht ueberein.",
-            )
 
     def _validate_school_foerderprogramm(self, cleaned):
         """Foerderprogramm muss fuer die gewaehlte Schule verfuegbar sein."""
