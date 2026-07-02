@@ -133,19 +133,12 @@
                         {{ form.kontoinhaber }}
                         {% if form.kontoinhaber.errors %}<p id="id_kontoinhaber_error" role="alert" class="mt-1 text-xs text-red-600">{{ form.kontoinhaber.errors.0 }}</p>{% endif %}
                     </div>
-                    <div>
+                    <div class="md:col-span-2">
                         <label for="{{ form.iban.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
                             {{ form.iban.label }} <span class="text-red-500" aria-label="erforderlich">*</span>
                         </label>
                         {{ form.iban }}
                         {% if form.iban.errors %}<p id="id_iban_error" role="alert" class="mt-1 text-xs text-red-600">{{ form.iban.errors.0 }}</p>{% endif %}
-                    </div>
-                    <div>
-                        <label for="{{ form.bic.id_for_label }}" class="block text-sm font-medium text-gray-700 mb-1">
-                            {{ form.bic.label }}
-                        </label>
-                        {{ form.bic }}
-                        {% if form.bic.errors %}<p id="id_bic_error" role="alert" class="mt-1 text-xs text-red-600">{{ form.bic.errors.0 }}</p>{% endif %}
                     </div>
                 </div>
             </fieldset>

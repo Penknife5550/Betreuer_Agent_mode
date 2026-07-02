@@ -21,8 +21,13 @@
             </h2>
             <p class="text-sm text-neutral-600">
                 Dieser Registrierungslink ist nicht mehr gueltig. Er wurde bereits verwendet
-                oder ist abgelaufen. Bitte wenden Sie sich an Ihren Koordinator fuer einen
-                neuen Link.
+                oder ist abgelaufen.
+                {% if support_email %}
+                Bitte fordere einen neuen Link an unter
+                <a href="mailto:{{ support_email }}" class="text-schule-gsh hover:underline">{{ support_email }}</a>.
+                {% else %}
+                Bitte wende dich fuer einen neuen Link an deine Koordination.
+                {% endif %}
             </p>
         </div>
 

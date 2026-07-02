@@ -20,22 +20,29 @@
                 Registrierung erfolgreich
             </h2>
             <p class="text-sm text-neutral-600 mb-6">
-                Vielen Dank fuer Ihre Registrierung. Der Koordinator wird Ihre Daten pruefen
-                und Ihnen die Vertragsdokumente zusenden. Sie erhalten eine E-Mail mit
-                Ihren Zugangsdaten.
+                Vielen Dank fuer deine Registrierung! Deine Koordination prueft jetzt
+                deine Daten. Sobald du freigegeben bist, bekommst du eine E-Mail, mit der
+                du dein Passwort festlegst und dich anmeldest.
             </p>
 
             <div class="alert-info text-left">
                 <div>
-                    <p class="font-medium">Naechste Schritte</p>
+                    <p class="font-medium">So geht es weiter</p>
                     <ol class="mt-2 ml-4 list-decimal space-y-1">
-                        <li>Koordinator prueft Ihre Daten</li>
-                        <li>Sie erhalten die Dokumente per E-Mail</li>
-                        <li>Dokumente unterschreiben und hochladen</li>
-                        <li>Nach Pruefung: Stunden erfassen</li>
+                        <li>Die Koordination prueft deine Daten und gibt dich frei.</li>
+                        <li>Du erhaeltst eine E-Mail zum <strong>Passwort festlegen</strong>.</li>
+                        <li>Melde dich mit deiner <strong>E-Mail-Adresse</strong> an.</li>
+                        <li>Im Portal findest du deine Dokumente zum Herunterladen und Hochladen.</li>
+                        <li>Danach kannst du deine Stunden erfassen.</li>
                     </ol>
                 </div>
             </div>
+            {% if support_email %}
+            <p class="mt-4 text-xs text-neutral-500">
+                Fragen? Schreib an
+                <a href="mailto:{{ support_email }}" class="text-schule-gsh hover:underline">{{ support_email }}</a>.
+            </p>
+            {% endif %}
         </div>
 
         <p class="mt-8 text-xs text-neutral-400">

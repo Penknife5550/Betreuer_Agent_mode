@@ -446,23 +446,30 @@ def send_registration_invite(link):
     if link.expires_at:
         gueltig = f" (gueltig bis {link.expires_at:%d.%m.%Y})"
 
+    # Konkreter Ansprechpartner statt "die Koordination": Koordinator der Schule.
+    koord = getattr(link.school, "koordinator", None)
+    if koord and koord.email:
+        kontakt = (
+            f"Der Link ist personalisiert{gueltig}. Fragen? Wende dich an "
+            f"{koord.get_full_name() or 'deine Koordination'}: {koord.email}."
+        )
+    else:
+        kontakt = f"Der Link ist personalisiert{gueltig}. Bei Fragen wende dich an deine Koordination."
+
     ok = send_credo_email(
         to=link.sent_to,
         kind="registration_invite",
         subject="Einladung zur Registrierung als Betreuer/in",
         greeting=f"Guten Tag {name}," if name else "Guten Tag,",
         paragraphs=[
-            f"Sie wurden eingeladen, sich als Betreuer/in fuer "
+            f"du wurdest eingeladen, dich als Betreuer/in fuer "
             f"{link.school.name} zu registrieren.",
-            "Bitte fuellen Sie das Registrierungsformular ueber den folgenden "
-            "Button aus. Ihre Schule ist bereits vorausgewaehlt.",
+            "Bitte fuelle das Registrierungsformular ueber den folgenden "
+            "Button aus. Deine Schule ist bereits vorausgewaehlt.",
         ],
         cta_label="Jetzt registrieren",
         cta_url=link.registration_url,
-        outro_paragraphs=[
-            f"Der Link ist personalisiert{gueltig}. Bei Fragen wenden Sie sich "
-            "an Ihre Koordination.",
-        ],
+        outro_paragraphs=[kontakt],
     )
     if ok:
         link.sent_at = timezone.now()
