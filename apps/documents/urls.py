@@ -2,6 +2,10 @@ from django.urls import path
 
 from apps.documents.views import (
     DocumentDownloadView,
+    DocumentRequirementCreateView,
+    DocumentRequirementListView,
+    DocumentRequirementToggleView,
+    DocumentRequirementUpdateView,
     DocumentUploadView,
     DocumentVerifyView,
     GenerateDocumentsView,
@@ -11,6 +15,27 @@ from apps.documents.views import (
 app_name = "documents"
 
 urlpatterns = [
+    # --- Dokumentanforderungen verwalten (Admin) ---
+    path(
+        "dokumentanforderungen/",
+        DocumentRequirementListView.as_view(),
+        name="requirement_list",
+    ),
+    path(
+        "dokumentanforderungen/neu/",
+        DocumentRequirementCreateView.as_view(),
+        name="requirement_create",
+    ),
+    path(
+        "dokumentanforderungen/<int:pk>/bearbeiten/",
+        DocumentRequirementUpdateView.as_view(),
+        name="requirement_update",
+    ),
+    path(
+        "dokumentanforderungen/<int:pk>/status/",
+        DocumentRequirementToggleView.as_view(),
+        name="requirement_toggle",
+    ),
     path(
         "dokument/<int:pk>/hochladen/",
         DocumentUploadView.as_view(),

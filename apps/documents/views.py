@@ -15,13 +15,15 @@ from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.db import transaction
 from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404, redirect
-from django.utils import timezone
+from django.urls import reverse_lazy
 from django.views import View
+from django.views.generic import CreateView, ListView, UpdateView
+from django.utils import timezone
 
 from apps.contracts.models import BetreuerProfile
-from apps.core.permissions import koordinator_has_access_to_betreuer
-from apps.documents.forms import DocumentUploadForm
-from apps.documents.models import Document
+from apps.core.permissions import AdminOnlyMixin, koordinator_has_access_to_betreuer
+from apps.documents.forms import DocumentRequirementForm, DocumentUploadForm
+from apps.documents.models import Document, DocumentRequirement
 from apps.documents.services import generate_all_pending_documents, send_all_generated_documents
 
 logger = logging.getLogger(__name__)
@@ -259,3 +261,59 @@ class DocumentDownloadView(LoginRequiredMixin, View):
             as_attachment=True,
             filename=f"{document.requirement.code}_{document.contract.contract_number}.pdf",
         )
+
+
+# ---------------------------------------------------------------------------
+# Dokumentanforderungen verwalten (Admin-only, UI)
+# ---------------------------------------------------------------------------
+
+
+class DocumentRequirementListView(AdminOnlyMixin, ListView):
+    """Uebersicht aller Dokumenttypen (aktiv + inaktiv)."""
+
+    model = DocumentRequirement
+    template_name = "documents/requirement_list.html"
+    context_object_name = "requirements"
+    queryset = DocumentRequirement.objects.all()  # inkl. inaktive
+
+
+class DocumentRequirementCreateView(AdminOnlyMixin, CreateView):
+    """Neuen Dokumenttyp anlegen."""
+
+    model = DocumentRequirement
+    form_class = DocumentRequirementForm
+    template_name = "documents/requirement_form.html"
+    success_url = reverse_lazy("documents:requirement_list")
+
+    def form_valid(self, form):
+        messages.success(
+            self.request, f"Dokumenttyp „{form.instance.name}“ wurde angelegt."
+        )
+        return super().form_valid(form)
+
+
+class DocumentRequirementUpdateView(AdminOnlyMixin, UpdateView):
+    """Bestehenden Dokumenttyp bearbeiten."""
+
+    model = DocumentRequirement
+    form_class = DocumentRequirementForm
+    template_name = "documents/requirement_form.html"
+    success_url = reverse_lazy("documents:requirement_list")
+
+    def form_valid(self, form):
+        messages.success(
+            self.request, f"Dokumenttyp „{form.instance.name}“ wurde gespeichert."
+        )
+        return super().form_valid(form)
+
+
+class DocumentRequirementToggleView(AdminOnlyMixin, View):
+    """Aktiviert/deaktiviert einen Dokumenttyp (kein Loeschen -> kein Datenverlust)."""
+
+    def post(self, request, pk):
+        req = get_object_or_404(DocumentRequirement, pk=pk)
+        req.is_active = not req.is_active
+        req.save(update_fields=["is_active", "updated_at"])
+        zustand = "aktiviert" if req.is_active else "deaktiviert"
+        messages.success(request, f"Dokumenttyp „{req.name}“ wurde {zustand}.")
+        return redirect("documents:requirement_list")
