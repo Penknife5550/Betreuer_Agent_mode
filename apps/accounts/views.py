@@ -1,15 +1,20 @@
 import logging
 
+from django import forms
 from django.contrib import messages
-from django.contrib.auth import logout
+from django.contrib.auth import get_user_model, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.contrib.auth.tokens import default_token_generator
 from django.contrib.auth.views import LoginView, PasswordChangeView
 from django.shortcuts import redirect
-from django.urls import reverse_lazy
+from django.urls import reverse, reverse_lazy
+from django.utils.encoding import force_bytes
+from django.utils.http import urlsafe_base64_encode
 from django.views.decorators.http import require_POST
-from django.views.generic import TemplateView
+from django.views.generic import FormView, TemplateView
 
+from apps.core.constants import INPUT_CSS
 from apps.documents.services import mask_iban
 
 logger = logging.getLogger(__name__)
@@ -81,6 +86,63 @@ class CustomLoginView(LoginView):
             role,
         )
         return "/login/"
+
+
+class PasswordResetRequestForm(forms.Form):
+    """'Passwort vergessen' -- der Nutzer gibt nur seine E-Mail ein."""
+
+    email = forms.EmailField(
+        label="E-Mail-Adresse",
+        widget=forms.EmailInput(
+            attrs={"class": INPUT_CSS, "placeholder": "name@beispiel.de",
+                   "autocomplete": "email"}
+        ),
+    )
+
+
+class PasswordResetRequestView(FormView):
+    """
+    Self-Service 'Passwort vergessen': verschickt einen Reset-Link per SMTP
+    (send_credo_email, gleiche Infrastruktur wie die uebrigen Mails).
+
+    Kein User-Enumeration: es wird IMMER die gleiche Bestaetigungsseite
+    angezeigt, egal ob die E-Mail existiert.
+    """
+
+    template_name = "accounts/password_reset_request.html"
+    form_class = PasswordResetRequestForm
+    success_url = reverse_lazy("accounts:password_reset_sent")
+
+    def form_valid(self, form):
+        from apps.core.email import build_site_url, send_credo_email
+
+        email = form.cleaned_data["email"].strip()
+        User = get_user_model()
+        for user in User.objects.filter(email__iexact=email, is_active=True):
+            uid = urlsafe_base64_encode(force_bytes(user.pk))
+            token = default_token_generator.make_token(user)
+            link = build_site_url(
+                reverse("accounts:password_reset_confirm",
+                        kwargs={"uidb64": uid, "token": token})
+            )
+            name = user.get_full_name().strip()
+            send_credo_email(
+                to=user.email,
+                kind="password_reset",
+                subject="Passwort zuruecksetzen - BetreuerApp",
+                greeting=f"Guten Tag {name}," if name else "Guten Tag,",
+                paragraphs=[
+                    "Sie haben angefordert, Ihr Passwort zurueckzusetzen.",
+                    "Klicken Sie auf den Button, um ein neues Passwort zu vergeben.",
+                ],
+                cta_label="Neues Passwort festlegen",
+                cta_url=link,
+                outro_paragraphs=[
+                    "Falls Sie das nicht angefordert haben, koennen Sie diese "
+                    "E-Mail ignorieren. Der Link ist 14 Tage gueltig.",
+                ],
+            )
+        return super().form_valid(form)
 
 
 @require_POST

@@ -489,3 +489,79 @@ def test_profile_view_iban_legacy_value_no_crash(betreuer_user, betreuer_profile
     )
     # iban_masked sollte im Context existieren (kein Crash bei Rendern).
     assert "iban_masked" in response.context
+
+
+# ---------------------------------------------------------------------------
+# Login per E-Mail + Passwort-Reset (Self-Service)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+class TestEmailLoginAndReset:
+    """Login per E-Mail (fuer Schueler) + 'Passwort vergessen'-Flow."""
+
+    def _make_betreuer(self):
+        from django.contrib.auth.models import User
+        from apps.accounts.models import UserProfile
+
+        user = User.objects.create_user(
+            username="max1", email="max.mustermann@example.de",
+            password="EinSicheresPW123!", first_name="Max", last_name="Mustermann",
+        )
+        UserProfile.objects.create(user=user, role="betreuer")
+        return user
+
+    def test_login_with_email(self):
+        """Anmeldung mit E-Mail statt Benutzername funktioniert."""
+        self._make_betreuer()
+        client = Client()
+        resp = client.post("/login/", {
+            "username": "max.mustermann@example.de",
+            "password": "EinSicheresPW123!",
+        })
+        assert resp.status_code == 302  # erfolgreich -> Redirect aufs Dashboard
+        assert "_auth_user_id" in client.session
+
+    def test_login_with_email_case_insensitive(self):
+        self._make_betreuer()
+        client = Client()
+        resp = client.post("/login/", {
+            "username": "Max.Mustermann@EXAMPLE.de",
+            "password": "EinSicheresPW123!",
+        })
+        assert resp.status_code == 302
+        assert "_auth_user_id" in client.session
+
+    def test_password_reset_request_sends_link(self, mailoutbox):
+        from django.urls import reverse
+
+        self._make_betreuer()
+        client = Client()
+        resp = client.post(reverse("accounts:password_reset"),
+                           {"email": "max.mustermann@example.de"})
+        assert resp.status_code == 302  # -> gesendet-Seite
+        assert len(mailoutbox) == 1
+        assert mailoutbox[0].to == ["max.mustermann@example.de"]
+        assert "passwort-setzen" in mailoutbox[0].body  # Reset-Link enthalten
+
+    def test_password_reset_no_enumeration(self, mailoutbox):
+        """Unbekannte E-Mail -> gleiche Bestaetigung, keine Mail, kein Fehler."""
+        from django.urls import reverse
+
+        client = Client()
+        resp = client.post(reverse("accounts:password_reset"),
+                           {"email": "gibtsnicht@example.de"})
+        assert resp.status_code == 302
+        assert len(mailoutbox) == 0
+
+    def test_reset_pages_anonymous_reachable(self):
+        from django.urls import reverse
+
+        client = Client()
+        assert client.get(reverse("accounts:password_reset")).status_code == 200
+        assert client.get(reverse("accounts:password_reset_sent")).status_code == 200
+
+    def test_login_page_links_forgot_password(self):
+        client = Client()
+        resp = client.get("/login/")
+        assert b"/passwort-vergessen/" in resp.content
