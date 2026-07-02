@@ -2023,11 +2023,12 @@ class TestFreibetragServiceV2:
 
 
 @pytest.mark.django_db
-class TestRegistrationFormPassword:
-    """Tests for the password fields on the V2 registration form."""
+class TestRegistrationFormNoPassword:
+    """V2: Die Registrierung hat KEINE Passwortfelder -- das Passwort wird
+    erst nach Genehmigung ueber den E-Mail-Link gesetzt."""
 
-    def _make_data(self, school, foerderprogramm, activity_type, password, password_confirm):
-        """Helper to build form data with password fields."""
+    def _make_data(self, school, foerderprogramm, activity_type):
+        """Vollstaendige, gueltige Formulardaten OHNE Passwort."""
         return {
             "first_name": "Pwd", "last_name": "Test",
             "email": "pwd.test@example.de", "anrede": "herr",
@@ -2038,28 +2039,33 @@ class TestRegistrationFormPassword:
             "school": str(school.pk), "foerderprogramm": str(foerderprogramm.pk),
             "activity_type": str(activity_type.pk),
             "betreuer_type": "schueler", "hour_duration": "60",
-            "password": password, "password_confirm": password_confirm,
         }
 
-    def test_matching_passwords_valid(self, school, foerderprogramm, activity_type, school_year):
-        """Matching passwords pass validation."""
-        data = self._make_data(school, foerderprogramm, activity_type, "TestPass123!", "TestPass123!")
+    def test_form_has_no_password_fields(self):
+        """password/password_confirm existieren nicht mehr im Formular."""
+        form = BetreuerRegistrationForm()
+        assert "password" not in form.fields
+        assert "password_confirm" not in form.fields
+
+    def test_valid_without_password(self, school, foerderprogramm, activity_type, school_year):
+        """Das Formular ist ohne Passwort absendbar (behebt den 'kann nicht
+        absenden'-Bug: frueher waren Pflicht-Passwortfelder ungerendert)."""
+        data = self._make_data(school, foerderprogramm, activity_type)
         form = BetreuerRegistrationForm(data=data)
         assert form.is_valid(), form.errors
 
-    def test_mismatched_passwords_invalid(self, school, foerderprogramm, activity_type, school_year):
-        """Mismatched passwords fail validation."""
-        data = self._make_data(school, foerderprogramm, activity_type, "TestPass123!", "Different456!")
-        form = BetreuerRegistrationForm(data=data)
-        assert not form.is_valid()
-        assert "password_confirm" in form.errors
+    def test_created_user_has_unusable_password(
+        self, school, foerderprogramm, activity_type, school_year, hourly_rate,
+    ):
+        """Nach der Registrierung hat der User ein unbrauchbares Passwort
+        (bis der Set-Passwort-Link nach der Genehmigung genutzt wird)."""
+        from apps.contracts.services import register_betreuer_from_form
 
-    def test_password_too_short(self, school, foerderprogramm, activity_type, school_year):
-        """Password shorter than 8 chars fails."""
-        data = self._make_data(school, foerderprogramm, activity_type, "short", "short")
+        data = self._make_data(school, foerderprogramm, activity_type)
         form = BetreuerRegistrationForm(data=data)
-        assert not form.is_valid()
-        assert "password" in form.errors
+        assert form.is_valid(), form.errors
+        user, _profile, _contract, _dup = register_betreuer_from_form(form)
+        assert not user.has_usable_password()
 
 
 # ---------------------------------------------------------------------------
