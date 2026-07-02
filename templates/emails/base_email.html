@@ -36,7 +36,7 @@
                         <td style="padding:16px 40px 8px 40px;">
                             <p style="margin:0 0 16px 0; font-size:15px; color:#575756;">{{ greeting }}</p>
                             {% for para in paragraphs %}
-                            <p style="margin:0 0 14px 0; font-size:15px; line-height:1.55; color:#575756;">{{ para }}</p>
+                            <p style="margin:0 0 14px 0; font-size:15px; line-height:1.55; color:#575756;">{{ para|linebreaksbr }}</p>
                             {% endfor %}
 
                             {% if cta_url and cta_label %}
@@ -54,7 +54,7 @@
                             {% endif %}
 
                             {% for para in outro_paragraphs %}
-                            <p style="margin:0 0 14px 0; font-size:15px; line-height:1.55; color:#575756;">{{ para }}</p>
+                            <p style="margin:0 0 14px 0; font-size:15px; line-height:1.55; color:#575756;">{{ para|linebreaksbr }}</p>
                             {% endfor %}
                         </td>
                     </tr>

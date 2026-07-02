@@ -517,6 +517,36 @@ class TestEmailService:
         assert len(mailoutbox) == 0
         assert EmailLog.objects.get().status == EmailLog.STATUS_SKIPPED
 
+    def test_multiline_paragraph_becomes_br_in_html(self, mailoutbox):
+        """Mehrzeilige Absaetze (\\n) muessen im HTML-Teil als <br> erscheinen."""
+        from apps.core.email import send_credo_email
+
+        send_credo_email(
+            to="person@test.de", subject="X", greeting="Hi",
+            paragraphs=["Zeile eins\nZeile zwei"], kind="test",
+        )
+        html = dict((ct, c) for c, ct in mailoutbox[0].alternatives)["text/html"]
+        assert "<br>" in html
+        # Text-Teil behaelt echten Umbruch
+        assert "Zeile eins\nZeile zwei" in mailoutbox[0].body
+
+    def test_misconfigured_transport_does_not_raise(self, settings, mailoutbox):
+        """use_tls+use_ssl (am clean() vorbei angelegt) -> send_credo_email
+        faengt die Backend-ValueError und gibt False zurueck (wirft NIE)."""
+        from apps.core.email import send_credo_email
+        from apps.notifications.models import EmailLog, SmtpConfig
+
+        # Ungueltige Kombination direkt in die DB (clean() umgangen), aktiv.
+        SmtpConfig.objects.create(
+            host="smtp.test", use_tls=True, use_ssl=True, is_active=True,
+        )
+        ok = send_credo_email(
+            to="person@test.de", subject="X", greeting="Hi",
+            paragraphs=["Text"], kind="test",
+        )
+        assert ok is False  # kein Crash
+        assert EmailLog.objects.filter(status=EmailLog.STATUS_FAILED).exists()
+
     def test_build_site_url_uses_setting(self, settings):
         from apps.core.email import build_site_url
 
@@ -539,6 +569,16 @@ class TestSmtpConfig:
         a.save()
         assert SmtpConfig.objects.count() == 1
         assert SmtpConfig.objects.get().host == "mail2.test"
+
+    def test_clean_rejects_tls_and_ssl(self):
+        """clean() verhindert die sich ausschliessende TLS+SSL-Kombination."""
+        from django.core.exceptions import ValidationError
+
+        from apps.notifications.models import SmtpConfig
+
+        cfg = SmtpConfig(host="mail.test", use_tls=True, use_ssl=True)
+        with pytest.raises(ValidationError):
+            cfg.full_clean()
 
     def test_role_recipients_fallback_to_default_from(self, settings):
         from apps.notifications.models import SmtpConfig

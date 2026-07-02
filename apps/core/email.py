@@ -59,7 +59,11 @@ def _resolve_transport():
             timeout=_CONNECT_TIMEOUT,
         )
         return connection, (cfg.from_address or settings.DEFAULT_FROM_EMAIL)
-    return None, settings.DEFAULT_FROM_EMAIL
+    # .env-Fallback: explizite Connection aus settings.EMAIL_BACKEND, aber MIT
+    # Timeout -- sonst blockiert ein haengender SMTP-Server den Request-Thread
+    # unbegrenzt (Django-Default EMAIL_TIMEOUT ist None). Der timeout-kwarg wird
+    # von Nicht-SMTP-Backends (console/locmem/dummy) ignoriert.
+    return get_connection(timeout=_CONNECT_TIMEOUT), settings.DEFAULT_FROM_EMAIL
 
 
 def _log_email(recipient, subject, kind, status, detail=""):
@@ -113,12 +117,16 @@ def send_credo_email(*, to, subject, greeting, paragraphs, cta_label=None,
         "cta_label": cta_label,
         "cta_url": cta_url,
     }
-    html_body = render_to_string("emails/base_email.html", ctx)
-    text_body = render_to_string("emails/base_email.txt", ctx)
 
-    connection, from_address = _resolve_transport()
-
+    # ALLES was werfen kann (Template-Rendering, Transport-Aufloesung inkl.
+    # Passwort-Entschluesselung/Backend-Konstruktion, Versand) im try -- die
+    # "wirft NIE"-Zusage muss auch bei Fehlkonfiguration (z.B. FERNET_KEY-
+    # Mismatch, use_tls+use_ssl) und Template-Fehlern halten.
     try:
+        html_body = render_to_string("emails/base_email.html", ctx)
+        text_body = render_to_string("emails/base_email.txt", ctx)
+        connection, from_address = _resolve_transport()
+
         msg = EmailMultiAlternatives(
             subject=subject,
             body=text_body,
@@ -128,7 +136,7 @@ def send_credo_email(*, to, subject, greeting, paragraphs, cta_label=None,
         )
         msg.attach_alternative(html_body, "text/html")
         msg.send(fail_silently=False)
-    except Exception as exc:  # SMTP-, DNS-, TLS-Fehler etc.
+    except Exception as exc:  # SMTP-, DNS-, TLS-, Config-, Template-Fehler etc.
         logger.warning("E-Mail an %s fehlgeschlagen: %s", primary, exc)
         _log_email(primary, subject, kind, EmailLog.STATUS_FAILED, str(exc))
         return False

@@ -244,6 +244,17 @@ class SmtpConfig(models.Model):
         state = "aktiv" if self.is_active else "inaktiv"
         return f"SMTP {self.host or '(nicht gesetzt)'}:{self.port} ({state})"
 
+    def clean(self):
+        from django.core.exceptions import ValidationError
+
+        # TLS und SSL schliessen sich gegenseitig aus -- sonst wirft der Django-
+        # SMTP-Backend-Konstruktor beim Versand eine ValueError.
+        if self.use_tls and self.use_ssl:
+            raise ValidationError(
+                "TLS und SSL koennen nicht gleichzeitig aktiv sein. "
+                "Fuer Port 587 TLS, fuer Port 465 SSL waehlen."
+            )
+
     def save(self, *args, **kwargs):
         # Singleton: pk immer 1
         self.pk = 1
