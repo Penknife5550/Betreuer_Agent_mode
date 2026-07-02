@@ -2068,6 +2068,43 @@ class TestRegistrationFormNoPassword:
         assert not user.has_usable_password()
 
 
+@pytest.mark.django_db
+class TestApprovalWiring:
+    """Der Genehmigen-Schritt (Status pending_approval) muss in Betreuer-Liste
+    UND Detailseite verlinkt sein -- sonst kommt der Koordinator nach der
+    Registrierung nicht weiter (fehlte: nur 'registered' war verdrahtet)."""
+
+    def _pending(self, betreuer_profile):
+        betreuer_profile.onboarding_status = "pending_approval"
+        betreuer_profile.save(update_fields=["onboarding_status", "updated_at"])
+        return betreuer_profile
+
+    def test_detail_verlinkt_genehmigen(self, koordinator_user, betreuer_profile):
+        self._pending(betreuer_profile)
+        client = Client()
+        client.force_login(koordinator_user)
+        resp = client.get(
+            reverse("contracts:betreuer_detail", kwargs={"pk": betreuer_profile.pk})
+        )
+        assert resp.status_code == 200
+        approve_url = reverse(
+            "contracts:betreuer_approve", kwargs={"pk": betreuer_profile.pk}
+        )
+        assert approve_url.encode() in resp.content
+        assert b"Warte auf Genehmigung" in resp.content
+
+    def test_liste_verlinkt_genehmigen(self, koordinator_user, betreuer_profile):
+        self._pending(betreuer_profile)
+        client = Client()
+        client.force_login(koordinator_user)
+        resp = client.get(reverse("contracts:betreuer_list"))
+        assert resp.status_code == 200
+        approve_url = reverse(
+            "contracts:betreuer_approve", kwargs={"pk": betreuer_profile.pk}
+        )
+        assert approve_url.encode() in resp.content
+
+
 # ---------------------------------------------------------------------------
 # IDOR: Koordinator-Scope-Check fuer Betreuer-Views
 # ---------------------------------------------------------------------------

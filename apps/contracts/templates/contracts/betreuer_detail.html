@@ -15,6 +15,10 @@
             {# Status Badge #}
             {% if betreuer.onboarding_status == 'registered' %}
             <span aria-label="Status: Registriert" class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-700">Registriert</span>
+            {% elif betreuer.onboarding_status == 'pending_approval' %}
+            <span aria-label="Status: Warte auf Genehmigung" class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-orange-100 text-orange-800">Warte auf Genehmigung</span>
+            {% elif betreuer.onboarding_status == 'approved' %}
+            <span aria-label="Status: Genehmigt" class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-indigo-100 text-indigo-800">Genehmigt</span>
             {% elif betreuer.onboarding_status == 'documents_pending' %}
             <span aria-label="Status: Dokumente ausstehend" class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-yellow-100 text-yellow-800">Dokumente ausstehend</span>
             {% elif betreuer.onboarding_status == 'documents_complete' %}
@@ -23,6 +27,8 @@
             <span aria-label="Status: Aktiv" class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">Aktiv</span>
             {% elif betreuer.onboarding_status == 'inactive' %}
             <span aria-label="Status: Inaktiv" class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800">Inaktiv</span>
+            {% elif betreuer.onboarding_status == 'archived' %}
+            <span aria-label="Status: Archiviert" class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-200 text-gray-600">Archiviert</span>
             {% endif %}
         </div>
     </div>
@@ -109,6 +115,11 @@
                     <a href="{% url 'contracts:betreuer_review' betreuer.pk %}"
                        class="block w-full text-center bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-2 px-4 rounded-md text-sm transition-colors">
                         Daten pruefen & bestaetigen
+                    </a>
+                    {% elif betreuer.onboarding_status == 'pending_approval' %}
+                    <a href="{% url 'contracts:betreuer_approve' betreuer.pk %}"
+                       class="block w-full text-center bg-credo-dark hover:bg-gray-700 text-white font-semibold py-2 px-4 rounded-md text-sm transition-colors">
+                        Genehmigen
                     </a>
                     {% elif betreuer.onboarding_status == 'documents_complete' %}
                     <form method="post" action="{% url 'contracts:betreuer_activate' betreuer.pk %}"
