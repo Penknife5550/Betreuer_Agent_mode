@@ -2067,6 +2067,51 @@ class TestRegistrationFormNoPassword:
         user, _profile, _contract, _dup = register_betreuer_from_form(form)
         assert not user.has_usable_password()
 
+    def test_no_current_schoolyear_raises_clean_error(
+        self, school, foerderprogramm, activity_type, school_year, hourly_rate,
+    ):
+        """Ohne aktuelles Schuljahr -> RegistrationUnavailable statt
+        AttributeError/500 (school_year.name auf None)."""
+        from apps.schools.models import SchoolYear
+        from apps.contracts.services import (
+            RegistrationUnavailable,
+            register_betreuer_from_form,
+        )
+
+        # Kein Schuljahr mehr als 'aktuell' markiert.
+        SchoolYear.objects.update(is_current=False)
+
+        data = self._make_data(school, foerderprogramm, activity_type)
+        form = BetreuerRegistrationForm(data=data)
+        assert form.is_valid(), form.errors
+        with pytest.raises(RegistrationUnavailable):
+            register_betreuer_from_form(form)
+
+    def test_token_registration_no_schoolyear_no_500(
+        self, client, registration_link, school_year, activity_type,
+        foerderprogramm, hourly_rate,
+    ):
+        """Token-Registrierung ohne aktuelles Schuljahr: 200 mit Fehlermeldung,
+        KEIN 500, und kein Betreuer angelegt."""
+        from apps.schools.models import SchoolYear
+        from apps.contracts.models import BetreuerProfile
+
+        SchoolYear.objects.update(is_current=False)
+        count_before = BetreuerProfile.objects.count()
+
+        url = reverse(
+            "contracts:token_registration",
+            kwargs={"token": registration_link.token},
+        )
+        data = self._make_data(
+            registration_link.school, foerderprogramm, activity_type
+        )
+        data["email"] = "kein.schuljahr@example.de"
+        response = client.post(url, data)
+
+        assert response.status_code == 200  # re-rendered, kein 500
+        assert BetreuerProfile.objects.count() == count_before
+
 
 # ---------------------------------------------------------------------------
 # IDOR: Koordinator-Scope-Check fuer Betreuer-Views
