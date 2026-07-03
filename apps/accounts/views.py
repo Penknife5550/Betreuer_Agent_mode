@@ -114,7 +114,7 @@ class PasswordResetRequestView(FormView):
     success_url = reverse_lazy("accounts:password_reset_sent")
 
     def form_valid(self, form):
-        from apps.core.email import build_site_url, send_credo_email
+        from apps.core.email import build_site_url, send_email
 
         email = form.cleaned_data["email"].strip()
         User = get_user_model()
@@ -126,21 +126,12 @@ class PasswordResetRequestView(FormView):
                         kwargs={"uidb64": uid, "token": token})
             )
             name = user.get_full_name().strip()
-            send_credo_email(
+            send_email(
+                "password_reset",
                 to=user.email,
-                kind="password_reset",
-                subject="Passwort zuruecksetzen - BetreuerApp",
                 greeting=f"Guten Tag {name}," if name else "Guten Tag,",
-                paragraphs=[
-                    "Sie haben angefordert, Ihr Passwort zurueckzusetzen.",
-                    "Klicken Sie auf den Button, um ein neues Passwort zu vergeben.",
-                ],
-                cta_label="Neues Passwort festlegen",
                 cta_url=link,
-                outro_paragraphs=[
-                    "Falls Sie das nicht angefordert haben, koennen Sie diese "
-                    "E-Mail ignorieren. Der Link ist 14 Tage gueltig.",
-                ],
+                context={},
             )
         return super().form_valid(form)
 

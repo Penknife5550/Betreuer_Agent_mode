@@ -15,6 +15,7 @@ Laufzeit geaendert werden, ohne Re-Deploy.
 from django.db import models
 
 from apps.core.models import EncryptedCharField, TimeStampedModel
+from apps.notifications.email_templates import DEFAULT_EMAIL_TEMPLATES
 
 # Nur die Events, die aktuell vom Betreuer-Code tatsaechlich ausgeloest
 # werden (stand: Code-Scan ueber apps/contracts, apps/documents,
@@ -336,6 +337,47 @@ class EmailLog(models.Model):
             f"{self.created_at:%Y-%m-%d %H:%M} | {self.recipient} | "
             f"{self.get_status_display()}"
         )
+
+
+class EmailTemplate(models.Model):
+    """
+    Im Admin editierbarer Betreff/Text pro Mail-Typ. Ueberschreibt den
+    Standardtext aus ``email_templates.DEFAULT_EMAIL_TEMPLATES`` -- Aenderungen
+    wirken ohne Deploy. Platzhalter als ``{{name}}`` (siehe Hilfetext je Typ).
+    """
+
+    KEY_CHOICES = [(k, v["label"]) for k, v in DEFAULT_EMAIL_TEMPLATES.items()]
+
+    key = models.CharField(
+        max_length=50,
+        unique=True,
+        choices=KEY_CHOICES,
+        help_text="Mail-Typ. Pro Typ genau eine Vorlage.",
+    )
+    subject = models.CharField(max_length=255, help_text="Betreff (Platzhalter erlaubt).")
+    body = models.TextField(
+        help_text="Text der Mail. Leerzeile = neuer Absatz. Platzhalter wie {{name}}.",
+    )
+    cta_label = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        help_text="Beschriftung des Buttons (leer = kein Button). Das Link-Ziel "
+        "wird vom System gesetzt.",
+    )
+    is_active = models.BooleanField(
+        default=True,
+        help_text="Inaktiv = es gilt wieder der eingebaute Standardtext.",
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "E-Mail-Vorlage"
+        verbose_name_plural = "E-Mail-Vorlagen"
+        ordering = ["key"]
+
+    def __str__(self):
+        return self.get_key_display()
 
 
 class ProcessedWebhookEvent(models.Model):

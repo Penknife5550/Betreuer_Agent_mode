@@ -146,6 +146,33 @@ def send_credo_email(*, to, subject, greeting, paragraphs, cta_label=None,
     return True
 
 
+def send_email(key, *, to, context=None, greeting="Hallo,", cta_url=None):
+    """
+    Verschickt eine Mail auf Basis der (Admin-editierbaren) Vorlage ``key``.
+
+    Betreff/Text kommen aus der aktiven EmailTemplate (DB) oder dem Standardtext
+    (DEFAULT_EMAIL_TEMPLATES); Platzhalter werden aus ``context`` ersetzt. Der
+    Button erscheint nur, wenn die Vorlage ein cta_label hat UND ein ``cta_url``
+    uebergeben wird. Wirft nie (siehe send_credo_email).
+    """
+    from apps.notifications.email_templates import resolve_email_content
+
+    resolved = resolve_email_content(key, context or {})
+    if resolved is None:
+        logger.warning("Unbekannte E-Mail-Vorlage '%s' -- nichts gesendet.", key)
+        return False
+    subject, paragraphs, cta_label = resolved
+    return send_credo_email(
+        to=to,
+        subject=subject,
+        greeting=greeting,
+        paragraphs=paragraphs,
+        cta_label=(cta_label or None),
+        cta_url=cta_url,
+        kind=key,
+    )
+
+
 def send_test_email(to):
     """
     Verschickt eine Testmail, um die SMTP-Einstellungen zu pruefen.
