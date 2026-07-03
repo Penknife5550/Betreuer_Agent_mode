@@ -28,6 +28,15 @@
             <p class="text-sm text-gray-500 mt-1">Betreuer an meinen Schulen</p>
         </a>
 
+        {# Offene Betreuer-Genehmigungen #}
+        <a href="{% url 'contracts:betreuer_list' %}?status=pending_approval"
+           aria-label="{{ pending_betreuer_approvals }} Betreuer warten auf Genehmigung"
+           class="bg-white rounded-lg shadow p-6 border-l-4 {% if pending_betreuer_approvals %}border-orange-400{% else %}border-credo-dark{% endif %} hover:shadow-md transition-shadow block focus-visible:ring-2 focus-visible:ring-credo-dark">
+            <h3 class="text-lg font-semibold text-credo-dark">Betreuer-Genehmigungen</h3>
+            <p class="text-3xl font-bold text-credo-dark mt-2">{{ pending_betreuer_approvals }}</p>
+            <p class="text-sm text-gray-500 mt-1">Warten auf Freigabe</p>
+        </a>
+
         {# Offene Nachweise #}
         <a href="{% url 'timetracking:timesheet_list' %}?status=submitted"
            aria-label="{{ pending_timesheets }} offene Stundennachweise zur Pruefung anzeigen"

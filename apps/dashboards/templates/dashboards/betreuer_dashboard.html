@@ -86,11 +86,12 @@
         </div>
 
         {# Aktive Vertraege #}
-        <div class="bg-white rounded-lg shadow p-6 border-l-4 border-schule-gsh">
+        <a href="#meine-vertraege"
+           class="bg-white rounded-lg shadow p-6 border-l-4 border-schule-gsh hover:shadow-md transition-shadow block focus-visible:ring-2 focus-visible:ring-credo-dark">
             <h3 class="text-lg font-semibold text-credo-dark">Meine Vertr&auml;ge</h3>
             <p class="text-3xl font-bold text-credo-dark mt-2">{{ contract_count|default:"0" }}</p>
-            <p class="text-sm text-gray-500 mt-1">Aktive Vertr&auml;ge</p>
-        </div>
+            <p class="text-sm text-gray-500 mt-1">Aktive Vertr&auml;ge &ndash; Details unten</p>
+        </a>
 
         {# Naechster Stichtag #}
         <div class="bg-white rounded-lg shadow p-6 border-l-4 border-schule-gsm">
@@ -109,52 +110,36 @@
     </div>
 
     {# ------------------------------------------------------------------ #}
-    {# Foerderprogramm Budgets                                             #}
+    {# Meine Vertraege                                                     #}
     {# ------------------------------------------------------------------ #}
-    {% if foerderprogramm_budgets %}
-    <h2 class="text-xl font-bold text-credo-dark mt-10 mb-4">Meine F&ouml;rderprogramme</h2>
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {% for item in foerderprogramm_budgets %}
-        {% with fp=item.foerderprogramm s=item.status %}
-        <div class="bg-white rounded-lg shadow p-6 border-l-4
-            {% if s.warning_level == 'red' %}border-red-500
-            {% elif s.warning_level == 'orange' %}border-orange-400
-            {% elif s.warning_level == 'yellow' %}border-yellow-400
-            {% else %}border-green-500{% endif %}">
-            <h3 class="text-base font-semibold text-credo-dark truncate">{{ fp.name }}</h3>
-            <p class="text-xs text-gray-400 mb-3">{{ fp.school_year }}
-                {% if fp.kostenstelle %}&ndash; {{ fp.kostenstelle.code }}{% endif %}
-            </p>
-            <p class="text-2xl font-bold text-credo-dark">
-                {{ s.spent|de_money }} <span class="text-sm font-normal text-gray-500">/ {{ s.budget|de_money }} &euro;</span>
-            </p>
-            {# Progress bar #}
-            <div class="w-full bg-gray-200 rounded-full h-2 mt-2 mb-1"
-                 role="progressbar"
-                 aria-valuenow="{{ s.percentage }}"
-                 aria-valuemin="0"
-                 aria-valuemax="100"
-                 aria-label="Budget {{ fp.name }}: {{ s.percentage }} Prozent verbraucht">
-                <div class="h-2 rounded-full
-                    {% if s.warning_level == 'red' %}bg-red-500
-                    {% elif s.warning_level == 'orange' %}bg-orange-400
-                    {% elif s.warning_level == 'yellow' %}bg-yellow-400
-                    {% else %}bg-green-500{% endif %}"
-                     style="width: {% if s.percentage > 100 %}100{% else %}{{ s.percentage }}{% endif %}%">
+    {% if contracts %}
+    <h2 id="meine-vertraege" class="text-xl font-bold text-credo-dark mt-10 mb-4 scroll-mt-4">Meine Vertr&auml;ge</h2>
+    <div class="bg-white rounded-lg shadow">
+        <ul class="divide-y divide-gray-100">
+            {% for c in contracts %}
+            <li class="px-6 py-4">
+                <div class="flex items-center justify-between gap-4 flex-wrap">
+                    <div>
+                        <p class="text-sm font-medium text-credo-dark">
+                            {{ c.school.name }}
+                            {% if c.activity_type %}&ndash; {{ c.activity_type.name }}{% endif %}
+                        </p>
+                        <p class="text-xs text-gray-500 mt-0.5">
+                            Vertragsnr.: {{ c.contract_number }}
+                            {% if c.start_date %}&middot; ab {{ c.start_date|date:"d.m.Y" }}{% endif %}
+                            {% if c.end_date %}&middot; bis {{ c.end_date|date:"d.m.Y" }}{% endif %}
+                        </p>
+                    </div>
+                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium
+                        {% if c.status == 'active' %}bg-green-100 text-green-800
+                        {% elif c.status == 'terminated' %}bg-red-100 text-red-700
+                        {% else %}bg-gray-100 text-gray-700{% endif %}">
+                        {{ c.get_status_display }}
+                    </span>
                 </div>
-            </div>
-            {% if s.warning_level == 'red' %}
-            <p class="text-xs text-red-600 font-medium">Budget ausgesch&ouml;pft!</p>
-            {% elif s.warning_level == 'orange' %}
-            <p class="text-xs text-orange-600">{{ s.percentage }}% verbraucht &ndash; {{ s.remaining|de_money }} &euro; &uuml;brig</p>
-            {% elif s.warning_level == 'yellow' %}
-            <p class="text-xs text-yellow-700">{{ s.percentage }}% verbraucht &ndash; {{ s.remaining|de_money }} &euro; &uuml;brig</p>
-            {% else %}
-            <p class="text-xs text-gray-500">{{ s.remaining|de_money }} &euro; noch verf&uuml;gbar</p>
-            {% endif %}
-        </div>
-        {% endwith %}
-        {% endfor %}
+            </li>
+            {% endfor %}
+        </ul>
     </div>
     {% endif %}
 

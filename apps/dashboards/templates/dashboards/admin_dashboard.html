@@ -32,21 +32,32 @@
             <p class="text-sm text-gray-500 mt-1">Aktive Standorte</p>
         </div>
 
-        {# Offene Genehmigungen #}
+        {# Offene Betreuer-Genehmigungen #}
+        <a href="{% url 'contracts:betreuer_list' %}?status=pending_approval"
+           aria-label="{{ pending_betreuer_approvals }} Betreuer warten auf Genehmigung"
+           class="bg-white rounded-lg shadow p-6 border-l-4 {% if pending_betreuer_approvals %}border-orange-400{% else %}border-schule-gsm{% endif %} hover:shadow-md transition-shadow block focus-visible:ring-2 focus-visible:ring-credo-dark">
+            <h3 class="text-lg font-semibold text-credo-dark">Betreuer-Genehmigungen</h3>
+            <p class="text-3xl font-bold text-credo-dark mt-2">{{ pending_betreuer_approvals }}</p>
+            <p class="text-sm text-gray-500 mt-1">Warten auf Freigabe</p>
+        </a>
+
+        {# Offene Stundennachweis-Genehmigungen #}
         <a href="{% url 'timetracking:timesheet_list' %}?status=submitted"
            aria-label="{{ pending_timesheets }} offene Stundennachweise zur Genehmigung anzeigen"
            class="bg-white rounded-lg shadow p-6 border-l-4 border-schule-gsm hover:shadow-md transition-shadow block focus-visible:ring-2 focus-visible:ring-credo-dark">
-            <h3 class="text-lg font-semibold text-credo-dark">Genehmigungen</h3>
+            <h3 class="text-lg font-semibold text-credo-dark">Stundennachweise</h3>
             <p class="text-3xl font-bold text-credo-dark mt-2">{{ pending_timesheets }}</p>
-            <p class="text-sm text-gray-500 mt-1">Offene Stundennachweise</p>
+            <p class="text-sm text-gray-500 mt-1">Offene Genehmigungen</p>
         </a>
 
         {# Vertraege #}
-        <div class="bg-white rounded-lg shadow p-6 border-l-4 border-schule-gym">
+        <a href="{% url 'admin:contracts_contract_changelist' %}"
+           aria-label="{{ contract_count }} Vertraege in der Verwaltung anzeigen"
+           class="bg-white rounded-lg shadow p-6 border-l-4 border-schule-gym hover:shadow-md transition-shadow block focus-visible:ring-2 focus-visible:ring-credo-dark">
             <h3 class="text-lg font-semibold text-credo-dark">Vertr&auml;ge</h3>
             <p class="text-3xl font-bold text-credo-dark mt-2">{{ contract_count }}</p>
             <p class="text-sm text-gray-500 mt-1">Aktive Vertr&auml;ge</p>
-        </div>
+        </a>
 
         {# Dokumente #}
         <div class="bg-white rounded-lg shadow p-6 border-l-4 border-schule-ges">

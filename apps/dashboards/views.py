@@ -41,6 +41,10 @@ class AdminDashboardView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
             active=Count("id", filter=Q(onboarding_status="active")),
         )
         context["betreuer_count"] = betreuer_aggregate["active"]
+        # Offene Betreuer-Genehmigungen (Registrierungen, die auf Freigabe warten)
+        context["pending_betreuer_approvals"] = BetreuerProfile.objects.filter(
+            onboarding_status="pending_approval"
+        ).count()
         context["school_count"] = School.objects.filter(is_active=True).count()
         context["pending_timesheets"] = MonthlyTimesheet.objects.filter(
             status="submitted"
@@ -106,6 +110,16 @@ class KoordinatorDashboardView(LoginRequiredMixin, UserPassesTestMixin, Template
             status="submitted",
             contract__school_id__in=school_ids,
         ).count()
+        # Offene Betreuer-Genehmigungen an den Schulen des Koordinators
+        context["pending_betreuer_approvals"] = (
+            BetreuerProfile.objects
+            .filter(
+                contracts__school_id__in=school_ids,
+                onboarding_status="pending_approval",
+            )
+            .distinct()
+            .count()
+        )
         context["documents_pending"] = Document.objects.filter(
             status="uploaded",
             contract__school_id__in=school_ids,
@@ -206,20 +220,7 @@ class BetreuerDashboardView(LoginRequiredMixin, UserPassesTestMixin, TemplateVie
             status__in=["draft", "rejected"],
         ).count()
 
-        from apps.schools.models import Foerderprogramm
-
-        _active_statuses = ["draft", "generated", "sent", "signed", "active"]
-        fps_with_budget = (
-            Foerderprogramm.objects
-            .filter(
-                contracts__betreuer=betreuer_profile,
-                contracts__status__in=_active_statuses,
-                budget__isnull=False,
-                is_active=True,
-            )
-            .select_related("school_year", "kostenstelle")
-            .distinct()
-            .order_by("name")
-        )
-        context["foerderprogramm_budgets"] = get_budget_statuses_bulk(fps_with_budget)
+        # Bewusst KEINE Foerderprogramm-Budgets im Betreuer-Dashboard:
+        # das Programm-Budget ist eine interne Kennzahl und darf nur von
+        # Koordinatoren/Admin fuer ihre Programme eingesehen werden.
         return context

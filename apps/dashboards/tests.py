@@ -173,3 +173,42 @@ def test_admin_dashboard_freibetrag_warnings_real_count(
     response = client.get('/admin-dashboard/')
     assert response.status_code == 200
     assert response.context["freibetrag_warnings"] >= 1
+
+
+# ---------------------------------------------------------------------------
+# Dashboard-Scope: Budget-Datenschutz + offene Betreuer-Genehmigungen
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+class TestDashboardScopeFixes:
+    def test_betreuer_dashboard_hides_program_budget(self, betreuer_user, betreuer_profile):
+        """Betreuer darf das Foerderprogramm-Budget NICHT sehen."""
+        client = Client()
+        client.force_login(betreuer_user)
+        resp = client.get("/betreuer-dashboard/")
+        assert resp.status_code == 200
+        assert "foerderprogramm_budgets" not in resp.context
+        # Stattdessen: eigene Vertraege sichtbar (Anker der Liste).
+        assert b"meine-vertraege" in resp.content
+
+    def test_admin_dashboard_pending_betreuer_approvals(self, admin_user, betreuer_profile):
+        betreuer_profile.onboarding_status = "pending_approval"
+        betreuer_profile.save(update_fields=["onboarding_status"])
+        client = Client()
+        client.force_login(admin_user)
+        resp = client.get("/admin-dashboard/")
+        assert resp.status_code == 200
+        assert resp.context["pending_betreuer_approvals"] == 1
+        assert b"Betreuer-Genehmigungen" in resp.content
+
+    def test_koordinator_dashboard_pending_betreuer_approvals(
+        self, koordinator_user, betreuer_profile,
+    ):
+        betreuer_profile.onboarding_status = "pending_approval"
+        betreuer_profile.save(update_fields=["onboarding_status"])
+        client = Client()
+        client.force_login(koordinator_user)
+        resp = client.get("/koordinator-dashboard/")
+        assert resp.status_code == 200
+        assert resp.context["pending_betreuer_approvals"] == 1

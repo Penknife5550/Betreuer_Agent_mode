@@ -2405,3 +2405,38 @@ class TestBetreuerOnboardingInvalidTransitions:
                 f"State muss nach Fehl-Transition '{src}' bleiben, "
                 f"war aber '{betreuer_profile.onboarding_status}'."
             )
+
+
+@pytest.mark.django_db
+class TestBetreuerListStatusFilterAndApprovalDocs:
+    """?status=-Filter der Betreuer-Liste + Dokumente-Nachziehen bei Genehmigung."""
+
+    def test_status_filter(self, admin_user, betreuer_profile):
+        from django.test import Client
+
+        betreuer_profile.onboarding_status = "pending_approval"
+        betreuer_profile.save(update_fields=["onboarding_status"])
+        client = Client()
+        client.force_login(admin_user)
+        url = reverse("contracts:betreuer_list")
+        r1 = client.get(url + "?status=pending_approval")
+        assert betreuer_profile in list(r1.context["betreuer_list"])
+        r2 = client.get(url + "?status=active")
+        assert betreuer_profile not in list(r2.context["betreuer_list"])
+
+    def test_approve_creates_missing_documents(
+        self, betreuer_profile, document_requirement_vertrag,
+    ):
+        """Dokumenttyp erst nach Registrierung angelegt -> Genehmigung zieht ihn nach."""
+        from apps.contracts.services import approve_betreuer
+        from apps.documents.models import Document
+
+        Document.objects.filter(betreuer=betreuer_profile).delete()
+        betreuer_profile.onboarding_status = "pending_approval"
+        betreuer_profile.save(update_fields=["onboarding_status"])
+
+        ok = approve_betreuer(betreuer_profile, {"start_date": date(2026, 9, 1)})
+        assert ok is True
+        assert Document.objects.filter(
+            betreuer=betreuer_profile, requirement=document_requirement_vertrag
+        ).exists()
