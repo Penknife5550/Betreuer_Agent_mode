@@ -417,6 +417,13 @@ def approve_betreuer(betreuer_profile, cleaned_data):
 
         betreuer_profile.transition_to("approved")
 
+        # Fehlende Pflicht-Dokumente nachziehen: Wurde ein Dokumenttyp erst NACH
+        # der Registrierung angelegt (oder aktiviert), fehlt er dem Betreuer.
+        # _create_pending_documents nutzt bulk_create(ignore_conflicts) und legt
+        # daher nur fehlende Dokumente an (idempotent).
+        if contract:
+            _create_pending_documents(contract, betreuer_profile)
+
         def _notify():
             from django_q.tasks import async_task
             async_task(

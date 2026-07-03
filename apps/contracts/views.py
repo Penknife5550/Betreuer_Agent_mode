@@ -295,13 +295,24 @@ class BetreuerListView(KoordinatorOrAdminMixin, ListView):
             .select_related("user")
             .prefetch_related("contracts__school")
         )
-        if has_admin_role(user):
-            return qs
-        profile = user.profile
-        if profile.is_koordinator:
-            school_ids = profile.schools.values_list("id", flat=True)
-            qs = qs.filter(contracts__school_id__in=school_ids).distinct()
+        if not has_admin_role(user):
+            profile = user.profile
+            if profile.is_koordinator:
+                school_ids = profile.schools.values_list("id", flat=True)
+                qs = qs.filter(contracts__school_id__in=school_ids).distinct()
+            else:
+                qs = qs.none()
+        # Optionaler Status-Filter (z.B. Dashboard-Kachel "Warten auf Freigabe").
+        status = self.request.GET.get("status")
+        valid = {c[0] for c in BetreuerProfile.ONBOARDING_STATUS_CHOICES}
+        if status in valid:
+            qs = qs.filter(onboarding_status=status)
         return qs
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["status_filter"] = self.request.GET.get("status", "")
+        return ctx
 
 
 class BetreuerDetailView(KoordinatorScopedMixin, DetailView):
