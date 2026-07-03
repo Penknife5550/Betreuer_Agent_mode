@@ -680,3 +680,84 @@ class TestTestmailAdminView:
         assert resp.status_code == 302  # Erfolg -> Redirect
         assert len(mailoutbox) == 1
         assert mailoutbox[0].to == ["ziel@test.de"]
+
+
+# ---------------------------------------------------------------------------
+# E-Mail-Vorlagen (Admin-editierbar) + Platzhalter
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.django_db
+class TestEmailTemplates:
+    """DB-Vorlage ueberschreibt Standardtext; Fallback greift bei inaktiv/fehlt."""
+
+    def test_all_templates_seeded(self):
+        from apps.notifications.models import EmailTemplate
+        from apps.notifications.email_templates import DEFAULT_EMAIL_TEMPLATES
+
+        assert EmailTemplate.objects.count() == len(DEFAULT_EMAIL_TEMPLATES)
+
+    def test_db_template_overrides_default(self, contract, mailoutbox):
+        from apps.notifications.models import EmailTemplate
+        from apps.notifications.services import notify_contract_created
+
+        t = EmailTemplate.objects.get(key="contract_created")
+        t.subject = "GEAENDERT {{vertragsnummer}}"
+        t.body = "Hallo, dein Vertrag {{vertragsnummer}} fuer {{schule}} ist da."
+        t.save()
+
+        contract.betreuer.user.email = "b@test.de"
+        contract.betreuer.user.save()
+        mailoutbox.clear()
+        notify_contract_created(contract)
+
+        m = mailoutbox[-1]
+        assert m.subject == f"GEAENDERT {contract.contract_number}"
+        assert contract.contract_number in m.body
+        assert contract.school.name in m.body
+
+    def test_inactive_template_falls_back_to_default(self, contract, mailoutbox):
+        from apps.notifications.models import EmailTemplate
+        from apps.notifications.services import notify_contract_created
+
+        EmailTemplate.objects.filter(key="contract_created").update(is_active=False)
+        contract.betreuer.user.email = "b2@test.de"
+        contract.betreuer.user.save()
+        mailoutbox.clear()
+        notify_contract_created(contract)
+
+        assert mailoutbox[-1].subject == (
+            f"Dein Vertrag {contract.contract_number} wurde angelegt"
+        )
+
+    def test_resolve_returns_default_when_no_row(self):
+        from apps.notifications.models import EmailTemplate
+        from apps.notifications.email_templates import resolve_email_content
+
+        EmailTemplate.objects.filter(key="password_reset").delete()
+        subject, paragraphs, cta = resolve_email_content("password_reset", {})
+        assert "Passwort zuruecksetzen" in subject
+        assert paragraphs  # nicht leer
+        assert cta == "Neues Passwort festlegen"
+
+    def test_placeholders_are_rendered(self):
+        from apps.notifications.email_templates import render_placeholders
+
+        out = render_placeholders("Hallo {{name}}, Nr {{nr}}", {"name": "Max", "nr": 7})
+        assert out == "Hallo Max, Nr 7"
+
+    def test_admin_can_edit_template(self):
+        from django.contrib.auth.models import User
+        from django.test import Client
+        from django.urls import reverse
+
+        from apps.notifications.models import EmailTemplate
+
+        superuser = User.objects.create_superuser(
+            username="su_mail", email="su_mail@test.de", password="x",
+        )
+        t = EmailTemplate.objects.get(key="password_reset")
+        client = Client()
+        client.force_login(superuser)
+        url = reverse("admin:notifications_emailtemplate_change", args=[t.pk])
+        assert client.get(url).status_code == 200

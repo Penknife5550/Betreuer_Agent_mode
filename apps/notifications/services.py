@@ -23,7 +23,7 @@ from django.utils.http import urlsafe_base64_encode
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
-from apps.core.email import build_site_url, send_credo_email
+from apps.core.email import build_site_url, send_credo_email, send_email
 
 logger = logging.getLogger(__name__)
 
@@ -298,58 +298,47 @@ def notify_pending_approval(betreuer_profile, contract):
     detail_url = build_site_url(
         reverse("contracts:betreuer_detail", kwargs={"pk": betreuer_profile.pk})
     )
-    return send_credo_email(
+    return send_email(
+        "pending_approval",
         to=recipient,
-        kind="pending_approval",
-        subject=f"Neue Betreuer-Registrierung: {user.get_full_name()}",
         greeting=f"Guten Tag {coordinator_name}," if coordinator_name else "Guten Tag,",
-        paragraphs=[
-            f"{user.get_full_name()} hat sich fuer {school.name} ({school.code}) "
-            f"registriert und wartet auf Ihre Genehmigung.",
-            f"Vertragsnummer: {contract.contract_number}",
-        ],
-        cta_label="Registrierung pruefen",
         cta_url=detail_url,
+        context={
+            "betreuer_name": user.get_full_name(),
+            "schule": school.name,
+            "schul_code": school.code,
+            "vertragsnummer": contract.contract_number,
+        },
     )
 
 
 def notify_betreuer_approved(betreuer_profile, contract):
     """Genehmigt -> Mail an den Betreuer inkl. Link zum Passwort-Festlegen."""
     user = betreuer_profile.user
-    return send_credo_email(
+    return send_email(
+        "betreuer_approved",
         to=user.email,
-        kind="betreuer_approved",
-        subject="Ihre Registrierung wurde freigegeben - bitte Passwort festlegen",
         greeting=f"Guten Tag {user.get_full_name()},",
-        paragraphs=[
-            f"Ihre Registrierung fuer {contract.school.name} wurde freigegeben.",
-            f"Vertragsnummer: {contract.contract_number}",
-            "Bitte legen Sie jetzt Ihr Passwort fest, um sich in der BetreuerApp "
-            "anzumelden und Ihre Unterlagen hochzuladen.",
-        ],
-        cta_label="Passwort festlegen",
         cta_url=_password_setup_url(user),
-        outro_paragraphs=[
-            "Der Link ist aus Sicherheitsgruenden zeitlich begrenzt gueltig. "
-            "Sollte er abgelaufen sein, wenden Sie sich bitte an Ihre Koordination.",
-        ],
+        context={
+            "schule": contract.school.name,
+            "vertragsnummer": contract.contract_number,
+        },
     )
 
 
 def notify_contract_created(contract):
     """Vertragsentwurf angelegt -> Info-Mail an den Betreuer."""
     user = contract.betreuer.user
-    return send_credo_email(
+    return send_email(
+        "contract_created",
         to=user.email,
-        kind="contract_created",
-        subject=f"Ihr Vertrag {contract.contract_number} wurde angelegt",
         greeting=f"Guten Tag {user.get_full_name()},",
-        paragraphs=[
-            f"fuer Sie wurde ein Vertragsentwurf angelegt:",
-            f"Vertragsnummer: {contract.contract_number}\n"
-            f"Schule: {contract.school.name}\n"
-            f"Taetigkeit: {contract.activity_type.name}",
-        ],
+        context={
+            "vertragsnummer": contract.contract_number,
+            "schule": contract.school.name,
+            "taetigkeit": contract.activity_type.name,
+        },
     )
 
 
@@ -357,33 +346,30 @@ def notify_duplicate_detected(betreuer_profile, existing_profile):
     """Hash-Duplikat bei Registrierung -> interne Mail an den Admin."""
     user = betreuer_profile.user
     existing_user = existing_profile.user
-    return send_credo_email(
+    return send_email(
+        "duplicate_detected",
         to=_admin_recipient(),
-        kind="duplicate_detected",
-        subject="Moegliches Duplikat bei einer Betreuer-Registrierung",
         greeting="Hallo,",
-        paragraphs=[
-            "bei einer Registrierung wurde ein moegliches Duplikat erkannt:",
-            f"Neu: {user.get_full_name()} ({user.email})\n"
-            f"Bestehend: {existing_user.get_full_name()} ({existing_user.email})",
-            "Bitte pruefen, ob es sich um dieselbe Person handelt.",
-        ],
+        context={
+            "neu_name": user.get_full_name(),
+            "neu_email": user.email,
+            "bestehend_name": existing_user.get_full_name(),
+            "bestehend_email": existing_user.email,
+        },
     )
 
 
 def notify_email_mismatch(betreuer_name, new_email, stored_email):
     """Wiederkehrender Betreuer mit abweichender E-Mail -> Mail an den Admin."""
-    return send_credo_email(
+    return send_email(
+        "email_mismatch",
         to=_admin_recipient(),
-        kind="email_mismatch",
-        subject="E-Mail-Abweichung bei wiederkehrender Registrierung",
         greeting="Hallo,",
-        paragraphs=[
-            f"{betreuer_name} hat sich mit einer abweichenden E-Mail-Adresse "
-            f"registriert:",
-            f"Neu angegeben: {new_email}\nHinterlegt: {stored_email}",
-            "Bitte pruefen, welche Adresse aktuell ist.",
-        ],
+        context={
+            "betreuer_name": betreuer_name,
+            "neue_email": new_email,
+            "hinterlegte_email": stored_email,
+        },
     )
 
 
@@ -391,18 +377,16 @@ def notify_document_expiring(document, days_remaining):
     """Dokument laeuft in <=30 Tagen ab -> Erinnerung an den Betreuer."""
     user = document.betreuer.user
     expires = str(document.expires_at) if document.expires_at else ""
-    return send_credo_email(
+    return send_email(
+        "document_expiring",
         to=user.email,
-        kind="document_expiring",
-        subject=f"Erinnerung: {document.requirement.name} laeuft bald ab",
         greeting=f"Guten Tag {user.get_full_name()},",
-        paragraphs=[
-            f"Ihr Dokument \"{document.requirement.name}\" laeuft in "
-            f"{days_remaining} Tagen ab" + (f" (am {expires})." if expires else "."),
-            "Bitte reichen Sie rechtzeitig ein aktualisiertes Dokument ein.",
-        ],
-        cta_label="In der BetreuerApp anmelden",
         cta_url=build_site_url(reverse("accounts:login")),
+        context={
+            "dokument": document.requirement.name,
+            "tage": days_remaining,
+            "ablauf": f" (am {expires})" if expires else "",
+        },
     )
 
 
@@ -410,39 +394,34 @@ def notify_document_expired(document):
     """Dokument abgelaufen ohne Erneuerung -> interne Mail an den Admin."""
     user = document.betreuer.user
     expired = str(document.expires_at) if document.expires_at else ""
-    return send_credo_email(
+    return send_email(
+        "document_expired",
         to=_admin_recipient(),
-        kind="document_expired",
-        subject=f"Dokument abgelaufen: {document.requirement.name}",
         greeting="Hallo,",
-        paragraphs=[
-            f"das Dokument \"{document.requirement.name}\" von "
-            f"{user.get_full_name()} ist abgelaufen"
-            + (f" (am {expired})" if expired else "") + " und wurde nicht erneuert.",
-            "Bitte nachfassen.",
-        ],
+        context={
+            "dokument": document.requirement.name,
+            "betreuer_name": user.get_full_name(),
+            "ablauf": f" (am {expired})" if expired else "",
+        },
     )
 
 
 def notify_freibetrag_warning(betreuer_profile, freibetrag_status):
     """Freibetrag-Warnschwelle erreicht -> interne Mail an den Admin."""
     user = betreuer_profile.user
-    return send_credo_email(
+    return send_email(
+        "freibetrag_warning",
         to=_admin_recipient(),
-        kind="freibetrag_warning",
-        subject=(
-            f"Freibetrag-Warnung: {user.get_full_name()} "
-            f"({freibetrag_status['percentage']} %)"
-        ),
         greeting="Hallo,",
-        paragraphs=[
-            f"{user.get_full_name()} hat im Jahr {freibetrag_status['year']} "
-            f"{freibetrag_status['percentage']} % des Freibetrags erreicht "
-            f"(Stufe: {freibetrag_status['warning_level']}).",
-            f"Genutzt: {freibetrag_status['total_used']} EUR von "
-            f"{freibetrag_status['limit']} EUR "
-            f"(verbleibend: {freibetrag_status['remaining']} EUR).",
-        ],
+        context={
+            "betreuer_name": user.get_full_name(),
+            "jahr": freibetrag_status["year"],
+            "prozent": freibetrag_status["percentage"],
+            "stufe": freibetrag_status["warning_level"],
+            "genutzt": freibetrag_status["total_used"],
+            "limit": freibetrag_status["limit"],
+            "verbleibend": freibetrag_status["remaining"],
+        },
     )
 
 
@@ -453,34 +432,28 @@ def notify_timesheet_approved(timesheet):
     user = betreuer.user
     school = contract.school
 
-    cta_label = None
     cta_url = None
     if timesheet.generated_pdf:
-        cta_label = "Stundennachweis-PDF oeffnen"
         cta_url = build_site_url(
             f"/koordinator/stundennachweis/{timesheet.pk}/pdf/"
         )
 
     monat = _MONTHS_DE[timesheet.month] if 1 <= timesheet.month <= 12 else str(timesheet.month)
-    return send_credo_email(
+    return send_email(
+        "timesheet_approved",
         to=_buchhaltung_recipient(),
-        kind="timesheet_approved",
-        subject=(
-            f"Abrechnung {monat} {timesheet.year}: {user.get_full_name()} "
-            f"({contract.contract_number})"
-        ),
         greeting="Hallo,",
-        paragraphs=[
-            f"ein Stundennachweis wurde genehmigt und kann abgerechnet werden:",
-            f"Betreuer/in: {user.get_full_name()}\n"
-            f"Schule: {school.name} ({school.code})\n"
-            f"Zeitraum: {monat} {timesheet.year}\n"
-            f"Stunden: {timesheet.total_hours}\n"
-            f"Betrag: {timesheet.total_amount} EUR\n"
-            f"Vertragsnummer: {contract.contract_number}\n"
-            f"Projektnummer: {betreuer.projektnummer or '-'}\n"
-            f"Kreditorennummer: {betreuer.kreditorennummer or '-'}",
-        ],
-        cta_label=cta_label,
         cta_url=cta_url,
+        context={
+            "betreuer_name": user.get_full_name(),
+            "schule": school.name,
+            "schul_code": school.code,
+            "monat": monat,
+            "jahr": timesheet.year,
+            "stunden": timesheet.total_hours,
+            "betrag": timesheet.total_amount,
+            "vertragsnummer": contract.contract_number,
+            "projektnummer": betreuer.projektnummer or "-",
+            "kreditorennummer": betreuer.kreditorennummer or "-",
+        },
     )

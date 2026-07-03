@@ -9,6 +9,7 @@ from django.urls import path, reverse
 
 from apps.notifications.models import (
     EmailLog,
+    EmailTemplate,
     InboundToken,
     NotificationLog,
     SmtpConfig,
@@ -151,6 +152,54 @@ class SmtpConfigAdmin(admin.ModelAdmin):
                         if SmtpConfig.objects.filter(pk=1).exists() else ""),
         }
         return render(request, "admin/notifications/smtpconfig_testmail.html", context)
+
+
+@admin.register(EmailTemplate)
+class EmailTemplateAdmin(admin.ModelAdmin):
+    """Betreff/Text jeder Mail editierbar. Platzhalter je Typ werden angezeigt."""
+
+    list_display = ("key_label", "subject", "is_active", "updated_at")
+    list_filter = ("is_active",)
+    search_fields = ("key", "subject", "body")
+    readonly_fields = ("available_placeholders", "updated_at")
+    fields = (
+        "key", "subject", "body", "cta_label", "is_active",
+        "available_placeholders", "updated_at",
+    )
+
+    @admin.display(description="Mail-Typ")
+    def key_label(self, obj):
+        return obj.get_key_display()
+
+    def get_readonly_fields(self, request, obj=None):
+        ro = list(super().get_readonly_fields(request, obj))
+        if obj is not None:
+            ro.append("key")  # Typ nach dem Anlegen nicht mehr aendern
+        return ro
+
+    @admin.display(description="Verfuegbare Platzhalter")
+    def available_placeholders(self, obj):
+        from django.utils.html import escape
+        from django.utils.safestring import mark_safe
+
+        from apps.notifications.email_templates import DEFAULT_EMAIL_TEMPLATES
+
+        key = getattr(obj, "key", None)
+        ph = (DEFAULT_EMAIL_TEMPLATES.get(key) or {}).get("placeholders", {})
+        if not ph:
+            return "— (keine Platzhalter)"
+        lines = [
+            "<li><code>" + "{{" + escape(k) + "}}" + "</code> — " + escape(v) + "</li>"
+            for k, v in ph.items()
+        ]
+        return mark_safe(
+            "<p>In Betreff/Text nutzbar:</p>"
+            "<ul style='margin:0;padding-left:1.2rem'>" + "".join(lines) + "</ul>"
+        )
+
+    def has_delete_permission(self, request, obj=None):
+        # Loeschen erlaubt -> dann greift wieder der eingebaute Standardtext.
+        return True
 
 
 @admin.register(EmailLog)

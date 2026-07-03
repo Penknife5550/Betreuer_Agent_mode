@@ -436,7 +436,7 @@ def send_registration_invite(link):
     """
     from django.utils import timezone
 
-    from apps.core.email import send_credo_email
+    from apps.core.email import send_email
 
     if not link.sent_to:
         return False
@@ -450,26 +450,22 @@ def send_registration_invite(link):
     koord = getattr(link.school, "koordinator", None)
     if koord and koord.email:
         kontakt = (
-            f"Der Link ist personalisiert{gueltig}. Fragen? Wende dich an "
+            f"Fragen? Wende dich an "
             f"{koord.get_full_name() or 'deine Koordination'}: {koord.email}."
         )
     else:
-        kontakt = f"Der Link ist personalisiert{gueltig}. Bei Fragen wende dich an deine Koordination."
+        kontakt = "Bei Fragen wende dich an deine Koordination."
 
-    ok = send_credo_email(
+    ok = send_email(
+        "registration_invite",
         to=link.sent_to,
-        kind="registration_invite",
-        subject="Einladung zur Registrierung als Betreuer/in",
         greeting=f"Guten Tag {name}," if name else "Guten Tag,",
-        paragraphs=[
-            f"du wurdest eingeladen, dich als Betreuer/in fuer "
-            f"{link.school.name} zu registrieren.",
-            "Bitte fuelle das Registrierungsformular ueber den folgenden "
-            "Button aus. Deine Schule ist bereits vorausgewaehlt.",
-        ],
-        cta_label="Jetzt registrieren",
         cta_url=link.registration_url,
-        outro_paragraphs=[kontakt],
+        context={
+            "schule": link.school.name,
+            "gueltig": gueltig,
+            "kontakt": kontakt,
+        },
     )
     if ok:
         link.sent_at = timezone.now()
